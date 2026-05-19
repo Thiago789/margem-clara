@@ -2,7 +2,13 @@
 
 Primeiro MVP web do sistema de gestao de margem consignavel.
 
-## Como abrir
+## Ambiente de demonstracao
+
+Quando o GitHub Pages estiver habilitado, o MVP ficara disponivel em:
+
+https://thiago789.github.io/margem-clara/
+
+## Como abrir localmente
 
 Abra o arquivo `index.html` no navegador.
 
