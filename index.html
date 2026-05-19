@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Margem Clara</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacao principal">
+        <div class="brand">
+          <div class="brand-mark">MC</div>
+          <div>
+            <strong>Margem Clara</strong>
+            <span>Gestao consignavel</span>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <button class="nav-item active" data-view="dashboard" type="button">Painel</button>
+          <button class="nav-item" data-view="employees" type="button">Servidores</button>
+          <button class="nav-item" data-view="margin" type="button">Margem</button>
+          <button class="nav-item" data-view="contracts" type="button">Contratos</button>
+          <button class="nav-item" data-view="import" type="button">Importar folha</button>
+          <button class="nav-item" data-view="simulation" type="button">Simulacao</button>
+          <button class="nav-item" data-view="authorizations" type="button">Autorizacoes</button>
+          <button class="nav-item" data-view="tickets" type="button">Suporte</button>
+        </nav>
+
+        <div class="profile-card">
+          <span>Perfil ativo</span>
+          <strong id="active-profile-label">Gestor/RH</strong>
+          <small id="active-profile-scope">Prefeitura Modelo</small>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">MVP operacional</p>
+            <h1 id="page-title">Painel</h1>
+          </div>
+          <div class="topbar-actions">
+            <select class="select-input compact-select" id="profile-select" title="Perfil ativo">
+              <option value="manager">Gestor/RH</option>
+              <option value="employee">Servidor</option>
+              <option value="lender">Consignataria</option>
+            </select>
+            <button class="icon-button" id="seed-data-button" type="button" title="Carregar dados exemplo">R</button>
+            <button class="primary-button" id="new-employee-open" type="button">Novo servidor</button>
+          </div>
+        </header>
+
+        <section class="view active" id="dashboard-view" aria-labelledby="dashboard-title">
+          <div class="section-heading">
+            <h2 id="dashboard-title">Visao geral</h2>
+            <p>Resumo operacional do convenio Prefeitura Modelo.</p>
+          </div>
+
+          <div class="metric-grid" id="metrics"></div>
+
+          <div class="content-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Alertas operacionais</h3>
+              </div>
+              <div class="alert-list" id="alerts"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Movimentos recentes</h3>
+              </div>
+              <div class="timeline compact" id="recent-movements"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="employees-view" aria-labelledby="employees-title">
+          <div class="section-heading row-heading">
+            <div>
+              <h2 id="employees-title">Servidores</h2>
+              <p>Cadastre servidores e acompanhe suas matriculas.</p>
+            </div>
+            <input class="search-input" id="employee-search" placeholder="Buscar por nome, CPF ou matricula" />
+          </div>
+          <div class="table-panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>Servidor</th>
+                  <th>CPF</th>
+                  <th>Matricula</th>
+                  <th>Renda base</th>
+                  <th>Margem disponivel</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="employees-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view" id="margin-view" aria-labelledby="margin-title">
+          <div class="section-heading row-heading">
+            <div>
+              <h2 id="margin-title">Margem explicada</h2>
+              <p>Entenda a base, contratos, reservas e bloqueios.</p>
+            </div>
+            <select id="margin-employee-select" class="select-input"></select>
+          </div>
+
+          <div id="margin-detail"></div>
+        </section>
+
+        <section class="view" id="contracts-view" aria-labelledby="contracts-title">
+          <div class="section-heading row-heading">
+            <div>
+              <h2 id="contracts-title">Contratos</h2>
+              <p>Operacoes que consomem margem.</p>
+            </div>
+            <button class="primary-button" id="new-contract-open" type="button">Nova reserva</button>
+          </div>
+          <div class="table-panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>Contrato</th>
+                  <th>Servidor</th>
+                  <th>Consignataria</th>
+                  <th>Parcela</th>
+                  <th>Prazo</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="contracts-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view" id="import-view" aria-labelledby="import-title">
+          <div class="section-heading">
+            <h2 id="import-title">Importar folha</h2>
+            <p>Atualize renda base e descontos obrigatorios via CSV.</p>
+          </div>
+
+          <div class="import-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Arquivo CSV</h3>
+              </div>
+              <p class="muted">
+                Colunas esperadas: nome, cpf, matricula, renda_base, descontos_obrigatorios, status.
+              </p>
+              <input id="csv-file" class="file-input" type="file" accept=".csv,text/csv" />
+              <div class="button-row">
+                <button class="secondary-button" id="download-sample" type="button">Baixar exemplo</button>
+                <button class="primary-button" id="process-csv" type="button">Processar folha</button>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Resultado</h3>
+              </div>
+              <div id="import-result" class="import-result">Nenhum arquivo processado ainda.</div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="simulation-view" aria-labelledby="simulation-title">
+          <div class="section-heading">
+            <h2 id="simulation-title">Simulacao e ranking</h2>
+            <p>Compare ofertas pelo valor de parcela e taxa.</p>
+          </div>
+
+          <div class="simulation-layout">
+            <form class="panel form-grid" id="simulation-form">
+              <label>
+                Servidor
+                <select id="simulation-employee" class="select-input"></select>
+              </label>
+              <label>
+                Valor desejado
+                <input id="simulation-amount" class="text-input" type="number" min="0" step="100" value="5000" />
+              </label>
+              <label>
+                Prazo
+                <input id="simulation-installments" class="text-input" type="number" min="1" max="120" value="48" />
+              </label>
+              <button class="primary-button wide" type="submit">Simular</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Ranking de taxas</h3>
+              </div>
+              <div id="ranking-list" class="ranking-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="authorizations-view" aria-labelledby="authorizations-title">
+          <div class="section-heading row-heading">
+            <div>
+              <h2 id="authorizations-title">Autorizacoes</h2>
+              <p>Gere codigos temporarios para consulta, reserva e confirmacao.</p>
+            </div>
+            <button class="primary-button" id="new-authorization-open" type="button">Gerar codigo</button>
+          </div>
+
+          <div class="content-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Codigos ativos</h3>
+              </div>
+              <div class="authorization-list" id="authorization-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Como entra no fluxo</h3>
+              </div>
+              <div class="flow-list">
+                <div><strong>1. Servidor gera o codigo</strong><span>Escolhe a finalidade e a matricula.</span></div>
+                <div><strong>2. Consignataria usa o codigo</strong><span>Consulta margem ou cria reserva autorizada.</span></div>
+                <div><strong>3. Sistema audita tudo</strong><span>Uso unico, validade curta e historico da operacao.</span></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="tickets-view" aria-labelledby="tickets-title">
+          <div class="section-heading row-heading">
+            <div>
+              <h2 id="tickets-title">Suporte e contestacao</h2>
+              <p>Registre contestacoes de margem e duvidas de contrato.</p>
+            </div>
+            <button class="primary-button" id="new-ticket-open" type="button">Novo ticket</button>
+          </div>
+          <div class="ticket-list" id="ticket-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="modal" id="employee-modal">
+      <form method="dialog" class="modal-content" id="employee-form">
+        <div class="modal-heading">
+          <h2>Novo servidor</h2>
+          <button class="icon-button" value="cancel" type="submit" title="Fechar">x</button>
+        </div>
+        <label>Nome <input class="text-input" id="employee-name" required /></label>
+        <label>CPF <input class="text-input" id="employee-cpf" required /></label>
+        <label>Matricula <input class="text-input" id="employee-enrollment" required /></label>
+        <label>Renda base <input class="text-input" id="employee-income" type="number" step="0.01" required /></label>
+        <label>Descontos obrigatorios <input class="text-input" id="employee-deductions" type="number" step="0.01" value="0" /></label>
+        <button class="primary-button wide" value="default" type="submit">Salvar servidor</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="contract-modal">
+      <form method="dialog" class="modal-content" id="contract-form">
+        <div class="modal-heading">
+          <h2>Nova reserva</h2>
+          <button class="icon-button" value="cancel" type="submit" title="Fechar">x</button>
+        </div>
+        <label>Servidor <select id="contract-employee" class="select-input"></select></label>
+        <label>Consignataria <select id="contract-lender" class="select-input"></select></label>
+        <label>Valor da parcela <input id="contract-installment" class="text-input" type="number" step="0.01" required /></label>
+        <label>Prazo <input id="contract-installments" class="text-input" type="number" min="1" value="48" required /></label>
+        <button class="primary-button wide" value="default" type="submit">Criar reserva</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="ticket-modal">
+      <form method="dialog" class="modal-content" id="ticket-form">
+        <div class="modal-heading">
+          <h2>Novo ticket</h2>
+          <button class="icon-button" value="cancel" type="submit" title="Fechar">x</button>
+        </div>
+        <label>Servidor <select id="ticket-employee" class="select-input"></select></label>
+        <label>Tipo
+          <select id="ticket-type" class="select-input">
+            <option value="Contestacao de margem">Contestacao de margem</option>
+            <option value="Duvida sobre contrato">Duvida sobre contrato</option>
+            <option value="Contrato desconhecido">Contrato desconhecido</option>
+            <option value="Erro de desconto">Erro de desconto</option>
+          </select>
+        </label>
+        <label>Descricao <textarea id="ticket-description" class="textarea-input" required></textarea></label>
+        <button class="primary-button wide" value="default" type="submit">Abrir ticket</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="authorization-modal">
+      <form method="dialog" class="modal-content" id="authorization-form">
+        <div class="modal-heading">
+          <h2>Gerar autorizacao</h2>
+          <button class="icon-button" value="cancel" type="submit" title="Fechar">x</button>
+        </div>
+        <label>Servidor <select id="authorization-employee" class="select-input"></select></label>
+        <label>Finalidade
+          <select id="authorization-purpose" class="select-input">
+            <option value="Consulta de margem">Consulta de margem</option>
+            <option value="Reserva de margem">Reserva de margem</option>
+            <option value="Confirmacao de contrato">Confirmacao de contrato</option>
+          </select>
+        </label>
+        <button class="primary-button wide" value="default" type="submit">Gerar codigo</button>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
