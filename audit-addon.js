@@ -35,3 +35,9 @@ render = function renderWithAuditAddon() {
 };
 
 render();
+
+if (!document.querySelector('script[src="file-exchange-addon.js"]')) {
+  const fileExchangeScript = document.createElement("script");
+  fileExchangeScript.src = "file-exchange-addon.js";
+  document.body.appendChild(fileExchangeScript);
+}
