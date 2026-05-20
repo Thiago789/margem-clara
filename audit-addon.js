@@ -89,3 +89,9 @@ if (!document.querySelector('script[src="assistant-insights-addon.js"]')) {
   assistantInsightsScript.src = "assistant-insights-addon.js";
   document.body.appendChild(assistantInsightsScript);
 }
+
+if (!document.querySelector('script[src="business-rules-addon.js"]')) {
+  const businessRulesScript = document.createElement("script");
+  businessRulesScript.src = "business-rules-addon.js";
+  document.body.appendChild(businessRulesScript);
+}
