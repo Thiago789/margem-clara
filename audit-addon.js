@@ -63,6 +63,7 @@ function loadMissingAddons() {
     "module-jump-addon.js",
     "operational-queue-addon.js",
     "reservation-lifecycle-addon.js",
+    "product-rules-addon.js",
   ].forEach(loadAddonScript);
 }
 
