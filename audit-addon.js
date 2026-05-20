@@ -53,3 +53,9 @@ if (!document.querySelector('script[src="authorization-flow-addon.js"]')) {
   authorizationFlowScript.src = "authorization-flow-addon.js";
   document.body.appendChild(authorizationFlowScript);
 }
+
+if (!document.querySelector('script[src="audit-enhancements-addon.js"]')) {
+  const auditEnhancementsScript = document.createElement("script");
+  auditEnhancementsScript.src = "audit-enhancements-addon.js";
+  document.body.appendChild(auditEnhancementsScript);
+}
