@@ -66,6 +66,7 @@ function loadMissingAddons() {
     "product-rules-addon.js",
     "lender-management-addon.js",
     "file-layouts-addon.js",
+    "access-control-addon.js",
   ].forEach(loadAddonScript);
 }
 
