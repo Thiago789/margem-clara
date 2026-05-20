@@ -65,3 +65,9 @@ if (!document.querySelector('script[src="convention-settings-addon.js"]')) {
   conventionSettingsScript.src = "convention-settings-addon.js";
   document.body.appendChild(conventionSettingsScript);
 }
+
+if (!document.querySelector('script[src="margin-health-addon.js"]')) {
+  const marginHealthScript = document.createElement("script");
+  marginHealthScript.src = "margin-health-addon.js";
+  document.body.appendChild(marginHealthScript);
+}
