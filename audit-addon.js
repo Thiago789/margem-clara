@@ -60,6 +60,7 @@ function loadMissingAddons() {
     "identity-validation-addon.js",
     "assistant-insights-addon.js",
     "business-rules-addon.js",
+    "module-jump-addon.js",
   ].forEach(loadAddonScript);
 }
 
