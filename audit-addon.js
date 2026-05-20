@@ -59,3 +59,9 @@ if (!document.querySelector('script[src="audit-enhancements-addon.js"]')) {
   auditEnhancementsScript.src = "audit-enhancements-addon.js";
   document.body.appendChild(auditEnhancementsScript);
 }
+
+if (!document.querySelector('script[src="convention-settings-addon.js"]')) {
+  const conventionSettingsScript = document.createElement("script");
+  conventionSettingsScript.src = "convention-settings-addon.js";
+  document.body.appendChild(conventionSettingsScript);
+}
