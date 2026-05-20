@@ -324,7 +324,7 @@ button {
 .alert-list,
 .timeline,
 .ranking-list,
-ticket-list {
+.ticket-list {
   display: grid;
   gap: 10px;
 }
