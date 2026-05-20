@@ -37,7 +37,7 @@ render = function renderWithAuditAddon() {
 render();
 
 function hasAddonScript(filename) {
-  return Array.from(document.scripts).some((script) => script.src.endsWith(filename));
+  return Array.from(document.scripts).some((script) => script.src.split("?")[0].endsWith(filename));
 }
 
 if (!hasAddonScript("file-exchange-addon.js")) {
