@@ -343,7 +343,7 @@
       <form method="dialog" class="modal-content" id="employee-form">
         <div class="modal-heading">
           <h2>Novo servidor</h2>
-          <button class="icon-button" value="cancel" type="submit" title="Fechar">x</button>
+          <button class="icon-button" data-close-modal value="cancel" type="button" title="Fechar">x</button>
         </div>
         <label>Nome <input class="text-input" id="employee-name" required /></label>
         <label>CPF <input class="text-input" id="employee-cpf" required /></label>
@@ -358,7 +358,7 @@
       <form method="dialog" class="modal-content" id="contract-form">
         <div class="modal-heading">
           <h2>Nova reserva</h2>
-          <button class="icon-button" value="cancel" type="submit" title="Fechar">x</button>
+          <button class="icon-button" data-close-modal value="cancel" type="button" title="Fechar">x</button>
         </div>
         <label>Servidor <select id="contract-employee" class="select-input"></select></label>
         <label>Consignataria <select id="contract-lender" class="select-input"></select></label>
@@ -372,7 +372,7 @@
       <form method="dialog" class="modal-content" id="ticket-form">
         <div class="modal-heading">
           <h2>Novo ticket</h2>
-          <button class="icon-button" value="cancel" type="submit" title="Fechar">x</button>
+          <button class="icon-button" data-close-modal value="cancel" type="button" title="Fechar">x</button>
         </div>
         <label>Servidor <select id="ticket-employee" class="select-input"></select></label>
         <label>Tipo
@@ -392,7 +392,7 @@
       <form method="dialog" class="modal-content" id="authorization-form">
         <div class="modal-heading">
           <h2>Gerar autorizacao</h2>
-          <button class="icon-button" value="cancel" type="submit" title="Fechar">x</button>
+          <button class="icon-button" data-close-modal value="cancel" type="button" title="Fechar">x</button>
         </div>
         <label>Servidor <select id="authorization-employee" class="select-input"></select></label>
         <label>Finalidade
