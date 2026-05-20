@@ -62,6 +62,7 @@ function loadMissingAddons() {
     "business-rules-addon.js",
     "module-jump-addon.js",
     "operational-queue-addon.js",
+    "reservation-lifecycle-addon.js",
   ].forEach(loadAddonScript);
 }
 
