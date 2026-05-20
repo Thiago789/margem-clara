@@ -71,3 +71,9 @@ if (!document.querySelector('script[src="margin-health-addon.js"]')) {
   marginHealthScript.src = "margin-health-addon.js";
   document.body.appendChild(marginHealthScript);
 }
+
+if (!document.querySelector('script[src="integration-addon.js"]')) {
+  const integrationScript = document.createElement("script");
+  integrationScript.src = "integration-addon.js";
+  document.body.appendChild(integrationScript);
+}
