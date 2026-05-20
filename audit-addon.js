@@ -61,6 +61,7 @@ function loadMissingAddons() {
     "assistant-insights-addon.js",
     "business-rules-addon.js",
     "module-jump-addon.js",
+    "operational-queue-addon.js",
   ].forEach(loadAddonScript);
 }
 
