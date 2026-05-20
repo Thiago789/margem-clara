@@ -22,7 +22,7 @@
           <button class="nav-item" data-view="employees" type="button">Servidores</button>
           <button class="nav-item" data-view="margin" type="button">Margem</button>
           <button class="nav-item" data-view="contracts" type="button">Contratos</button>
-          <button class="nav-item" data-view="import" type="button">Importar folha</button>
+          <button class="nav-item" data-view="import" type="button">Troca arquivos</button>
           <button class="nav-item" data-view="simulation" type="button">Simulacao</button>
           <button class="nav-item" data-view="authorizations" type="button">Autorizacoes</button>
           <button class="nav-item" data-view="tickets" type="button">Suporte</button>
@@ -149,14 +149,29 @@
 
         <section class="view" id="import-view" aria-labelledby="import-title">
           <div class="section-heading">
-            <h2 id="import-title">Importar folha</h2>
-            <p>Atualize renda base e descontos obrigatorios via CSV.</p>
+            <h2 id="import-title">Troca de arquivos</h2>
+            <p>Controle o ciclo com a folha: margem recebida, insercoes enviadas e retorno processado.</p>
           </div>
 
-          <div class="import-layout">
+          <div class="file-flow">
+            <article>
+              <strong>1. Arquivo de margem</strong>
+              <span>Folha envia dados de servidores e base de calculo.</span>
+            </article>
+            <article>
+              <strong>2. Arquivo de insercao</strong>
+              <span>Margem Clara envia descontos para entrar na folha.</span>
+            </article>
+            <article>
+              <strong>3. Arquivo retorno</strong>
+              <span>Folha informa o que foi descontado ou rejeitado.</span>
+            </article>
+          </div>
+
+          <div class="exchange-grid">
             <section class="panel">
               <div class="panel-heading">
-                <h3>Arquivo CSV</h3>
+                <h3>Arquivo de margem</h3>
               </div>
               <p class="muted">
                 Colunas esperadas: nome, cpf, matricula, renda_base, descontos_obrigatorios, status.
@@ -166,15 +181,45 @@
                 <button class="secondary-button" id="download-sample" type="button">Baixar exemplo</button>
                 <button class="primary-button" id="process-csv" type="button">Processar folha</button>
               </div>
+              <div id="import-result" class="import-result">Nenhum arquivo de margem processado ainda.</div>
             </section>
 
             <section class="panel">
               <div class="panel-heading">
-                <h3>Resultado</h3>
+                <h3>Arquivo de insercao</h3>
               </div>
-              <div id="import-result" class="import-result">Nenhum arquivo processado ainda.</div>
+              <p class="muted">
+                Gera os descontos reservados que devem ser enviados para processamento na folha.
+              </p>
+              <div class="button-row">
+                <button class="secondary-button" id="download-insertion-sample" type="button">Modelo</button>
+                <button class="primary-button" id="generate-insertion" type="button">Gerar insercao</button>
+              </div>
+              <div id="insertion-result" class="import-result">Nenhuma insercao gerada ainda.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Arquivo retorno</h3>
+              </div>
+              <p class="muted">
+                Colunas esperadas: contrato, status, motivo, valor_descontado.
+              </p>
+              <input id="return-file" class="file-input" type="file" accept=".csv,text/csv" />
+              <div class="button-row">
+                <button class="secondary-button" id="download-return-sample" type="button">Baixar exemplo</button>
+                <button class="primary-button" id="process-return" type="button">Processar retorno</button>
+              </div>
+              <div id="return-result" class="import-result">Nenhum retorno processado ainda.</div>
             </section>
           </div>
+
+          <section class="panel exchange-summary">
+            <div class="panel-heading">
+              <h3>Situacao da competencia</h3>
+            </div>
+            <div class="exchange-status-grid" id="exchange-summary"></div>
+          </section>
         </section>
 
         <section class="view" id="simulation-view" aria-labelledby="simulation-title">
@@ -219,6 +264,28 @@
           </div>
 
           <div class="content-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Politica do convenio</h3>
+              </div>
+              <div class="policy-grid">
+                <label class="toggle-row">
+                  <input id="policy-require-reservation-code" type="checkbox" />
+                  <span>Exigir codigo para reserva</span>
+                </label>
+                <label>
+                  Validade do codigo
+                  <select id="policy-code-validity" class="select-input">
+                    <option value="2">2 horas</option>
+                    <option value="12">12 horas</option>
+                    <option value="24">24 horas</option>
+                    <option value="48">48 horas</option>
+                  </select>
+                </label>
+              </div>
+              <p class="muted" id="policy-summary"></p>
+            </section>
+
             <section class="panel">
               <div class="panel-heading">
                 <h3>Codigos ativos</h3>
@@ -341,5 +408,7 @@
 
     <script src="app.js"></script>
     <script src="audit-addon.js"></script>
+    <script src="integration-addon.js"></script>
+    <script src="file-exchange-addon.js"></script>
   </body>
 </html>
