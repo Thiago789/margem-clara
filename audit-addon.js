@@ -40,62 +40,24 @@ function hasAddonScript(filename) {
   return Array.from(document.scripts).some((script) => script.src.split("?")[0].endsWith(filename));
 }
 
-if (!hasAddonScript("file-exchange-addon.js")) {
-  const fileExchangeScript = document.createElement("script");
-  fileExchangeScript.src = "file-exchange-addon.js";
-  document.body.appendChild(fileExchangeScript);
+function loadAddonScript(filename) {
+  if (hasAddonScript(filename)) return;
+  const script = document.createElement("script");
+  script.src = filename;
+  document.body.appendChild(script);
 }
 
-if (!hasAddonScript("convention-policy-addon.js")) {
-  const conventionPolicyScript = document.createElement("script");
-  conventionPolicyScript.src = "convention-policy-addon.js";
-  document.body.appendChild(conventionPolicyScript);
-}
-
-if (!hasAddonScript("authorization-flow-addon.js")) {
-  const authorizationFlowScript = document.createElement("script");
-  authorizationFlowScript.src = "authorization-flow-addon.js";
-  document.body.appendChild(authorizationFlowScript);
-}
-
-if (!hasAddonScript("audit-enhancements-addon.js")) {
-  const auditEnhancementsScript = document.createElement("script");
-  auditEnhancementsScript.src = "audit-enhancements-addon.js";
-  document.body.appendChild(auditEnhancementsScript);
-}
-
-if (!hasAddonScript("convention-settings-addon.js")) {
-  const conventionSettingsScript = document.createElement("script");
-  conventionSettingsScript.src = "convention-settings-addon.js";
-  document.body.appendChild(conventionSettingsScript);
-}
-
-if (!hasAddonScript("margin-health-addon.js")) {
-  const marginHealthScript = document.createElement("script");
-  marginHealthScript.src = "margin-health-addon.js";
-  document.body.appendChild(marginHealthScript);
-}
-
-if (!hasAddonScript("integration-addon.js")) {
-  const integrationScript = document.createElement("script");
-  integrationScript.src = "integration-addon.js";
-  document.body.appendChild(integrationScript);
-}
-
-if (!hasAddonScript("identity-validation-addon.js")) {
-  const identityValidationScript = document.createElement("script");
-  identityValidationScript.src = "identity-validation-addon.js";
-  document.body.appendChild(identityValidationScript);
-}
-
-if (!hasAddonScript("assistant-insights-addon.js")) {
-  const assistantInsightsScript = document.createElement("script");
-  assistantInsightsScript.src = "assistant-insights-addon.js";
-  document.body.appendChild(assistantInsightsScript);
-}
-
-if (!hasAddonScript("business-rules-addon.js")) {
-  const businessRulesScript = document.createElement("script");
-  businessRulesScript.src = "business-rules-addon.js";
-  document.body.appendChild(businessRulesScript);
-}
+setTimeout(() => {
+  [
+    "file-exchange-addon.js",
+    "convention-policy-addon.js",
+    "authorization-flow-addon.js",
+    "audit-enhancements-addon.js",
+    "convention-settings-addon.js",
+    "margin-health-addon.js",
+    "integration-addon.js",
+    "identity-validation-addon.js",
+    "assistant-insights-addon.js",
+    "business-rules-addon.js",
+  ].forEach(loadAddonScript);
+}, 0);
