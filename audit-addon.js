@@ -63,6 +63,7 @@ function loadMissingAddons() {
     "module-jump-addon.js",
     "operational-queue-addon.js",
     "pilot-flow-addon.js",
+    "pilot-qa-addon.js",
     "reservation-lifecycle-addon.js",
     "product-rules-addon.js",
     "lender-management-addon.js",
