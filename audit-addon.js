@@ -36,61 +36,65 @@ render = function renderWithAuditAddon() {
 
 render();
 
-if (!document.querySelector('script[src="file-exchange-addon.js"]')) {
+function hasAddonScript(filename) {
+  return Array.from(document.scripts).some((script) => script.src.endsWith(filename));
+}
+
+if (!hasAddonScript("file-exchange-addon.js")) {
   const fileExchangeScript = document.createElement("script");
   fileExchangeScript.src = "file-exchange-addon.js";
   document.body.appendChild(fileExchangeScript);
 }
 
-if (!document.querySelector('script[src="convention-policy-addon.js"]')) {
+if (!hasAddonScript("convention-policy-addon.js")) {
   const conventionPolicyScript = document.createElement("script");
   conventionPolicyScript.src = "convention-policy-addon.js";
   document.body.appendChild(conventionPolicyScript);
 }
 
-if (!document.querySelector('script[src="authorization-flow-addon.js"]')) {
+if (!hasAddonScript("authorization-flow-addon.js")) {
   const authorizationFlowScript = document.createElement("script");
   authorizationFlowScript.src = "authorization-flow-addon.js";
   document.body.appendChild(authorizationFlowScript);
 }
 
-if (!document.querySelector('script[src="audit-enhancements-addon.js"]')) {
+if (!hasAddonScript("audit-enhancements-addon.js")) {
   const auditEnhancementsScript = document.createElement("script");
   auditEnhancementsScript.src = "audit-enhancements-addon.js";
   document.body.appendChild(auditEnhancementsScript);
 }
 
-if (!document.querySelector('script[src="convention-settings-addon.js"]')) {
+if (!hasAddonScript("convention-settings-addon.js")) {
   const conventionSettingsScript = document.createElement("script");
   conventionSettingsScript.src = "convention-settings-addon.js";
   document.body.appendChild(conventionSettingsScript);
 }
 
-if (!document.querySelector('script[src="margin-health-addon.js"]')) {
+if (!hasAddonScript("margin-health-addon.js")) {
   const marginHealthScript = document.createElement("script");
   marginHealthScript.src = "margin-health-addon.js";
   document.body.appendChild(marginHealthScript);
 }
 
-if (!document.querySelector('script[src="integration-addon.js"]')) {
+if (!hasAddonScript("integration-addon.js")) {
   const integrationScript = document.createElement("script");
   integrationScript.src = "integration-addon.js";
   document.body.appendChild(integrationScript);
 }
 
-if (!document.querySelector('script[src="identity-validation-addon.js"]')) {
+if (!hasAddonScript("identity-validation-addon.js")) {
   const identityValidationScript = document.createElement("script");
   identityValidationScript.src = "identity-validation-addon.js";
   document.body.appendChild(identityValidationScript);
 }
 
-if (!document.querySelector('script[src="assistant-insights-addon.js"]')) {
+if (!hasAddonScript("assistant-insights-addon.js")) {
   const assistantInsightsScript = document.createElement("script");
   assistantInsightsScript.src = "assistant-insights-addon.js";
   document.body.appendChild(assistantInsightsScript);
 }
 
-if (!document.querySelector('script[src="business-rules-addon.js"]')) {
+if (!hasAddonScript("business-rules-addon.js")) {
   const businessRulesScript = document.createElement("script");
   businessRulesScript.src = "business-rules-addon.js";
   document.body.appendChild(businessRulesScript);
