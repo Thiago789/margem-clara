@@ -41,3 +41,9 @@ if (!document.querySelector('script[src="file-exchange-addon.js"]')) {
   fileExchangeScript.src = "file-exchange-addon.js";
   document.body.appendChild(fileExchangeScript);
 }
+
+if (!document.querySelector('script[src="convention-policy-addon.js"]')) {
+  const conventionPolicyScript = document.createElement("script");
+  conventionPolicyScript.src = "convention-policy-addon.js";
+  document.body.appendChild(conventionPolicyScript);
+}
