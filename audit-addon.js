@@ -83,3 +83,9 @@ if (!document.querySelector('script[src="identity-validation-addon.js"]')) {
   identityValidationScript.src = "identity-validation-addon.js";
   document.body.appendChild(identityValidationScript);
 }
+
+if (!document.querySelector('script[src="assistant-insights-addon.js"]')) {
+  const assistantInsightsScript = document.createElement("script");
+  assistantInsightsScript.src = "assistant-insights-addon.js";
+  document.body.appendChild(assistantInsightsScript);
+}
