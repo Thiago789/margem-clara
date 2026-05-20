@@ -47,7 +47,7 @@ function loadAddonScript(filename) {
   document.body.appendChild(script);
 }
 
-setTimeout(() => {
+function loadMissingAddons() {
   [
     "file-exchange-addon.js",
     "convention-policy-addon.js",
@@ -60,4 +60,10 @@ setTimeout(() => {
     "assistant-insights-addon.js",
     "business-rules-addon.js",
   ].forEach(loadAddonScript);
-}, 0);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", loadMissingAddons, { once: true });
+} else {
+  loadMissingAddons();
+}
