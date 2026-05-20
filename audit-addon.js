@@ -77,3 +77,9 @@ if (!document.querySelector('script[src="integration-addon.js"]')) {
   integrationScript.src = "integration-addon.js";
   document.body.appendChild(integrationScript);
 }
+
+if (!document.querySelector('script[src="identity-validation-addon.js"]')) {
+  const identityValidationScript = document.createElement("script");
+  identityValidationScript.src = "identity-validation-addon.js";
+  document.body.appendChild(identityValidationScript);
+}
