@@ -55,6 +55,7 @@ function loadMissingAddons() {
     "audit-enhancements-addon.js",
     "convention-settings-addon.js",
     "margin-health-addon.js",
+    "payroll-cycle-addon.js",
     "integration-addon.js",
     "identity-validation-addon.js",
     "assistant-insights-addon.js",
