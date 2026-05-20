@@ -47,3 +47,9 @@ if (!document.querySelector('script[src="convention-policy-addon.js"]')) {
   conventionPolicyScript.src = "convention-policy-addon.js";
   document.body.appendChild(conventionPolicyScript);
 }
+
+if (!document.querySelector('script[src="authorization-flow-addon.js"]')) {
+  const authorizationFlowScript = document.createElement("script");
+  authorizationFlowScript.src = "authorization-flow-addon.js";
+  document.body.appendChild(authorizationFlowScript);
+}
