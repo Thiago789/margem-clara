@@ -64,6 +64,7 @@ function loadMissingAddons() {
     "operational-queue-addon.js",
     "reservation-lifecycle-addon.js",
     "product-rules-addon.js",
+    "lender-management-addon.js",
   ].forEach(loadAddonScript);
 }
 
