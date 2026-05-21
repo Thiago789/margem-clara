@@ -59,6 +59,7 @@ function loadMissingAddons() {
     "integration-addon.js",
     "api-sandbox-addon.js",
     "identity-validation-addon.js",
+    "authenticity-addon.js",
     "assistant-insights-addon.js",
     "debt-insights-addon.js",
     "business-rules-addon.js",
