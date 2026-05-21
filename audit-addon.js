@@ -43,7 +43,7 @@ function hasAddonScript(filename) {
 function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
-  script.src = filename;
+  script.src = `${filename}?v=20260521-1`;
   document.body.appendChild(script);
 }
 
@@ -64,6 +64,7 @@ function loadMissingAddons() {
     "operational-queue-addon.js",
     "pilot-flow-addon.js",
     "pilot-qa-addon.js",
+    "demo-data-addon.js",
     "reservation-lifecycle-addon.js",
     "product-rules-addon.js",
     "lender-management-addon.js",
