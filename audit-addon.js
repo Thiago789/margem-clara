@@ -68,6 +68,7 @@ function loadMissingAddons() {
     "pilot-flow-addon.js",
     "pilot-qa-addon.js",
     "roadmap-addon.js",
+    "readiness-addon.js",
     "demo-data-addon.js",
     "reservation-lifecycle-addon.js",
     "product-rules-addon.js",
