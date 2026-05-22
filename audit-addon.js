@@ -50,6 +50,7 @@ function loadAddonScript(filename) {
 function loadMissingAddons() {
   [
     "file-exchange-addon.js",
+    "file-validation-addon.js",
     "convention-policy-addon.js",
     "authorization-flow-addon.js",
     "audit-enhancements-addon.js",
