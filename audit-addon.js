@@ -56,6 +56,7 @@ function loadMissingAddons() {
     "convention-settings-addon.js",
     "margin-health-addon.js",
     "payroll-cycle-addon.js",
+    "file-reconciliation-addon.js",
     "integration-addon.js",
     "api-sandbox-addon.js",
     "identity-validation-addon.js",
