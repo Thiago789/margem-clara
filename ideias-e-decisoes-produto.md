@@ -255,6 +255,27 @@ Para V1 real, comecar simples:
 - contato confirmado;
 - codigo temporario com validade e uso unico.
 
+### Fonte publica como sinal complementar
+
+Ideia registrada: usar fontes publicas, como portal da transparencia da prefeitura, para confirmar se o servidor aparece em base publica do municipio.
+
+Classificacao: Pesquisa/Proximo.
+
+Direcao:
+
+- tratar portal publico como sinal complementar, nao como verdade absoluta;
+- priorizar API oficial, arquivo de folha ou fonte estruturada quando existir;
+- registrar fonte, data, usuario e motivo da consulta;
+- limitar uso por consignataria, exigindo autorizacao e escopo;
+- exibir resultado como evidencias: encontrado, nao encontrado, divergente, desatualizado ou fonte indisponivel.
+
+Riscos:
+
+- portais podem estar desatualizados;
+- layout do portal pode mudar;
+- dados publicos ainda exigem finalidade, minimizacao e auditoria;
+- nomes e matriculas podem divergir entre folha e transparencia.
+
 ## 7. Ideias que Nao Devem Entrar Agora
 
 - IA tomando decisao de concessao.
