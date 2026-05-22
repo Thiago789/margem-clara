@@ -58,6 +58,7 @@ function loadMissingAddons() {
     "margin-health-addon.js",
     "payroll-cycle-addon.js",
     "file-reconciliation-addon.js",
+    "file-protocol-addon.js",
     "integration-addon.js",
     "api-sandbox-addon.js",
     "identity-validation-addon.js",
