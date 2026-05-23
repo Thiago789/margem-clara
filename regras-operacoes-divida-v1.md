@@ -14,6 +14,13 @@ Este documento complementa as regras de saldo devedor com a esteira operacional 
 - Recusado.
 - Cancelado.
 
+## Transicoes Operacionais
+
+- A esteira deve avancar em ordem controlada, sem pular evidencias obrigatorias.
+- Cada mudanca de status deve gerar registro de auditoria com contrato, status anterior e novo status.
+- Estados finais devem bloquear novos avancos: novo contrato gerado, recusado ou cancelado.
+- Recusa e cancelamento devem preservar historico para consulta e justificativa posterior.
+
 ## Refinanciamento
 
 - Deve comparar contrato origem e nova proposta.
