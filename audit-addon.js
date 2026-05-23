@@ -80,6 +80,7 @@ function loadMissingAddons() {
     "demo-data-addon.js",
     "reservation-lifecycle-addon.js",
     "product-rules-addon.js",
+    "product-margin-addon.js",
     "contract-rules-addon.js",
     "competency-installments-addon.js",
     "lender-management-addon.js",
