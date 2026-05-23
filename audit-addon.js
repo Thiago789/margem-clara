@@ -68,6 +68,7 @@ function loadMissingAddons() {
     "assistant-insights-addon.js",
     "debt-insights-addon.js",
     "debt-balance-addon.js",
+    "debt-operation-flow-addon.js",
     "business-rules-addon.js",
     "module-jump-addon.js",
     "operational-queue-addon.js",
