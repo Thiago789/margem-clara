@@ -141,6 +141,12 @@ function ensureDebtOperationView() {
     const contract = state.contracts.find((item) => item.id === action.dataset.contractId);
     if (!contract) return;
 
+    if (!debtOperationStatuses.length) return;
+
+    if (!["Refinanciamento", "Portabilidade", "Compra de divida"].includes(contract.contractType) && action.dataset.contractType) {
+      contract.contractType = action.dataset.contractType;
+    }
+
     updateDebtOperationStatus(contract, action.dataset.debtopsAction);
   });
 }
@@ -224,13 +230,13 @@ function renderDebtOperations() {
           <div><span>Status</span><strong class="status ${statusClass}">${row.status}</strong></div>
           <p>${row.nextStep}</p>
           <div class="debtops-actions">
-            <button class="secondary-button" type="button" data-debtops-action="advance" data-contract-id="${row.id}" ${isTerminal ? "disabled" : ""}>
+            <button class="secondary-button" type="button" data-debtops-action="advance" data-contract-id="${row.id}" data-contract-type="${row.contractType}" ${isTerminal ? "disabled" : ""}>
               Avancar
             </button>
-            <button class="secondary-button" type="button" data-debtops-action="reject" data-contract-id="${row.id}" ${isTerminal ? "disabled" : ""}>
+            <button class="secondary-button" type="button" data-debtops-action="reject" data-contract-id="${row.id}" data-contract-type="${row.contractType}" ${isTerminal ? "disabled" : ""}>
               Recusar
             </button>
-            <button class="ghost-button" type="button" data-debtops-action="cancel" data-contract-id="${row.id}" ${isTerminal ? "disabled" : ""}>
+            <button class="ghost-button" type="button" data-debtops-action="cancel" data-contract-id="${row.id}" data-contract-type="${row.contractType}" ${isTerminal ? "disabled" : ""}>
               Cancelar
             </button>
           </div>
