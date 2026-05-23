@@ -30,6 +30,14 @@ Este documento complementa as regras de saldo devedor com a esteira operacional 
 - Evidencia, comprovante, aceite ou observacao operacional.
 - Toda alteracao desses campos deve gerar registro de auditoria.
 
+## Travamento por Etapa
+
+- Para marcar saldo recebido, deve existir protocolo e validade do saldo.
+- Para aguardar aceite, deve existir valor liberado ou valor de compra.
+- Para aguardar comprovante, deve existir banco ou credor origem.
+- Para marcar quitado na origem, deve existir evidencia, comprovante ou observacao operacional.
+- O sistema deve mostrar pendencias antes do proximo avanco e impedir avanco sem os dados obrigatorios.
+
 ## Refinanciamento
 
 - Deve comparar contrato origem e nova proposta.
