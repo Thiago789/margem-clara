@@ -21,6 +21,15 @@ Este documento complementa as regras de saldo devedor com a esteira operacional 
 - Estados finais devem bloquear novos avancos: novo contrato gerado, recusado ou cancelado.
 - Recusa e cancelamento devem preservar historico para consulta e justificativa posterior.
 
+## Dados Formais Minimos
+
+- Banco ou credor origem.
+- Protocolo do saldo formal.
+- Data de validade do saldo.
+- Valor liberado ou valor de compra.
+- Evidencia, comprovante, aceite ou observacao operacional.
+- Toda alteracao desses campos deve gerar registro de auditoria.
+
 ## Refinanciamento
 
 - Deve comparar contrato origem e nova proposta.
