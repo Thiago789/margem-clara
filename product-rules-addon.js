@@ -26,16 +26,58 @@ function getProductRules() {
       marginLimit: 5,
       priority: 3,
       reservationMode: "Reserva separada por produto",
-      status: "Planejado",
+      status: "Ativo",
     },
     {
-      name: "Desconto judicial",
-      code: "JUDICIAL",
-      payrollCode: "JUD",
-      marginLimit: 100,
-      priority: 1,
-      reservationMode: "Nao depende de autorizacao do servidor",
-      status: "Regra futura",
+      name: "Cartao beneficio",
+      code: "BENEFICIO",
+      payrollCode: "BENEF",
+      marginLimit: 5,
+      priority: 4,
+      reservationMode: "Margem propria conforme convenio",
+      status: "Ativo",
+    },
+  ];
+}
+
+function getContractTypeRules() {
+  return [
+    {
+      name: "Novo",
+      marginEffect: "Consome nova margem",
+      attention: "Validar margem disponivel, autorizacao e data de corte.",
+    },
+    {
+      name: "Refinanciamento",
+      marginEffect: "Pode manter, reduzir ou ampliar parcela",
+      attention: "Precisa vincular contrato anterior e regra de liquidacao/refin.",
+    },
+    {
+      name: "Portabilidade",
+      marginEffect: "Substitui contrato de outra instituicao",
+      attention: "Exige controle de saldo, banco origem e etapa de confirmacao.",
+    },
+    {
+      name: "Compra de divida",
+      marginEffect: "Quita divida anterior e cria novo contrato",
+      attention: "Precisa registrar credor original, valor de compra e comprovantes.",
+    },
+  ];
+}
+
+function getPayrollCycleRules() {
+  return [
+    {
+      title: "Data de corte",
+      text: "Define quais reservas entram no arquivo de insercao da competencia. Reservas apos o corte ficam para a proxima janela.",
+    },
+    {
+      title: "Parcela atual",
+      text: "Avanca a cada retorno descontado. Se a folha nao descontar, a parcela nao deve evoluir automaticamente.",
+    },
+    {
+      title: "Liquidacao automatica",
+      text: "Quando parcela atual atinge o prazo, o contrato muda para Liquidado e a margem deixa de ser consumida.",
     },
   ];
 }
@@ -90,6 +132,22 @@ function ensureProductRulesView() {
             <div class="product-notes" id="product-decisions"></div>
           </section>
         </div>
+
+        <div class="content-grid product-content">
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Tipos de contrato</h3>
+            </div>
+            <div class="product-notes" id="contract-type-rules"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Ciclo de folha</h3>
+            </div>
+            <div class="product-notes" id="payroll-cycle-rules"></div>
+          </section>
+        </div>
       </section>
     `
   );
@@ -109,12 +167,13 @@ function renderProductRules() {
   const table = document.getElementById("product-table");
   const impact = document.getElementById("product-impact");
   const decisions = document.getElementById("product-decisions");
-  if (!summary || !table || !impact || !decisions) return;
+  const contractTypes = document.getElementById("contract-type-rules");
+  const cycleRules = document.getElementById("payroll-cycle-rules");
+  if (!summary || !table || !impact || !decisions || !contractTypes || !cycleRules) return;
 
   const products = getProductRules();
   const active = products.filter((product) => product.status === "Ativo").length;
   const planned = products.filter((product) => product.status !== "Ativo").length;
-  const maxMargin = products.reduce((sum, product) => sum + (product.status === "Ativo" ? product.marginLimit : 0), 0);
   const payrollCodes = new Set(products.map((product) => product.payrollCode)).size;
 
   const cards = [
@@ -156,7 +215,7 @@ function renderProductRules() {
   impact.innerHTML = `
     <div class="product-note">
       <strong>Calculo de margem</strong>
-      <span>Hoje o MVP usa margem unica de ${maxMargin}%. A evolucao natural e permitir limite por produto.</span>
+      <span>Hoje o MVP calcula a margem principal em ${Math.round(marginPercent * 100)}%. A evolucao natural e separar limites por produto e convenio.</span>
     </div>
     <div class="product-note">
       <strong>Arquivo de insercao</strong>
@@ -182,6 +241,29 @@ function renderProductRules() {
       <span>Definir quais produtos cada instituicao pode operar por contrato ou credenciamento.</span>
     </div>
   `;
+
+  contractTypes.innerHTML = getContractTypeRules()
+    .map(
+      (rule) => `
+        <div class="product-note">
+          <strong>${rule.name}</strong>
+          <span>${rule.marginEffect}</span>
+          <span>${rule.attention}</span>
+        </div>
+      `
+    )
+    .join("");
+
+  cycleRules.innerHTML = getPayrollCycleRules()
+    .map(
+      (rule) => `
+        <div class="product-note">
+          <strong>${rule.title}</strong>
+          <span>${rule.text}</span>
+        </div>
+      `
+    )
+    .join("");
 }
 
 const productStyle = document.createElement("style");
