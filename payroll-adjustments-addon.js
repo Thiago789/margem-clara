@@ -1,0 +1,311 @@
+if (!pageTitles.adjustments) {
+  pageTitles.adjustments = "Ajustes";
+}
+
+if (!profileConfig.manager.views.includes("adjustments")) {
+  const closingIndex = profileConfig.manager.views.indexOf("closing");
+  profileConfig.manager.views.splice(closingIndex >= 0 ? closingIndex + 1 : profileConfig.manager.views.length, 0, "adjustments");
+}
+
+function getPayrollAdjustmentItems() {
+  const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha");
+  const reserved = state.contracts.filter((contract) => contract.status === "Reservado");
+  const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
+
+  return [
+    ...rejected.map((contract) => {
+      const employee = employeeById(contract.employeeId);
+      return {
+        id: `AJ-${contract.id}`,
+        origin: "Retorno da folha",
+        title: contract.id,
+        subject: employee?.name || "Servidor nao localizado",
+        status: "Exige decisao",
+        className: "danger",
+        value: Number(contract.discountedValue || contract.installment || 0),
+        reason: contract.returnReason || "Retorno sem motivo informado.",
+        action: "Corrigir, reenviar, cancelar contrato ou liberar margem conforme regra do convenio.",
+      };
+    }),
+    ...sent.map((contract) => {
+      const employee = employeeById(contract.employeeId);
+      return {
+        id: `AJ-${contract.id}`,
+        origin: "Retorno pendente",
+        title: contract.id,
+        subject: employee?.name || "Servidor nao localizado",
+        status: "Aguardando",
+        className: "warning",
+        value: Number(contract.installment || 0),
+        reason: "Contrato enviado para folha sem retorno processado.",
+        action: "Cobrar retorno, registrar excecao ou impedir fechamento definitivo.",
+      };
+    }),
+    ...reserved.map((contract) => {
+      const employee = employeeById(contract.employeeId);
+      return {
+        id: `AJ-${contract.id}`,
+        origin: "Reserva",
+        title: contract.id,
+        subject: employee?.name || "Servidor nao localizado",
+        status: "Analisar",
+        className: "warning",
+        value: Number(contract.installment || 0),
+        reason: "Reserva ainda nao enviada para insercao na folha.",
+        action: "Gerar insercao, cancelar reserva expirada ou carregar para a proxima competencia.",
+      };
+    }),
+    ...reviewEmployees.map((employee) => ({
+      id: `AJ-${employee.enrollment}`,
+      origin: "Cadastro",
+      title: employee.enrollment,
+      subject: employee.name,
+      status: "Revisar",
+      className: "warning",
+      value: Number(employee.income || 0),
+      reason: "Servidor com situacao em revisao na base atual.",
+      action: "Conferir vinculo, status funcional e base de calculo antes de liberar margem.",
+    })),
+  ];
+}
+
+function ensurePayrollAdjustmentsView() {
+  if (document.getElementById("adjustments-view")) return;
+
+  const nav = document.querySelector(".nav-list");
+  const closingButton = document.querySelector('[data-view="closing"]');
+  const protocolsButton = document.querySelector('[data-view="protocols"]');
+  const button = document.createElement("button");
+  button.className = "nav-item";
+  button.dataset.view = "adjustments";
+  button.type = "button";
+  button.textContent = "Ajustes";
+  button.addEventListener("click", () => openView("adjustments"));
+  nav?.insertBefore(button, closingButton?.nextSibling || protocolsButton || null);
+
+  document.querySelector(".main-panel")?.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section class="view" id="adjustments-view" aria-labelledby="adjustments-title">
+        <div class="section-heading row-heading">
+          <div>
+            <h2 id="adjustments-title">Ajustes da competencia</h2>
+            <p>Controle excecoes que nao podem ser reprocessadas sem decisao e auditoria.</p>
+          </div>
+          <button class="primary-button" id="adjustments-audit-button" type="button">Registrar analise</button>
+        </div>
+
+        <div class="adjustments-summary-grid" id="adjustments-summary-grid"></div>
+
+        <section class="panel adjustments-panel">
+          <div class="panel-heading">
+            <h3>Fila de ajustes</h3>
+          </div>
+          <div class="adjustments-list" id="adjustments-list"></div>
+        </section>
+
+        <div class="content-grid adjustments-content">
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Regras de tratamento</h3>
+            </div>
+            <div class="adjustments-note-list" id="adjustments-rules"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Efeito na margem</h3>
+            </div>
+            <div class="adjustments-note-list" id="adjustments-effects"></div>
+          </section>
+        </div>
+      </section>
+    `
+  );
+
+  document.getElementById("adjustments-audit-button")?.addEventListener("click", () => {
+    const total = getPayrollAdjustmentItems().length;
+    auditEvent(`Analise de ajustes registrada com ${total} item(ns).`, "Ajustes da competencia");
+    saveState();
+    render();
+    openView("adjustments");
+  });
+}
+
+function renderPayrollAdjustments() {
+  ensurePayrollAdjustmentsView();
+
+  const summary = document.getElementById("adjustments-summary-grid");
+  const list = document.getElementById("adjustments-list");
+  const rules = document.getElementById("adjustments-rules");
+  const effects = document.getElementById("adjustments-effects");
+  if (!summary || !list || !rules || !effects) return;
+
+  const items = getPayrollAdjustmentItems();
+  const decisionItems = items.filter((item) => item.className === "danger").length;
+  const warningItems = items.filter((item) => item.className === "warning").length;
+  const totalValue = items.reduce((total, item) => total + item.value, 0);
+
+  summary.innerHTML = [
+    ["Ajustes abertos", items.length],
+    ["Exigem decisao", decisionItems],
+    ["Em analise", warningItems],
+    ["Valor envolvido", formatAdjustmentMoney(totalValue)],
+  ]
+    .map(
+      ([label, value]) => `
+        <article class="adjustments-summary-card">
+          <span>${label}</span>
+          <strong>${value}</strong>
+        </article>
+      `
+    )
+    .join("");
+
+  list.innerHTML = items.length
+    ? items
+        .map(
+          (item) => `
+            <article class="adjustment-row">
+              <div>
+                <strong>${item.id}</strong>
+                <span>${item.origin} - ${item.subject}</span>
+              </div>
+              <div>
+                <span>Referencia</span>
+                <strong>${item.title}</strong>
+              </div>
+              <div>
+                <span>Valor</span>
+                <strong>${formatAdjustmentMoney(item.value)}</strong>
+              </div>
+              <span class="status ${item.className}">${item.status}</span>
+              <p><strong>Motivo:</strong> ${item.reason}</p>
+              <p><strong>Tratamento:</strong> ${item.action}</p>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">Nenhum ajuste pendente para a competencia atual.</div>`;
+
+  rules.innerHTML = `
+    <div class="adjustment-note">
+      <strong>Nao alterar historico fechado</strong>
+      <span>Apos fechamento, qualquer correcao deve virar ajuste identificado e auditado.</span>
+    </div>
+    <div class="adjustment-note">
+      <strong>Motivo obrigatorio</strong>
+      <span>Cancelamento, reenvio, liberacao de margem ou carregamento para proxima competencia exigem justificativa.</span>
+    </div>
+    <div class="adjustment-note">
+      <strong>Responsavel definido</strong>
+      <span>Cada ajuste precisa indicar se a acao e do RH, consignataria, sistema de folha ou administrador.</span>
+    </div>
+  `;
+
+  effects.innerHTML = `
+    <div class="adjustment-note">
+      <strong>Liberar margem</strong>
+      <span>Quando contrato for rejeitado definitivamente, parcelas futuras devem liberar margem conforme regra.</span>
+    </div>
+    <div class="adjustment-note">
+      <strong>Manter acompanhamento</strong>
+      <span>Nao descontado pode permanecer pendente para nova tentativa, sem alterar contrato automaticamente.</span>
+    </div>
+    <div class="adjustment-note">
+      <strong>Gerar movimento</strong>
+      <span>Todo impacto em margem precisa gerar movimento historico separado do processamento original.</span>
+    </div>
+  `;
+}
+
+function formatAdjustmentMoney(value) {
+  return Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+const payrollAdjustmentsStyle = document.createElement("style");
+payrollAdjustmentsStyle.textContent = `
+  .adjustments-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .adjustments-summary-card,
+  .adjustment-row,
+  .adjustment-note {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .adjustments-summary-card {
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .adjustments-summary-card span,
+  .adjustment-row span,
+  .adjustment-row p,
+  .adjustment-note span {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .adjustments-summary-card strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 24px;
+  }
+  .adjustments-panel,
+  .adjustments-content {
+    margin-top: 18px;
+  }
+  .adjustments-list,
+  .adjustments-note-list {
+    display: grid;
+    gap: 10px;
+  }
+  .adjustment-row {
+    display: grid;
+    grid-template-columns: 1.2fr 0.7fr 0.7fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+  }
+  .adjustment-row p {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  .adjustment-row p strong {
+    color: var(--text);
+    font-size: 13px;
+  }
+  .adjustment-note {
+    padding: 12px;
+  }
+  .adjustment-note span {
+    margin-top: 4px;
+  }
+  @media (max-width: 1040px) {
+    .adjustments-summary-grid,
+    .adjustment-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .adjustments-summary-grid,
+    .adjustment-row {
+      grid-template-columns: 1fr;
+    }
+  }
+`;
+document.head.appendChild(payrollAdjustmentsStyle);
+
+const renderBeforePayrollAdjustments = render;
+render = function renderWithPayrollAdjustments() {
+  renderBeforePayrollAdjustments();
+  renderPayrollAdjustments();
+};
+
+render();
