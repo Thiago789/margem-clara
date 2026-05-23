@@ -318,3 +318,42 @@ Regra: campo recorrente de operacao vira coluna; campo bruto, explicativo ou mui
 - historico de saldo devedor, se entrar no escopo futuro;
 - validacao complementar em fonte publica;
 - evidencias para contestacao de contrato desconhecido.
+
+### 7.9 Catalogo de Campos
+
+O catalogo de campos deve classificar cada campo em uma das categorias abaixo:
+
+- Obrigatorio: sem ele o fluxo principal nao funciona ou existe risco operacional, financeiro, juridico ou de auditoria.
+- Opcional: melhora atendimento, relatorio ou experiencia, mas nao impede o fluxo base.
+- Configuravel: varia por convenio, produto, folha ou politica local.
+- Futuro: relevante, mas fora do escopo da V1 operacional.
+
+Campos obrigatorios iniciais:
+
+- Servidor: CPF, nome completo, data de nascimento e status.
+- Matricula: matricula, convenio, situacao funcional e base de calculo.
+- Contrato: consignataria, produto, parcela, prazo, taxa, CET e status.
+- Folha: competencia, layout, protocolo, hash e status.
+- Convenio: nome, codigo, status e frequencia da folha.
+
+Campos opcionais iniciais:
+
+- Servidor: e-mail, telefone, endereco e nome social.
+- Matricula: cargo, lotacao, regime e data de admissao.
+- Contrato: IOF, seguro, valor liberado, valor financiado e anexos.
+- Folha: arquivo original, arquivo gerado e erros por linha.
+- Convenio: orgao superior, contatos e SLA operacional.
+
+Campos configuraveis iniciais:
+
+- Servidor: validacao complementar e campos publicos do municipio.
+- Matricula: status que permite margem, verbas consideradas e identificador principal.
+- Contrato: primeiro vencimento, rubrica, prazo maximo e exigencia de autorizacao.
+- Folha: delimitador, encoding, versao de layout e retorno obrigatorio.
+- Convenio: percentual de margem, validade da reserva, politica de fechamento e produtos permitidos.
+
+Regra de seguranca:
+
+- Consignataria deve ver apenas campos necessarios para operar.
+- Campos financeiros ou funcionais exigem auditoria de alteracao.
+- Dados pessoais devem seguir minimizacao e finalidade.
