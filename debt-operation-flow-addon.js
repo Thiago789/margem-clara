@@ -67,6 +67,14 @@ function getDebtOperationNextStep(type, status) {
   return "Validar credor original, valor de compra e evidencia.";
 }
 
+function debtOpsAttribute(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function ensureDebtOperationView() {
   if (document.getElementById("debtops-view")) return;
 
@@ -135,13 +143,17 @@ function ensureDebtOperationView() {
   });
 
   document.getElementById("debtops-list")?.addEventListener("click", (event) => {
+    const saveButton = event.target.closest("[data-debtops-save]");
+    if (saveButton) {
+      saveDebtOperationFormalData(saveButton.dataset.contractId);
+      return;
+    }
+
     const action = event.target.closest("[data-debtops-action]");
     if (!action) return;
 
     const contract = state.contracts.find((item) => item.id === action.dataset.contractId);
     if (!contract) return;
-
-    if (!debtOperationStatuses.length) return;
 
     if (!["Refinanciamento", "Portabilidade", "Compra de divida"].includes(contract.contractType) && action.dataset.contractType) {
       contract.contractType = action.dataset.contractType;
@@ -149,6 +161,31 @@ function ensureDebtOperationView() {
 
     updateDebtOperationStatus(contract, action.dataset.debtopsAction);
   });
+}
+
+function saveDebtOperationFormalData(contractId) {
+  const contract = state.contracts.find((item) => item.id === contractId);
+  const row = document.querySelector(`[data-debtops-row="${contractId}"]`);
+  if (!contract || !row) return;
+
+  const formal = {
+    originLender: row.querySelector("[data-debtops-field='originLender']")?.value.trim() || "",
+    balanceProtocol: row.querySelector("[data-debtops-field='balanceProtocol']")?.value.trim() || "",
+    balanceValidUntil: row.querySelector("[data-debtops-field='balanceValidUntil']")?.value || "",
+    releasedAmount: Number(row.querySelector("[data-debtops-field='releasedAmount']")?.value || 0),
+    evidenceNote: row.querySelector("[data-debtops-field='evidenceNote']")?.value.trim() || "",
+  };
+
+  contract.debtOperationFormalData = formal;
+  contract.debtOperationUpdatedAt = today();
+
+  auditEvent(
+    `${contract.contractType} ${contract.id}: dados formais atualizados.`,
+    "Operacoes de divida"
+  );
+  saveState();
+  render();
+  openView("debtops");
 }
 
 function updateDebtOperationStatus(contract, action) {
@@ -220,8 +257,9 @@ function renderDebtOperations() {
     .map((row) => {
       const statusClass = ["Aguardando saldo formal", "Aguardando comprovante"].includes(row.status) ? "warning" : "";
       const isTerminal = ["Novo contrato gerado", "Recusado", "Cancelado"].includes(row.status);
+      const formal = row.debtOperationFormalData || {};
       return `
-        <article class="debtops-row">
+        <article class="debtops-row" data-debtops-row="${row.id}">
           <div>
             <strong>${row.contractType}</strong>
             <span>${row.employeeName} - contrato origem ${row.sourceContractId}</span>
@@ -238,6 +276,31 @@ function renderDebtOperations() {
             </button>
             <button class="ghost-button" type="button" data-debtops-action="cancel" data-contract-id="${row.id}" data-contract-type="${row.contractType}" ${isTerminal ? "disabled" : ""}>
               Cancelar
+            </button>
+          </div>
+          <div class="debtops-formal-grid">
+            <label>
+              Banco ou credor origem
+              <input class="text-input" data-debtops-field="originLender" value="${debtOpsAttribute(formal.originLender)}" placeholder="Banco origem" />
+            </label>
+            <label>
+              Protocolo do saldo
+              <input class="text-input" data-debtops-field="balanceProtocol" value="${debtOpsAttribute(formal.balanceProtocol)}" placeholder="Protocolo" />
+            </label>
+            <label>
+              Validade do saldo
+              <input class="text-input" data-debtops-field="balanceValidUntil" type="date" value="${debtOpsAttribute(formal.balanceValidUntil)}" />
+            </label>
+            <label>
+              Valor liberado
+              <input class="text-input" data-debtops-field="releasedAmount" type="number" step="0.01" min="0" value="${debtOpsAttribute(formal.releasedAmount || "")}" />
+            </label>
+            <label class="debtops-wide-field">
+              Evidencia ou observacao
+              <input class="text-input" data-debtops-field="evidenceNote" value="${debtOpsAttribute(formal.evidenceNote)}" placeholder="Comprovante, aceite, motivo ou pendencia" />
+            </label>
+            <button class="secondary-button" type="button" data-debtops-save="true" data-contract-id="${row.id}">
+              Salvar dados
             </button>
           </div>
         </article>
@@ -347,6 +410,32 @@ debtOpsStyle.textContent = `
     cursor: not-allowed;
     opacity: 0.55;
   }
+  .debtops-formal-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
+    gap: 10px;
+    grid-column: 1 / -1;
+    align-items: end;
+    border-top: 1px solid var(--line);
+    padding-top: 10px;
+  }
+  .debtops-formal-grid label {
+    color: var(--muted);
+    display: grid;
+    font-size: 12px;
+    gap: 6px;
+  }
+  .debtops-formal-grid .text-input {
+    min-height: 38px;
+    width: 100%;
+  }
+  .debtops-wide-field {
+    grid-column: span 2;
+  }
+  .debtops-formal-grid .secondary-button {
+    min-height: 38px;
+    padding: 8px 12px;
+  }
   .debtops-content {
     margin-top: 18px;
   }
@@ -361,11 +450,17 @@ debtOpsStyle.textContent = `
     .debtops-row {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+    .debtops-formal-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
   @media (max-width: 640px) {
     .debtops-summary,
-    .debtops-row {
+    .debtops-row,
+    .debtops-formal-grid,
+    .debtops-wide-field {
       grid-template-columns: 1fr;
+      grid-column: 1;
     }
   }
 `;
