@@ -16,6 +16,9 @@ Este documento registra as regras iniciais para data de corte, evolucao de parce
 - Retorno rejeitado, nao descontado ou pendente nao deve evoluir parcela automaticamente.
 - Quando a parcela atual atingir o prazo total, o contrato deve mudar para Liquidado.
 - Contrato liquidado deve liberar margem e gerar evento de auditoria.
+- Cada desconto confirmado deve ser registrado por competencia.
+- O mesmo contrato nao pode evoluir duas vezes a parcela para a mesma competencia.
+- Reprocessamento do mesmo retorno deve ser identificado como duplicidade e manter trilha de auditoria.
 
 ## Tipos de Contrato
 
@@ -43,6 +46,9 @@ Este documento registra as regras iniciais para data de corte, evolucao de parce
 - debt_purchase_amount
 - portability_status
 - liquidation_reason
+- installment_history
+- return_file_id
+- return_competency
 
 ## Decisoes Pendentes
 
