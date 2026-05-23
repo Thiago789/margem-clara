@@ -75,6 +75,7 @@ function loadMissingAddons() {
     "roadmap-addon.js",
     "data-model-addon.js",
     "field-catalog-addon.js",
+    "enrollment-addon.js",
     "readiness-addon.js",
     "demo-data-addon.js",
     "reservation-lifecycle-addon.js",
