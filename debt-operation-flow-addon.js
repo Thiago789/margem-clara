@@ -2,6 +2,27 @@ if (!pageTitles.debtops) {
   pageTitles.debtops = "Operacoes divida";
 }
 
+const debtOperationStatuses = [
+  "Aguardando saldo formal",
+  "Saldo solicitado",
+  "Saldo recebido",
+  "Aguardando aceite",
+  "Aguardando comprovante",
+  "Quitado na origem",
+  "Novo contrato gerado",
+  "Recusado",
+  "Cancelado",
+];
+
+const debtOperationNextStatus = {
+  "Aguardando saldo formal": "Saldo solicitado",
+  "Saldo solicitado": "Saldo recebido",
+  "Saldo recebido": "Aguardando aceite",
+  "Aguardando aceite": "Aguardando comprovante",
+  "Aguardando comprovante": "Quitado na origem",
+  "Quitado na origem": "Novo contrato gerado",
+};
+
 function getDebtOperationRows() {
   const candidates = state.contracts.filter((contract) =>
     ["Refinanciamento", "Portabilidade", "Compra de divida"].includes(contract.contractType)
@@ -33,6 +54,11 @@ function getDebtOperationRows() {
 }
 
 function getDebtOperationNextStep(type, status) {
+  if (status === "Saldo recebido") return "Conferir validade, CET, parcela e valor liberado.";
+  if (status === "Aguardando aceite") return "Registrar aceite antes de seguir para quitacao.";
+  if (status === "Quitado na origem") return "Gerar ou vincular novo contrato substituto.";
+  if (status === "Novo contrato gerado") return "Acompanhar envio para folha e retorno da competencia.";
+  if (["Recusado", "Cancelado"].includes(status)) return "Manter evidencias e motivo para auditoria.";
   if (status === "Aguardando saldo formal") return "Solicitar saldo formal com validade e protocolo.";
   if (status === "Saldo solicitado") return "Aguardar retorno da instituicao origem.";
   if (status === "Aguardando comprovante") return "Anexar comprovante de quitacao antes de liberar margem.";
@@ -107,6 +133,48 @@ function ensureDebtOperationView() {
     render();
     openView("debtops");
   });
+
+  document.getElementById("debtops-list")?.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-debtops-action]");
+    if (!action) return;
+
+    const contract = state.contracts.find((item) => item.id === action.dataset.contractId);
+    if (!contract) return;
+
+    updateDebtOperationStatus(contract, action.dataset.debtopsAction);
+  });
+}
+
+function updateDebtOperationStatus(contract, action) {
+  const previousStatus = contract.debtOperationStatus || (contract.contractType === "Refinanciamento" ? "Aguardando saldo formal" : "Em analise");
+  let nextStatus = previousStatus;
+
+  if (action === "advance") {
+    nextStatus = debtOperationNextStatus[previousStatus] || previousStatus;
+  }
+  if (action === "reject") {
+    nextStatus = "Recusado";
+  }
+  if (action === "cancel") {
+    nextStatus = "Cancelado";
+  }
+
+  if (nextStatus === previousStatus) return;
+
+  contract.debtOperationStatus = nextStatus;
+  contract.debtOperationUpdatedAt = today();
+
+  if (nextStatus === "Novo contrato gerado" && contract.status === "Reservado") {
+    contract.status = "Averbado";
+  }
+
+  auditEvent(
+    `${contract.contractType} ${contract.id}: status alterado de ${previousStatus} para ${nextStatus}.`,
+    "Operacoes de divida"
+  );
+  saveState();
+  render();
+  openView("debtops");
 }
 
 function renderDebtOperations() {
@@ -145,6 +213,7 @@ function renderDebtOperations() {
   list.innerHTML = rows
     .map((row) => {
       const statusClass = ["Aguardando saldo formal", "Aguardando comprovante"].includes(row.status) ? "warning" : "";
+      const isTerminal = ["Novo contrato gerado", "Recusado", "Cancelado"].includes(row.status);
       return `
         <article class="debtops-row">
           <div>
@@ -154,6 +223,17 @@ function renderDebtOperations() {
           <div><span>Saldo estimado</span><strong>${money.format(row.balance.estimatedBalance)}</strong></div>
           <div><span>Status</span><strong class="status ${statusClass}">${row.status}</strong></div>
           <p>${row.nextStep}</p>
+          <div class="debtops-actions">
+            <button class="secondary-button" type="button" data-debtops-action="advance" data-contract-id="${row.id}" ${isTerminal ? "disabled" : ""}>
+              Avancar
+            </button>
+            <button class="secondary-button" type="button" data-debtops-action="reject" data-contract-id="${row.id}" ${isTerminal ? "disabled" : ""}>
+              Recusar
+            </button>
+            <button class="ghost-button" type="button" data-debtops-action="cancel" data-contract-id="${row.id}" ${isTerminal ? "disabled" : ""}>
+              Cancelar
+            </button>
+          </div>
         </article>
       `;
     })
@@ -238,6 +318,28 @@ debtOpsStyle.textContent = `
   .debtops-row p {
     grid-column: 1 / -1;
     margin: 0;
+  }
+  .debtops-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    grid-column: 1 / -1;
+  }
+  .debtops-actions .secondary-button,
+  .debtops-actions .ghost-button {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+  .debtops-actions .ghost-button {
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .debtops-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
   }
   .debtops-content {
     margin-top: 18px;
