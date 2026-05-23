@@ -43,7 +43,7 @@ function hasAddonScript(filename) {
 function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
-  script.src = `${filename}?v=20260523-4`;
+  script.src = `${filename}?v=20260523-5`;
   document.body.appendChild(script);
 }
 
@@ -69,6 +69,7 @@ function loadMissingAddons() {
     "debt-insights-addon.js",
     "debt-balance-addon.js",
     "debt-operation-flow-addon.js",
+    "debt-operation-guards-addon.js",
     "business-rules-addon.js",
     "module-jump-addon.js",
     "operational-queue-addon.js",
