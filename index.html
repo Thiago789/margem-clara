@@ -43,6 +43,7 @@
             <h1 id="page-title">Painel</h1>
           </div>
           <div class="topbar-actions">
+            <select class="select-input compact-select" id="module-jump" title="Ir para modulo"></select>
             <select class="select-input compact-select" id="profile-select" title="Perfil ativo">
               <option value="manager">Gestor/RH</option>
               <option value="employee">Servidor</option>
@@ -137,8 +138,11 @@
                   <th>Contrato</th>
                   <th>Servidor</th>
                   <th>Consignataria</th>
+                  <th>Produto</th>
+                  <th>Tipo</th>
                   <th>Parcela</th>
                   <th>Prazo</th>
+                  <th>Evolucao</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -362,6 +366,23 @@
         </div>
         <label>Servidor <select id="contract-employee" class="select-input"></select></label>
         <label>Consignataria <select id="contract-lender" class="select-input"></select></label>
+        <label>
+          Produto
+          <select id="contract-product" class="select-input">
+            <option>Emprestimo consignado</option>
+            <option>Cartao consignado</option>
+            <option>Cartao beneficio</option>
+          </select>
+        </label>
+        <label>
+          Tipo de contrato
+          <select id="contract-type" class="select-input">
+            <option>Novo</option>
+            <option>Refinanciamento</option>
+            <option>Portabilidade</option>
+            <option>Compra de divida</option>
+          </select>
+        </label>
         <label>Valor da parcela <input id="contract-installment" class="text-input" type="number" step="0.01" required /></label>
         <label>Prazo <input id="contract-installments" class="text-input" type="number" min="1" value="48" required /></label>
         <button class="primary-button wide" value="default" type="submit">Criar reserva</button>
@@ -407,6 +428,6 @@
     </dialog>
 
     <script src="app.js"></script>
-    <script src="audit-addon.js?v=20260523-2"></script>
+    <script src="audit-addon.js?v=20260523-5"></script>
   </body>
 </html>
