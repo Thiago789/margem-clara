@@ -60,6 +60,7 @@ function loadMissingAddons() {
     "file-reconciliation-addon.js",
     "file-protocol-addon.js",
     "payroll-closing-addon.js",
+    "payroll-adjustments-addon.js",
     "integration-addon.js",
     "api-sandbox-addon.js",
     "identity-validation-addon.js",
