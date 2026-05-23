@@ -81,6 +81,7 @@ function loadMissingAddons() {
     "reservation-lifecycle-addon.js",
     "product-rules-addon.js",
     "product-margin-addon.js",
+    "lender-product-accreditation-addon.js",
     "contract-rules-addon.js",
     "competency-installments-addon.js",
     "lender-management-addon.js",
