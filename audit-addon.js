@@ -67,6 +67,7 @@ function loadMissingAddons() {
     "authenticity-addon.js",
     "assistant-insights-addon.js",
     "debt-insights-addon.js",
+    "debt-balance-addon.js",
     "business-rules-addon.js",
     "module-jump-addon.js",
     "operational-queue-addon.js",
