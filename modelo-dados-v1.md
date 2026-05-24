@@ -776,6 +776,7 @@ Campos que podem variar por produto/convenio:
 - rubrica de desconto;
 - competencia inicial permitida;
 - tolerancia para divergencia no valor descontado.
+- obrigatoriedade de valor contratado, taxa, CET, primeiro vencimento e primeira competencia.
 
 ### 7.4 Arquivos e Competencias
 
@@ -1004,7 +1005,7 @@ Data de corte:
 - Cada convenio deve configurar o dia de corte da competencia.
 - Ao gerar o arquivo de insercao, somente reservas dentro da janela permitida entram no arquivo.
 - Reservas criadas apos a data de corte devem ficar para a proxima competencia ou exigir autorizacao operacional explicita.
-- A regra precisa considerar feriado, fim de semana e calendario especifico do convenio em versoes futuras.
+- A regra precisa considerar feriado, fim de semana e calendario especificico do convenio em versoes futuras.
 
 Evolucao de parcelas:
 
@@ -1039,8 +1040,10 @@ Campos adicionais recomendados para contrato:
 - first_payroll_competency
 - cutoff_competency
 - source_contract_id
+- origin_lender_name
 - origin_lender_id
 - debt_purchase_amount
+- operation_note
 - portability_status
 - liquidation_reason
 
