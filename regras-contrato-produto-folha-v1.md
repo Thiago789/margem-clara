@@ -55,6 +55,16 @@ Este documento registra as regras iniciais para data de corte, evolucao de parce
 - return_file_id
 - return_competency
 
+## Politica de Obrigatoriedade
+
+- Taxa, CET e primeira competencia devem nascer como obrigatorios no MVP.
+- Valor contratado e primeiro vencimento podem ser configuraveis por convenio.
+- Campos obrigatorios devem ser validados antes da criacao da reserva ou contrato.
+- A politica deve poder variar por convenio, produto e tipo de operacao em versoes futuras.
+- Refinanciamento deve exigir contrato origem.
+- Portabilidade deve exigir contrato origem e banco ou credor origem.
+- Compra de divida deve exigir banco ou credor origem e valor de compra/saldo.
+
 ## Decisoes Pendentes
 
 - Definir se data de corte sera por convenio, por folha ou por produto.
