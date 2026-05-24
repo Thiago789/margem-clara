@@ -3,7 +3,7 @@ if (!pageTitles.competencies) {
 }
 
 function currentCompetency() {
-  return today().slice(0, 7);
+  return state.conventionSettings?.payrollCompetency || today().slice(0, 7);
 }
 
 function normalizeCompetencyInstallments() {
