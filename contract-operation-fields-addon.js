@@ -163,4 +163,9 @@ render = function renderWithContractOperationFields() {
   renderContractOperationPolicyNotes();
 };
 
+document.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-view='contract-fields']")) return;
+  setTimeout(renderContractOperationPolicyNotes, 0);
+});
+
 render();
