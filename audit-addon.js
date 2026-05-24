@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260524-2`;
+  script.src = `${filename}?v=20260524-3`;
   document.body.appendChild(script);
 }
 
@@ -89,6 +89,7 @@ function loadMissingAddons() {
     "contract-rules-addon.js",
     "competency-installments-addon.js",
     "contract-financial-fields-addon.js",
+    "contract-field-policy-addon.js",
     "lender-management-addon.js",
     "file-layouts-addon.js",
     "access-control-addon.js",
