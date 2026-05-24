@@ -15,6 +15,16 @@ function normalizeContractRuleFields() {
   });
 }
 
+function contractRulesCurrentCompetency() {
+  return state.conventionSettings?.payrollCompetency || today().slice(0, 7);
+}
+
+function contractRulesCreatedDay(contract) {
+  const sourceDate = contract.createdAt || contract.reservedAt || today();
+  const parsed = Number(String(sourceDate).slice(-2));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : Number(today().slice(-2));
+}
+
 function contractRulesPayrollCode(product) {
   const codes = {
     "Emprestimo consignado": "CONSIG",
@@ -181,9 +191,11 @@ function renderContractRulesView() {
   const liquidated = state.contracts.filter((contract) => contract.status === "Liquidado").length;
   const nearEnd = state.contracts.filter((contract) => Number(contract.installments || 0) - Number(contract.currentInstallment || 0) <= 3).length;
   const cutoffDay = Number(state.conventionPolicy.insertionCutoffDay || 20);
+  const competency = contractRulesCurrentCompetency();
 
   summary.innerHTML = [
     ["Data de corte", `Dia ${cutoffDay}`],
+    ["Competencia", competency],
     ["Produtos", "3"],
     ["Tipos", "4"],
     ["Liquidados", liquidated],
@@ -260,7 +272,7 @@ buildInsertionRows = function buildInsertionRowsWithContractRules() {
   const cutoffDay = Number(state.conventionPolicy.insertionCutoffDay || 20);
   return state.contracts
     .filter((contract) => contract.status === "Reservado")
-    .filter((contract) => Number(String(contract.createdAt || today()).slice(-2)) <= cutoffDay)
+    .filter((contract) => contractRulesCreatedDay(contract) <= cutoffDay)
     .map((contract) => {
       const employee = employeeById(contract.employeeId);
       return {
@@ -273,7 +285,7 @@ buildInsertionRows = function buildInsertionRowsWithContractRules() {
         parcela: contract.installment.toFixed(2),
         prazo: contract.installments,
         parcela_atual: contract.currentInstallment || 0,
-        competencia: today().slice(0, 7),
+        competencia: contractRulesCurrentCompetency(),
         acao: "INCLUIR",
       };
     });
