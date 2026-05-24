@@ -3,11 +3,18 @@ state.conventionSettings = {
   code: "PM-001",
   marginPercentage: 35,
   reservationExpirationDays: 2,
+  payrollCompetency: today().slice(0, 7),
   marginFileLayout: "CSV margem padrao",
   insertionFileLayout: "CSV insercao padrao",
   returnFileLayout: "CSV retorno padrao",
   ...(state.conventionSettings || {}),
 };
+
+state.conventionPolicy = {
+  insertionCutoffDay: 20,
+  ...(state.conventionPolicy || {}),
+};
+
 saveState();
 
 if (!pageTitles.settings) {
@@ -80,6 +87,22 @@ function ensureConventionSettingsView() {
                   <option value="5">5 dias</option>
                   <option value="7">7 dias</option>
                 </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Folha e competencia</h3>
+            </div>
+            <div class="form-grid">
+              <label>
+                Competencia da folha
+                <input id="settings-payroll-competency" class="text-input" type="month" />
+              </label>
+              <label>
+                Data de corte
+                <input id="settings-insertion-cutoff" class="text-input" type="number" min="1" max="31" step="1" />
               </label>
             </div>
           </section>
@@ -183,6 +206,8 @@ function renderConventionSettings() {
     code: document.getElementById("settings-code"),
     marginPercentage: document.getElementById("settings-margin-percentage"),
     reservationExpiration: document.getElementById("settings-reservation-expiration"),
+    payrollCompetency: document.getElementById("settings-payroll-competency"),
+    insertionCutoff: document.getElementById("settings-insertion-cutoff"),
     requireReservationCode: document.getElementById("settings-require-reservation-code"),
     codeValidity: document.getElementById("settings-code-validity"),
     marginLayout: document.getElementById("settings-margin-layout"),
@@ -195,6 +220,8 @@ function renderConventionSettings() {
   values.code.value = settings.code;
   values.marginPercentage.value = settings.marginPercentage;
   values.reservationExpiration.value = settings.reservationExpirationDays;
+  values.payrollCompetency.value = settings.payrollCompetency || today().slice(0, 7);
+  values.insertionCutoff.value = policy.insertionCutoffDay || 20;
   values.requireReservationCode.checked = Boolean(policy.requireAuthorizationForReservation);
   values.codeValidity.value = policy.authorizationValidityHours || 24;
   values.marginLayout.value = settings.marginFileLayout;
@@ -206,6 +233,8 @@ function renderConventionSettings() {
     summary.innerHTML = `
       <article><span>Convenio</span><strong>${settings.name}</strong></article>
       <article><span>Margem</span><strong>${settings.marginPercentage}%</strong></article>
+      <article><span>Competencia</span><strong>${settings.payrollCompetency || today().slice(0, 7)}</strong></article>
+      <article><span>Corte</span><strong>Dia ${policy.insertionCutoffDay || 20}</strong></article>
       <article><span>Reserva</span><strong>${settings.reservationExpirationDays} dia(s)</strong></article>
       <article><span>Codigo</span><strong>${policy.requireAuthorizationForReservation ? "Obrigatorio" : "Opcional"}</strong></article>
     `;
@@ -224,19 +253,22 @@ function saveConventionSettings() {
     code: document.getElementById("settings-code").value.trim() || "PM-001",
     marginPercentage: Number(document.getElementById("settings-margin-percentage").value || 35),
     reservationExpirationDays: Number(document.getElementById("settings-reservation-expiration").value || 2),
+    payrollCompetency: document.getElementById("settings-payroll-competency").value || today().slice(0, 7),
     marginFileLayout: document.getElementById("settings-margin-layout").value.trim() || "CSV margem padrao",
     insertionFileLayout: document.getElementById("settings-insertion-layout").value.trim() || "CSV insercao padrao",
     returnFileLayout: document.getElementById("settings-return-layout").value.trim() || "CSV retorno padrao",
   };
 
   state.conventionPolicy = {
+    ...state.conventionPolicy,
+    insertionCutoffDay: Number(document.getElementById("settings-insertion-cutoff").value || 20),
     requireAuthorizationForReservation: document.getElementById("settings-require-reservation-code").checked,
     authorizationValidityHours: Number(document.getElementById("settings-code-validity").value || 24),
   };
 
   state.movements.unshift({
     date: today(),
-    text: `Configuracao do convenio atualizada: margem ${previous.marginPercentage}% -> ${state.conventionSettings.marginPercentage}%.`,
+    text: `Configuracao do convenio atualizada: margem ${previous.marginPercentage}% -> ${state.conventionSettings.marginPercentage}%, corte dia ${state.conventionPolicy.insertionCutoffDay}.`,
     profile: profileConfig[state.currentProfile]?.label || "Sistema",
     source: "Configuracao",
   });
