@@ -37,6 +37,9 @@ Este documento registra as regras iniciais para data de corte, evolucao de parce
 
 ## Campos Recomendados em Contrato
 
+- principal_amount
+- interest_rate
+- cet_rate
 - product_code
 - contract_type
 - current_installment
