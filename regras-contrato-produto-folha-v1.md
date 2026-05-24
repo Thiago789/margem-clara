@@ -7,6 +7,8 @@ Este documento registra as regras iniciais para data de corte, evolucao de parce
 - Cada convenio deve configurar uma data de corte da competencia.
 - Ao gerar o arquivo de insercao, entram apenas reservas criadas dentro da janela permitida.
 - Reservas criadas apos a data de corte ficam para a proxima competencia ou exigem decisao operacional explicita.
+- A competencia da folha deve ser configuravel por convenio para evitar usar apenas a data atual do sistema.
+- O arquivo de insercao deve registrar a competencia configurada e nao somente o mes corrente do computador.
 - Em versoes futuras, a regra deve considerar feriados, fim de semana e calendario proprio do convenio.
 
 ## Evolucao de Parcelas
