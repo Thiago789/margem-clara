@@ -164,7 +164,7 @@ render = function renderWithContractOperationFields() {
 };
 
 document.addEventListener("click", (event) => {
-  if (!event.target.closest("[data-view='contract-fields']")) return;
+  if (!event.target.closest("[data-view='contractfields']")) return;
   setTimeout(renderContractOperationPolicyNotes, 0);
 });
 
