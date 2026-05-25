@@ -132,6 +132,61 @@ buildInsertionRows = function buildInsertionRowsWithOperationFields() {
   });
 };
 
+generateInsertionFile = function generateInsertionFileWithOperationFields() {
+  const reservedCount = state.contracts.filter((contract) => contract.status === "Reservado").length;
+  const rows = buildInsertionRows();
+  const result = document.getElementById("insertion-result");
+
+  if (!rows.length) {
+    result.textContent = reservedCount
+      ? "Existem reservas pendentes, mas fora da data de corte configurada para esta competencia."
+      : "Nenhuma reserva pendente para enviar a folha.";
+    return;
+  }
+
+  const headers = [
+    "contrato",
+    "cpf",
+    "matricula",
+    "produto",
+    "tipo_contrato",
+    "rubrica",
+    "parcela",
+    "prazo",
+    "parcela_atual",
+    "competencia",
+    "valor_contratado",
+    "taxa_mensal",
+    "cet_mensal",
+    "primeiro_vencimento",
+    "primeira_competencia",
+    "contrato_origem",
+    "credor_origem",
+    "valor_compra_saldo",
+    "observacao_operacional",
+    "acao",
+  ];
+  const content = buildCsv(headers, rows);
+  const sentContractIds = new Set(rows.map((row) => row.contrato));
+
+  state.contracts.forEach((contract) => {
+    if (sentContractIds.has(contract.id)) {
+      contract.status = "Enviado para folha";
+      contract.sentToPayrollAt = today();
+    }
+  });
+
+  auditEvent(`Arquivo de insercao gerado com campos financeiros e operacionais para ${rows.length} desconto(s).`, "Arquivo de insercao");
+  saveState();
+  render();
+  downloadCsv(`insercao-folha-${today()}.csv`, content);
+  result.innerHTML = `
+    <strong>Arquivo de insercao gerado</strong>
+    <p>${rows.length} desconto(s) enviados para a folha.</p>
+    <p>Inclui campos financeiros, competencia, contrato origem e credor origem quando aplicavel.</p>
+  `;
+};
+
 function renderContractOperationPolicyNotes() {
   const matrix = document.getElementById("contract-field-matrix");
   if (!matrix || matrix.dataset.operationNotesRendered) return;
