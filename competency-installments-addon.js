@@ -17,6 +17,10 @@ function hasProcessedCompetency(contract, competency) {
   return contract.installmentHistory.some((item) => item.competency === competency && item.status === "Descontando");
 }
 
+function findProcessedCompetency(contract, competency) {
+  return contract.installmentHistory.find((item) => item.competency === competency && !item.duplicate);
+}
+
 function ensureCompetenciesView() {
   if (document.getElementById("competencies-view")) return;
 
@@ -153,13 +157,15 @@ processReturnCsv = function processReturnCsvWithCompetencies(text) {
     const nextStatus = normalizeReturnStatus(row.status);
     const amount = Number(row.valor_descontado || 0);
 
-    if (nextStatus === "Descontando" && hasProcessedCompetency(contract, competency)) {
+    const existingReturn = findProcessedCompetency(contract, competency);
+    if (existingReturn) {
       contract.installmentHistory.push({
         competency,
         status: nextStatus,
         amount,
-        reason: "Retorno ja processado para esta competencia",
+        reason: `Competencia ja processada como ${existingReturn.status}. Registrar ajuste para reprocessar.`,
         duplicate: true,
+        previousStatus: existingReturn.status,
         processedAt: today(),
       });
       duplicated += 1;
