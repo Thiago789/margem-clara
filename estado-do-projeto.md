@@ -52,6 +52,7 @@ O MVP ja possui uma base navegavel com:
 - Portabilidade exige contrato origem e banco/credor origem.
 - Compra de divida exige banco/credor origem e valor de compra/saldo.
 - O arquivo de insercao deve exportar tambem os campos financeiros e operacionais ja capturados na reserva.
+- O arquivo retorno deve bloquear qualquer segunda leitura do mesmo contrato na mesma competencia; reprocessamento exige ajuste formal.
 
 ## Campos Importantes Ja Mapeados
 
