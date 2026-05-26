@@ -51,6 +51,7 @@ O MVP ja possui uma base navegavel com:
 - Refinanciamento exige contrato origem.
 - Portabilidade exige contrato origem e banco/credor origem.
 - Compra de divida exige banco/credor origem e valor de compra/saldo.
+- O arquivo de insercao deve exportar tambem os campos financeiros e operacionais ja capturados na reserva.
 
 ## Campos Importantes Ja Mapeados
 
