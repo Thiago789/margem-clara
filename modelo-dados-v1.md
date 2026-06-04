@@ -1005,7 +1005,7 @@ Data de corte:
 - Cada convenio deve configurar o dia de corte da competencia.
 - Ao gerar o arquivo de insercao, somente reservas dentro da janela permitida entram no arquivo.
 - Reservas criadas apos a data de corte devem ficar para a proxima competencia ou exigir autorizacao operacional explicita.
-- A regra precisa considerar feriado, fim de semana e calendario especificico do convenio em versoes futuras.
+- A regra precisa considerar feriado, fim de semana e calendario especifico do convenio em versoes futuras.
 
 Evolucao de parcelas:
 
