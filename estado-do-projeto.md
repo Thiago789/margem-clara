@@ -53,6 +53,7 @@ O MVP ja possui uma base navegavel com:
 - Compra de divida exige banco/credor origem e valor de compra/saldo.
 - O arquivo de insercao deve exportar tambem os campos financeiros e operacionais ja capturados na reserva.
 - O arquivo retorno deve bloquear qualquer segunda leitura do mesmo contrato na mesma competencia; reprocessamento exige ajuste formal.
+- Retorno marcado como descontado, mas com valor diferente da parcela esperada, deve virar pendencia de ajuste e nao deve avancar parcela automaticamente.
 
 ## Campos Importantes Ja Mapeados
 
