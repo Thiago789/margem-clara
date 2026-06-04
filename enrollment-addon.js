@@ -96,6 +96,39 @@ function ensureEnrollmentView() {
 
         <div class="enrollment-summary-grid" id="enrollment-summary-grid"></div>
 
+        <section class="panel enrollment-form-panel">
+          <div class="panel-heading">
+            <h3>Nova matricula</h3>
+          </div>
+          <form class="enrollment-form-grid" id="enrollment-form">
+            <label>
+              Servidor
+              <select id="enrollment-employee" class="select-input"></select>
+            </label>
+            <label>
+              Matricula
+              <input id="enrollment-number" class="text-input" required />
+            </label>
+            <label>
+              Status funcional
+              <select id="enrollment-functional-status" class="select-input">
+                <option>Ativo</option>
+                <option>Em revisao</option>
+                <option>Inativo</option>
+              </select>
+            </label>
+            <label>
+              Renda base
+              <input id="enrollment-base-salary" class="text-input" type="number" min="0" step="0.01" required />
+            </label>
+            <label>
+              Descontos obrigatorios
+              <input id="enrollment-mandatory-deductions" class="text-input" type="number" min="0" step="0.01" value="0" />
+            </label>
+            <button class="primary-button" type="submit">Salvar matricula</button>
+          </form>
+        </section>
+
         <section class="panel">
           <div class="panel-heading">
             <h3>Vinculos operacionais</h3>
@@ -112,6 +145,70 @@ function ensureEnrollmentView() {
     render();
     openView("enrollments");
   });
+
+  document.getElementById("enrollment-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    createEnrollmentFromForm();
+  });
+
+  document.getElementById("enrollment-employee")?.addEventListener("change", () => {
+    const employee = employeeById(document.getElementById("enrollment-employee")?.value);
+    if (!employee) return;
+    document.getElementById("enrollment-base-salary").value = Number(employee.income || 0).toFixed(2);
+    document.getElementById("enrollment-mandatory-deductions").value = Number(employee.mandatoryDeductions || 0).toFixed(2);
+    document.getElementById("enrollment-functional-status").value = employee.status || "Ativo";
+  });
+}
+
+function syncEnrollmentFormDefaults() {
+  const employeeSelect = document.getElementById("enrollment-employee");
+  if (!employeeSelect) return;
+
+  employeeSelect.innerHTML = state.employees
+    .map((employee) => `<option value="${employee.id}">${employee.name} - ${employee.cpf}</option>`)
+    .join("");
+
+  const selected = employeeById(employeeSelect.value) || state.employees[0];
+  if (!selected) return;
+
+  const baseSalary = document.getElementById("enrollment-base-salary");
+  const deductions = document.getElementById("enrollment-mandatory-deductions");
+  const status = document.getElementById("enrollment-functional-status");
+  if (baseSalary && !baseSalary.value) baseSalary.value = Number(selected.income || 0).toFixed(2);
+  if (deductions && !deductions.value) deductions.value = Number(selected.mandatoryDeductions || 0).toFixed(2);
+  if (status && !status.value) status.value = selected.status || "Ativo";
+}
+
+function createEnrollmentFromForm() {
+  normalizeEnrollments();
+  const employeeId = document.getElementById("enrollment-employee")?.value;
+  const employee = employeeById(employeeId);
+  const number = document.getElementById("enrollment-number")?.value.trim();
+  if (!employee || !number) return;
+
+  const duplicate = state.enrollments.some((enrollment) => enrollment.employeeId === employeeId && enrollment.number === number);
+  if (duplicate) {
+    alert("Esta matricula ja existe para o servidor selecionado.");
+    return;
+  }
+
+  state.enrollments.push({
+    id: `enr-${Date.now().toString().slice(-8)}`,
+    employeeId,
+    agreement: "Prefeitura Modelo",
+    number,
+    functionalStatus: document.getElementById("enrollment-functional-status")?.value || "Ativo",
+    baseSalary: Number(document.getElementById("enrollment-base-salary")?.value || 0),
+    mandatoryDeductions: Number(document.getElementById("enrollment-mandatory-deductions")?.value || 0),
+    status: document.getElementById("enrollment-functional-status")?.value || "Ativo",
+    createdAt: today(),
+  });
+
+  auditEvent(`Matricula ${number} cadastrada para ${employee.name}.`, "Matriculas");
+  saveState();
+  document.getElementById("enrollment-form")?.reset();
+  render();
+  openView("enrollments");
 }
 
 function renderEnrollmentsView() {
@@ -121,6 +218,7 @@ function renderEnrollmentsView() {
   const summary = document.getElementById("enrollment-summary-grid");
   const list = document.getElementById("enrollment-list");
   if (!summary || !list) return;
+  syncEnrollmentFormDefaults();
 
   const multipleCpfCount = state.employees.filter(
     (employee) => state.enrollments.filter((enrollment) => enrollment.employeeId === employee.id).length > 1
@@ -208,6 +306,15 @@ enrollmentStyle.textContent = `
     display: grid;
     gap: 10px;
   }
+  .enrollment-form-panel {
+    margin-bottom: 18px;
+  }
+  .enrollment-form-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr 0.8fr 0.8fr 0.8fr auto;
+    gap: 12px;
+    align-items: end;
+  }
   .enrollment-row {
     display: grid;
     grid-template-columns: 1.6fr 0.8fr 0.8fr 0.8fr auto;
@@ -221,12 +328,14 @@ enrollmentStyle.textContent = `
   }
   @media (max-width: 1040px) {
     .enrollment-summary-grid,
+    .enrollment-form-grid,
     .enrollment-row {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
   @media (max-width: 640px) {
     .enrollment-summary-grid,
+    .enrollment-form-grid,
     .enrollment-row {
       grid-template-columns: 1fr;
     }
