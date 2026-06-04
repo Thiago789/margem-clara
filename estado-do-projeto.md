@@ -1,6 +1,6 @@
 # Estado do Projeto - Margem Clara
 
-Atualizado em: 2026-05-25
+Atualizado em: 2026-06-04
 
 ## Objetivo
 
@@ -54,6 +54,7 @@ O MVP ja possui uma base navegavel com:
 - O arquivo de insercao deve exportar tambem os campos financeiros e operacionais ja capturados na reserva.
 - O arquivo retorno deve bloquear qualquer segunda leitura do mesmo contrato na mesma competencia; reprocessamento exige ajuste formal.
 - Retorno marcado como descontado, mas com valor diferente da parcela esperada, deve virar pendencia de ajuste e nao deve avancar parcela automaticamente.
+- Pendencia de retorno deve permitir decisao formal auditada: aceitar diferenca, reenviar para proxima insercao, cancelar/liberar margem ou manter pendente.
 
 ## Campos Importantes Ja Mapeados
 
