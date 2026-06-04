@@ -55,6 +55,7 @@ O MVP ja possui uma base navegavel com:
 - O arquivo retorno deve bloquear qualquer segunda leitura do mesmo contrato na mesma competencia; reprocessamento exige ajuste formal.
 - Retorno marcado como descontado, mas com valor diferente da parcela esperada, deve virar pendencia de ajuste e nao deve avancar parcela automaticamente.
 - Pendencia de retorno deve permitir decisao formal auditada: aceitar diferenca, reenviar para proxima insercao, cancelar/liberar margem ou manter pendente.
+- Reserva/contrato deve ficar vinculado a uma matricula especifica; a margem e o arquivo de insercao devem usar essa matricula, nao apenas o CPF ou a matricula principal do servidor.
 
 ## Campos Importantes Ja Mapeados
 
