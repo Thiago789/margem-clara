@@ -44,6 +44,14 @@ function selectedContractBindingEnrollment(employeeId) {
   return contractBindingEnrollmentsByEmployee(employeeId)[0] || null;
 }
 
+function contractBindingEnrollmentNumber(contract) {
+  const enrollment = contract?.enrollmentId && typeof enrollmentById === "function" ? enrollmentById(contract.enrollmentId) : null;
+  if (enrollment?.number) return enrollment.number;
+
+  const employee = contract ? employeeById(contract.employeeId) : null;
+  return contract?.enrollmentNumber || employee?.enrollment || "";
+}
+
 function bindContractEnrollmentLifecycle() {
   const form = document.getElementById("contract-form");
   if (!form || form.dataset.enrollmentContractBinding === "true") return;
@@ -97,19 +105,35 @@ buildInsertionRows = function buildInsertionRowsWithEnrollmentBinding() {
   const rows = buildInsertionRowsBeforeEnrollmentBinding();
   return rows.map((row) => {
     const contract = state.contracts.find((item) => item.id === row.contrato);
-    const enrollment = contract?.enrollmentId && typeof enrollmentById === "function" ? enrollmentById(contract.enrollmentId) : null;
     return {
       ...row,
-      matricula: enrollment?.number || contract?.enrollmentNumber || row.matricula,
+      matricula: contractBindingEnrollmentNumber(contract) || row.matricula,
     };
   });
 };
+
+function renderContractEnrollmentBadges() {
+  document.querySelectorAll("#contracts-table tr").forEach((row) => {
+    if (row.dataset.enrollmentBadgeRendered === "true") return;
+    const contractId = row.querySelector("td:first-child strong")?.textContent?.trim();
+    const contract = state.contracts.find((item) => item.id === contractId);
+    const enrollmentNumber = contractBindingEnrollmentNumber(contract);
+    if (!contract || !enrollmentNumber) return;
+
+    row.querySelector("td:nth-child(2)")?.insertAdjacentHTML(
+      "beforeend",
+      `<div class="muted contract-enrollment-badge">Matricula/vinculo: ${enrollmentNumber}</div>`
+    );
+    row.dataset.enrollmentBadgeRendered = "true";
+  });
+}
 
 const renderBeforeEnrollmentContractBinding = render;
 render = function renderWithEnrollmentContractBinding() {
   renderBeforeEnrollmentContractBinding();
   renderContractEnrollmentBindingOptions();
   bindContractEnrollmentLifecycle();
+  renderContractEnrollmentBadges();
 };
 
 render();

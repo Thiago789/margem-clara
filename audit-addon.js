@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260604-3`;
+  script.src = `${filename}?v=20260604-4`;
   document.body.appendChild(script);
 }
 
@@ -103,3 +103,4 @@ if (document.readyState === "loading") {
 } else {
   loadMissingAddons();
 }
+
