@@ -21,6 +21,44 @@ function findProcessedCompetency(contract, competency) {
   return contract.installmentHistory.find((item) => item.competency === competency && !item.duplicate);
 }
 
+function expectedReturnAmount(contract) {
+  return Number(contract.installment || 0);
+}
+
+function returnAmountTolerance() {
+  return 0.01;
+}
+
+function resolveReturnProcessingStatus(contract, row, normalizedStatus, amount) {
+  if (normalizedStatus !== "Descontando") {
+    return {
+      status: normalizedStatus,
+      reason: row.motivo || "",
+      divergent: false,
+    };
+  }
+
+  const expected = expectedReturnAmount(contract);
+  const difference = Number((amount - expected).toFixed(2));
+  if (Math.abs(difference) <= returnAmountTolerance()) {
+    return {
+      status: normalizedStatus,
+      reason: row.motivo || "",
+      divergent: false,
+      expected,
+      difference,
+    };
+  }
+
+  return {
+    status: "Nao descontado",
+    reason: row.motivo || `Valor descontado divergente. Esperado ${money.format(expected)}, retornado ${money.format(amount)}.`,
+    divergent: true,
+    expected,
+    difference,
+  };
+}
+
 function ensureCompetenciesView() {
   if (document.getElementById("competencies-view")) return;
 
@@ -156,36 +194,48 @@ processReturnCsv = function processReturnCsvWithCompetencies(text) {
     const competency = row.competencia || currentCompetency();
     const nextStatus = normalizeReturnStatus(row.status);
     const amount = Number(row.valor_descontado || 0);
+    const processing = resolveReturnProcessingStatus(contract, row, nextStatus, amount);
 
     const existingReturn = findProcessedCompetency(contract, competency);
     if (existingReturn) {
       contract.installmentHistory.push({
         competency,
-        status: nextStatus,
+        status: processing.status,
         amount,
         reason: `Competencia ja processada como ${existingReturn.status}. Registrar ajuste para reprocessar.`,
         duplicate: true,
         previousStatus: existingReturn.status,
+        originalStatus: nextStatus,
+        divergent: processing.divergent,
+        expectedAmount: processing.expected,
+        differenceAmount: processing.difference,
         processedAt: today(),
       });
       duplicated += 1;
       return;
     }
 
-    contract.status = nextStatus;
-    contract.returnReason = row.motivo || "";
+    contract.status = processing.status;
+    contract.returnReason = processing.reason;
     contract.discountedValue = amount;
+    contract.expectedDiscountValue = processing.expected || expectedReturnAmount(contract);
+    contract.discountDifference = processing.difference || Number((amount - contract.expectedDiscountValue).toFixed(2));
+    contract.returnDivergent = processing.divergent;
     contract.returnProcessedAt = today();
     contract.installmentHistory.push({
       competency,
-      status: nextStatus,
+      status: processing.status,
       amount,
-      reason: row.motivo || "",
+      reason: processing.reason,
       duplicate: false,
+      originalStatus: nextStatus,
+      divergent: processing.divergent,
+      expectedAmount: contract.expectedDiscountValue,
+      differenceAmount: contract.discountDifference,
       processedAt: today(),
     });
 
-    if (nextStatus === "Descontando") {
+    if (processing.status === "Descontando") {
       contract.currentInstallment = Number(contract.currentInstallment || 0) + 1;
       discounted += 1;
       if (contract.currentInstallment >= Number(contract.installments || 0)) {
@@ -195,7 +245,7 @@ processReturnCsv = function processReturnCsvWithCompetencies(text) {
       }
     }
 
-    if (["Rejeitado", "Nao descontado"].includes(nextStatus)) rejected += 1;
+    if (["Rejeitado", "Nao descontado"].includes(processing.status)) rejected += 1;
     processed += 1;
   });
 
