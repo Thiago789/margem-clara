@@ -25,7 +25,13 @@ function getPayrollAdjustmentItems() {
         className: "danger",
         value: Number(contract.discountedValue || contract.installment || 0),
         reason: contract.returnReason || "Retorno sem motivo informado.",
-        action: "Corrigir, reenviar, cancelar contrato ou liberar margem conforme regra do convenio.",
+        action: contract.returnDivergent
+          ? "Conferir divergencia de valor antes de baixar parcela; decidir ajuste, reenvio ou aceite formal."
+          : "Corrigir, reenviar, cancelar contrato ou liberar margem conforme regra do convenio.",
+        expectedValue: Number(contract.expectedDiscountValue || contract.installment || 0),
+        discountedValue: Number(contract.discountedValue || 0),
+        differenceValue: Number(contract.discountDifference || 0),
+        divergent: Boolean(contract.returnDivergent),
       };
     }),
     ...sent.map((contract) => {
@@ -182,6 +188,11 @@ function renderPayrollAdjustments() {
               </div>
               <span class="status ${item.className}">${item.status}</span>
               <p><strong>Motivo:</strong> ${item.reason}</p>
+              ${
+                item.divergent
+                  ? `<p><strong>Divergencia:</strong> esperado ${formatAdjustmentMoney(item.expectedValue)}, retornado ${formatAdjustmentMoney(item.discountedValue)}, diferenca ${formatAdjustmentMoney(item.differenceValue)}.</p>`
+                  : ""
+              }
               <p><strong>Tratamento:</strong> ${item.action}</p>
             </article>
           `
