@@ -30,10 +30,33 @@ function renderContractEnrollmentBindingOptions() {
         .map((enrollment) => {
           const margin = typeof calculateEnrollmentMargin === "function" ? calculateEnrollmentMargin(enrollment) : null;
           const available = margin ? money.format(margin.available) : "margem nao calculada";
-          return `<option value="${enrollment.id}">${enrollment.number} - ${enrollment.functionalStatus} - ${available}</option>`;
+          const status = contractEnrollmentReservationStatus(enrollment);
+          return `<option value="${enrollment.id}">${enrollment.number} - ${enrollment.functionalStatus} - ${available}${status.ok ? "" : " - bloqueada"}</option>`;
         })
         .join("")
     : `<option value="">Nenhuma matricula disponivel</option>`;
+}
+
+function contractEnrollmentReservationStatus(enrollment) {
+  if (!enrollment) {
+    return { ok: false, message: "Selecione uma matricula valida para criar reserva." };
+  }
+
+  const status = enrollment.status || enrollment.functionalStatus;
+  if (status === "Inativo") {
+    return { ok: false, message: `A matricula ${enrollment.number} esta inativa e nao pode receber nova reserva.` };
+  }
+
+  if (status === "Em revisao") {
+    return { ok: false, message: `A matricula ${enrollment.number} esta em revisao. Libere o vinculo antes de reservar margem.` };
+  }
+
+  const margin = typeof calculateEnrollmentMargin === "function" ? calculateEnrollmentMargin(enrollment) : null;
+  if (margin && margin.available <= 0) {
+    return { ok: false, message: `A matricula ${enrollment.number} nao possui margem disponivel para nova reserva.` };
+  }
+
+  return { ok: true, message: "" };
 }
 
 function selectedContractBindingEnrollment(employeeId) {
@@ -65,6 +88,14 @@ function bindContractEnrollmentLifecycle() {
       if (event.submitter?.value === "cancel") return;
       const employeeId = document.getElementById("contract-employee")?.value;
       const enrollment = selectedContractBindingEnrollment(employeeId);
+      const reservationStatus = contractEnrollmentReservationStatus(enrollment);
+      if (!reservationStatus.ok) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        alert(reservationStatus.message);
+        return;
+      }
+
       form.dataset.pendingEnrollmentId = enrollment?.id || "";
       form.dataset.contractIdsBeforeEnrollmentBinding = JSON.stringify(state.contracts.map((contract) => contract.id));
     },

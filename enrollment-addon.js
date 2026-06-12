@@ -133,6 +133,7 @@ function ensureEnrollmentView() {
           <div class="panel-heading">
             <h3>Vinculos operacionais</h3>
           </div>
+          <p class="muted enrollment-rule-note">Reservas devem usar matricula ativa e com margem disponivel. Matriculas inativas ou em revisao exigem regularizacao antes de consumir margem.</p>
           <div class="enrollment-list" id="enrollment-list"></div>
         </section>
       </section>
@@ -305,6 +306,9 @@ enrollmentStyle.textContent = `
   .enrollment-list {
     display: grid;
     gap: 10px;
+  }
+  .enrollment-rule-note {
+    margin-top: 0;
   }
   .enrollment-form-panel {
     margin-bottom: 18px;
