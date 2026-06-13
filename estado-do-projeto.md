@@ -1,6 +1,6 @@
 # Estado do Projeto - Margem Clara
 
-Atualizado em: 2026-06-04
+Atualizado em: 2026-06-12
 
 ## Objetivo
 
@@ -59,6 +59,7 @@ O MVP ja possui uma base navegavel com:
 - Reserva deve ser bloqueada quando a matricula escolhida estiver inativa, em revisao ou sem margem disponivel.
 - Contrato deve ter linha do tempo operacional visivel, reunindo reserva, envio para folha, retornos, ajustes, cancelamento e liquidacao.
 - Ultimo arquivo retorno processado deve manter conciliacao detalhada com linhas conciliadas, divergentes, duplicadas, pendentes e nao localizadas.
+- O fluxo piloto deve funcionar como central de jornada operacional, mostrando progresso do ciclo, proxima acao e atalhos para os modulos principais, para reduzir a sensacao de telas soltas.
 
 ## Campos Importantes Ja Mapeados
 
