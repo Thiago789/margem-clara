@@ -36,6 +36,27 @@ function getAccessProfiles() {
   ];
 }
 
+function getAccessModuleMatrix() {
+  const profileKeys = ["manager", "employee", "lender"];
+  const sensitiveViews = ["employees", "enrollments", "import", "payroll", "closing", "adjustments", "audit", "access", "settings"];
+  const allViews = Array.from(
+    new Set(profileKeys.flatMap((profile) => profileConfig[profile]?.views || []))
+  );
+
+  return {
+    profileKeys,
+    sensitiveViews,
+    allViews,
+    restrictedToManager: sensitiveViews.filter((view) => {
+      const managerCanView = profileConfig.manager.views.includes(view);
+      const otherCanView = profileKeys
+        .filter((profile) => profile !== "manager")
+        .some((profile) => profileConfig[profile]?.views.includes(view));
+      return managerCanView && !otherCanView;
+    }),
+  };
+}
+
 function ensureAccessControlView() {
   if (document.getElementById("access-view")) return;
 
@@ -62,6 +83,8 @@ function ensureAccessControlView() {
           <button class="primary-button" id="access-audit-button" type="button">Registrar revisao</button>
         </div>
 
+        <section class="panel access-command" id="access-command"></section>
+
         <div class="access-summary-grid" id="access-summary-grid"></div>
 
         <section class="panel access-panel">
@@ -86,6 +109,13 @@ function ensureAccessControlView() {
             <div class="access-notes" id="access-ux"></div>
           </section>
         </div>
+
+        <section class="panel access-panel">
+          <div class="panel-heading">
+            <h3>Cobertura por modulo</h3>
+          </div>
+          <div class="access-module-grid" id="access-module-grid"></div>
+        </section>
       </section>
     `
   );
@@ -101,22 +131,42 @@ function ensureAccessControlView() {
 function renderAccessControl() {
   ensureAccessControlView();
 
+  const command = document.getElementById("access-command");
   const summary = document.getElementById("access-summary-grid");
   const list = document.getElementById("access-list");
   const controls = document.getElementById("access-controls");
   const ux = document.getElementById("access-ux");
-  if (!summary || !list || !controls || !ux) return;
+  const moduleGrid = document.getElementById("access-module-grid");
+  if (!command || !summary || !list || !controls || !ux || !moduleGrid) return;
 
   const profiles = getAccessProfiles();
+  const matrix = getAccessModuleMatrix();
   const highRisk = profiles.filter((profile) => profile.risk === "Alto").length;
   const totalActions = profiles.reduce((sum, profile) => sum + profile.canAct.length, 0);
   const totalRestrictions = profiles.reduce((sum, profile) => sum + profile.restrictions.length, 0);
+  const activeProfile = profileConfig[state.currentProfile] || profileConfig.manager;
+
+  command.innerHTML = `
+    <div>
+      <span class="access-command-label">Perfil ativo</span>
+      <strong>${activeProfile.label}</strong>
+      <p>${activeProfile.scope}</p>
+      <small>${activeProfile.views.length} modulo(s) disponiveis neste perfil.</small>
+    </div>
+    <div class="access-command-actions">
+      <span class="status ${matrix.restrictedToManager.length ? "warning" : ""}">
+        ${matrix.restrictedToManager.length} modulo(s) sensivel(is) restrito(s) ao gestor
+      </span>
+      <button class="primary-button access-audit-shortcut" type="button">Abrir auditoria</button>
+    </div>
+  `;
 
   const cards = [
     ["Perfis mapeados", profiles.length],
     ["Risco alto", highRisk],
     ["Acoes permitidas", totalActions],
     ["Restricoes", totalRestrictions],
+    ["Modulos mapeados", matrix.allViews.length],
   ];
 
   summary.innerHTML = cards
@@ -150,6 +200,31 @@ function renderAccessControl() {
       `;
     })
     .join("");
+
+  moduleGrid.innerHTML = matrix.allViews
+    .map((view) => {
+      const title = pageTitles[view] || view;
+      const isSensitive = matrix.sensitiveViews.includes(view);
+      const cells = matrix.profileKeys
+        .map((profile) => {
+          const allowed = profileConfig[profile]?.views.includes(view);
+          return `<span class="access-module-pill ${allowed ? "allowed" : ""}">${profileConfig[profile]?.label || profile}: ${allowed ? "Sim" : "Nao"}</span>`;
+        })
+        .join("");
+
+      return `
+        <article class="access-module-row">
+          <div>
+            <strong>${title}</strong>
+            <span>${isSensitive ? "Modulo sensivel" : "Modulo operacional"}</span>
+          </div>
+          <div class="access-module-pills">${cells}</div>
+        </article>
+      `;
+    })
+    .join("");
+
+  document.querySelector(".access-audit-shortcut")?.addEventListener("click", () => openView("audit"));
 
   controls.innerHTML = `
     <div class="access-note">
@@ -186,13 +261,44 @@ const accessStyle = document.createElement("style");
 accessStyle.textContent = `
   .access-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(5, minmax(140px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }
+  .access-command {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #f8fafc, #eef6ff);
+  }
+  .access-command-label {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .access-command strong {
+    display: block;
+    font-size: 20px;
+  }
+  .access-command p,
+  .access-command small {
+    display: block;
+    margin: 6px 0 0;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .access-command-actions {
+    display: grid;
+    gap: 10px;
+  }
   .access-summary-card,
   .access-row,
-  .access-note {
+  .access-note,
+  .access-module-row {
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--surface);
@@ -216,7 +322,8 @@ accessStyle.textContent = `
     font-size: 26px;
   }
   .access-list,
-  .access-notes {
+  .access-notes,
+  .access-module-grid {
     display: grid;
     gap: 10px;
   }
@@ -243,9 +350,49 @@ accessStyle.textContent = `
   .access-note span {
     margin-top: 4px;
   }
+  .access-module-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 2fr;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: var(--surface-2);
+  }
+  .access-module-row span {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .access-module-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .access-module-pill {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #f8fafc;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .access-module-pill.allowed {
+    border-color: #bbf7d0;
+    background: #ecfdf3;
+    color: #047857;
+  }
   @media (max-width: 1040px) {
     .access-summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .access-command,
+    .access-module-row {
+      grid-template-columns: 1fr;
+    }
+    .access-module-pills {
+      justify-content: flex-start;
     }
   }
   @media (max-width: 640px) {
