@@ -997,10 +997,10 @@ function bindEvents() {
 
   document.getElementById("download-return-sample").addEventListener("click", () => {
     const content = buildCsv(
-      ["contrato", "status", "motivo", "valor_descontado"],
+      ["contrato", "competencia", "status", "motivo", "valor_descontado"],
       [
-        { contrato: "RSV-2026-003", status: "DESCONTADO", motivo: "", valor_descontado: "210.00" },
-        { contrato: "RSV-2026-999", status: "REJEITADO", motivo: "Matricula sem vinculo ativo", valor_descontado: "0.00" },
+        { contrato: "RSV-2026-003", competencia: today().slice(0, 7), status: "DESCONTADO", motivo: "", valor_descontado: "210.00" },
+        { contrato: "RSV-2026-999", competencia: today().slice(0, 7), status: "REJEITADO", motivo: "Matricula sem vinculo ativo", valor_descontado: "0.00" },
       ]
     );
     downloadCsv("retorno-folha-exemplo.csv", content);

@@ -26,9 +26,9 @@ function getFileValidationSchemas() {
     {
       type: "Arquivo retorno",
       stage: "Entrada",
-      required: ["contrato", "status", "motivo", "valor_descontado"],
-      critical: ["contrato nao localizado", "status desconhecido", "valor divergente", "rejeicao sem motivo"],
-      warnings: ["nao descontado", "retorno parcial", "competencia diferente da enviada"],
+      required: ["contrato", "status", "motivo", "valor_descontado", "competencia"],
+      critical: ["campo obrigatorio ausente", "contrato nao localizado", "status desconhecido", "valor invalido", "retorno duplicado"],
+      warnings: ["valor divergente", "nao descontado", "retorno parcial", "competencia diferente da enviada"],
     },
   ];
 }
@@ -41,6 +41,9 @@ function getFileValidationMetrics() {
   const returned = state.contracts.filter((contract) => ["Descontando", "Rejeitado", "Nao descontado"].includes(contract.status));
   const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
   const withoutReason = rejected.filter((contract) => !contract.returnReason);
+  const reconciliation = state.lastReturnReconciliation || {};
+  const returnCritical = Number(reconciliation.invalid || 0) + Number(reconciliation.notFound || 0) + Number(reconciliation.duplicate || 0) + withoutReason.length;
+  const returnWarnings = Number(reconciliation.divergent || 0) + Number(reconciliation.pending || 0) + rejected.length;
 
   return {
     margin: {
@@ -56,11 +59,32 @@ function getFileValidationMetrics() {
       status: reserved.length ? "Apto com alerta" : "Sem movimento",
     },
     returnFile: {
-      rows: sent.length + returned.length,
-      critical: withoutReason.length,
-      warnings: rejected.length,
-      status: withoutReason.length ? "Bloquear" : rejected.length ? "Revisar" : returned.length ? "Apto" : "Pendente",
+      rows: reconciliation.totalRows || sent.length + returned.length,
+      critical: returnCritical,
+      warnings: returnWarnings,
+      status: returnCritical ? "Bloquear" : returnWarnings ? "Revisar" : returned.length || reconciliation.totalRows ? "Apto" : "Pendente",
+      detail: reconciliation.totalRows
+        ? `${reconciliation.totalRows} linha(s), ${reconciliation.invalid || 0} invalida(s), ${reconciliation.notFound || 0} nao localizada(s), ${reconciliation.duplicate || 0} duplicada(s).`
+        : "Nenhum retorno detalhado processado ainda.",
     },
+  };
+}
+
+function getValidationDecision(metrics) {
+  const entries = [
+    ["Arquivo de margem", metrics.margin, "employees"],
+    ["Arquivo de insercao", metrics.insertion, "import"],
+    ["Arquivo retorno", metrics.returnFile, "import"],
+  ];
+  const blocked = entries.find(([, item]) => item.status === "Bloquear");
+  const warning = entries.find(([, item]) => ["Revisar", "Apto com alerta", "Pendente"].includes(item.status));
+  const current = blocked || warning || entries[entries.length - 1];
+
+  return {
+    title: current[0],
+    item: current[1],
+    target: current[2],
+    status: blocked ? "Processamento bloqueado" : warning ? "Conferencia recomendada" : "Arquivos aptos",
   };
 }
 
@@ -95,6 +119,8 @@ function ensureFileValidationView() {
           </div>
           <button class="primary-button" id="validation-audit-button" type="button">Registrar validacao</button>
         </div>
+
+        <section class="panel validation-command" id="validation-command"></section>
 
         <div class="validation-summary-grid" id="validation-summary-grid"></div>
 
@@ -136,13 +162,15 @@ function renderFileValidation() {
   ensureFileValidationView();
 
   const summary = document.getElementById("validation-summary-grid");
+  const command = document.getElementById("validation-command");
   const schemaList = document.getElementById("validation-schema-list");
   const resultList = document.getElementById("validation-result-list");
   const policyList = document.getElementById("validation-policy-list");
-  if (!summary || !schemaList || !resultList || !policyList) return;
+  if (!summary || !command || !schemaList || !resultList || !policyList) return;
 
   const schemas = getFileValidationSchemas();
   const metrics = getFileValidationMetrics();
+  const decision = getValidationDecision(metrics);
   const totals = Object.values(metrics).reduce(
     (acc, item) => ({
       rows: acc.rows + item.rows,
@@ -151,6 +179,18 @@ function renderFileValidation() {
     }),
     { rows: 0, critical: 0, warnings: 0 }
   );
+
+  command.innerHTML = `
+    <div>
+      <span class="validation-command-label">${decision.status}</span>
+      <strong>${decision.title}</strong>
+      <p>${decision.item.detail || `${decision.item.rows} item(ns), ${decision.item.critical} erro(s) critico(s), ${decision.item.warnings} alerta(s).`}</p>
+    </div>
+    <div class="validation-command-actions">
+      <span class="status ${getValidationStatusClass(decision.item.status)}">${decision.item.status}</span>
+      <button class="primary-button validation-next-action" data-target-view="${decision.target}" type="button">Abrir modulo</button>
+    </div>
+  `;
 
   summary.innerHTML = [
     ["Tipos validados", schemas.length],
@@ -195,12 +235,17 @@ function renderFileValidation() {
           <div>
             <strong>${label}</strong>
             <span>${item.rows} item(ns), ${item.critical} erro(s) critico(s), ${item.warnings} alerta(s).</span>
+            ${item.detail ? `<small>${item.detail}</small>` : ""}
           </div>
           <span class="status ${getValidationStatusClass(item.status)}">${item.status}</span>
         </div>
       `
     )
     .join("");
+
+  document.querySelector(".validation-next-action")?.addEventListener("click", (event) => {
+    openView(event.currentTarget.dataset.targetView);
+  });
 
   policyList.innerHTML = `
     <div class="validation-policy">
@@ -226,6 +271,34 @@ fileValidationStyle.textContent = `
     gap: 14px;
     margin-bottom: 18px;
   }
+  .validation-command {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #f8fafc, #eef6ff);
+  }
+  .validation-command-label {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .validation-command strong {
+    display: block;
+    font-size: 20px;
+  }
+  .validation-command p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .validation-command-actions {
+    display: grid;
+    gap: 10px;
+  }
   .validation-summary-card,
   .validation-schema-card,
   .validation-result,
@@ -242,6 +315,7 @@ fileValidationStyle.textContent = `
   .validation-schema-card span,
   .validation-schema-card p,
   .validation-result span,
+  .validation-result small,
   .validation-policy span {
     display: block;
     color: var(--muted);
@@ -293,6 +367,9 @@ fileValidationStyle.textContent = `
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .validation-schema-card {
+      grid-template-columns: 1fr;
+    }
+    .validation-command {
       grid-template-columns: 1fr;
     }
   }

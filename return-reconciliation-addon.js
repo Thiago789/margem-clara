@@ -1,8 +1,30 @@
 function classifyReturnReconciliationRow(row) {
   const contract = state.contracts.find((item) => item.id === row.contrato);
   const competency = row.competencia || (typeof currentCompetency === "function" ? currentCompetency() : today().slice(0, 7));
-  const amount = Number(row.valor_descontado || 0);
+  const rawAmount = String(row.valor_descontado ?? "").trim();
+  const amount = Number(rawAmount || 0);
   const normalizedStatus = normalizeReturnStatus(row.status);
+  const missingFields = [];
+
+  if (!String(row.contrato || "").trim()) missingFields.push("contrato");
+  if (!String(row.status || "").trim()) missingFields.push("status");
+  if (!String(row.competencia || "").trim()) missingFields.push("competencia");
+  if (!String(row.valor_descontado ?? "").trim()) missingFields.push("valor_descontado");
+
+  if (missingFields.length || !Number.isFinite(amount) || normalizedStatus === "Pendente") {
+    return {
+      contractId: row.contrato || "-",
+      competency,
+      status: "Invalido",
+      amount: Number.isFinite(amount) ? amount : 0,
+      expected: contract ? Number(contract.installment || 0) : 0,
+      difference: 0,
+      reason: missingFields.length
+        ? `Campo(s) obrigatorio(s) ausente(s): ${missingFields.join(", ")}.`
+        : "Status ou valor de retorno invalido para processamento automatico.",
+      category: "invalid",
+    };
+  }
 
   if (!contract) {
     return {
@@ -77,13 +99,41 @@ const processReturnCsvBeforeReconciliationDetails = processReturnCsv;
 processReturnCsv = function processReturnCsvWithReconciliationDetails(text) {
   const rows = parseCsv(text);
   const details = rows.map(classifyReturnReconciliationRow);
+  const invalid = details.filter((item) => item.category === "invalid");
+
+  if (invalid.length) {
+    state.lastReturnReconciliation = {
+      processedAt: today(),
+      blocked: true,
+      totalRows: rows.length,
+      ok: details.filter((item) => item.category === "ok").length,
+      invalid: invalid.length,
+      divergent: details.filter((item) => item.category === "divergent").length,
+      pending: details.filter((item) => item.category === "pending").length,
+      duplicate: details.filter((item) => item.category === "duplicate").length,
+      notFound: details.filter((item) => item.category === "not_found").length,
+      details,
+    };
+
+    auditEvent(`Arquivo retorno bloqueado: ${invalid.length} linha(s) com erro critico de validacao.`, "Conciliacao");
+    saveState();
+    render();
+    document.getElementById("return-result").innerHTML = `
+      <strong>Retorno bloqueado</strong>
+      <p>${rows.length} linha(s) lidas.</p>
+      <p>${invalid.length} linha(s) com erro critico. Corrija o arquivo antes de processar.</p>
+    `;
+    return;
+  }
 
   processReturnCsvBeforeReconciliationDetails(text);
 
   state.lastReturnReconciliation = {
     processedAt: today(),
+    blocked: false,
     totalRows: rows.length,
     ok: details.filter((item) => item.category === "ok").length,
+    invalid: 0,
     divergent: details.filter((item) => item.category === "divergent").length,
     pending: details.filter((item) => item.category === "pending").length,
     duplicate: details.filter((item) => item.category === "duplicate").length,
@@ -133,6 +183,7 @@ function renderReturnReconciliationDetails() {
 
   summary.innerHTML = [
     ["Linhas", data.totalRows],
+    ["Invalidas", data.invalid || 0],
     ["Conciliadas", data.ok],
     ["Divergentes", data.divergent],
     ["Duplicadas", data.duplicate],
@@ -175,7 +226,7 @@ returnReconciliationStyle.textContent = `
   }
   .return-reconciliation-summary {
     display: grid;
-    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    grid-template-columns: repeat(6, minmax(110px, 1fr));
     gap: 12px;
     margin-bottom: 12px;
   }
@@ -213,6 +264,7 @@ returnReconciliationStyle.textContent = `
   .return-reconciliation-row.pending {
     border-color: rgba(245, 158, 11, 0.45);
   }
+  .return-reconciliation-row.invalid,
   .return-reconciliation-row.not_found {
     border-color: rgba(239, 68, 68, 0.45);
   }

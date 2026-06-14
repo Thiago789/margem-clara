@@ -62,6 +62,7 @@ O MVP ja possui uma base navegavel com:
 - O fluxo piloto deve funcionar como central de jornada operacional, mostrando progresso do ciclo, proxima acao e atalhos para os modulos principais, para reduzir a sensacao de telas soltas.
 - A homologacao do MVP deve destacar a proxima pendencia de aceite e validar tambem matricula/vinculo, campos financeiros do contrato, conciliacao de retorno e rastreabilidade.
 - A tela de permissoes deve comparar a cobertura real de modulos por perfil e evidenciar quais modulos sensiveis ficam restritos ao gestor.
+- Arquivo retorno com campo obrigatorio ausente, status desconhecido ou valor invalido deve ser bloqueado antes de alterar contratos; divergencias, duplicidades e contratos nao localizados devem aparecer na validacao da competencia.
 
 ## Campos Importantes Ja Mapeados
 
