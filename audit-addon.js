@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260614-4`;
+  script.src = `${filename}?v=20260614-5`;
   document.body.appendChild(script);
 }
 
@@ -52,6 +52,7 @@ function loadMissingAddons() {
   [
     "file-exchange-addon.js",
     "file-validation-addon.js",
+    "margin-file-validation-addon.js",
     "convention-policy-addon.js",
     "authorization-flow-addon.js",
     "audit-enhancements-addon.js",

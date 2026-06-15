@@ -64,6 +64,7 @@ O MVP ja possui uma base navegavel com:
 - A tela de permissoes deve comparar a cobertura real de modulos por perfil e evidenciar quais modulos sensiveis ficam restritos ao gestor.
 - Arquivo retorno com campo obrigatorio ausente, status desconhecido ou valor invalido deve ser bloqueado antes de alterar contratos; divergencias, duplicidades e contratos nao localizados devem aparecer na validacao da competencia.
 - Arquivo de insercao deve passar por validacao final antes de sair para a folha, bloqueando contrato duplicado, campo obrigatorio ausente, matricula invalida, parcela/prazo invalidos, rubrica divergente e margem negativa apos reserva.
+- Arquivo de margem deve ser validado antes de atualizar a base, bloqueando cabecalho/campo obrigatorio ausente, CPF ou matricula duplicados, renda invalida, desconto acima da renda e status funcional desconhecido.
 
 ## Campos Importantes Ja Mapeados
 
