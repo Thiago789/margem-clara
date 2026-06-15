@@ -100,7 +100,7 @@ function getOperationalQueueData() {
       area: "Reserva pendente",
       title: contract.id,
       detail: "Reserva ainda nao entrou no arquivo de insercao da folha.",
-      target: "payroll",
+      target: "import",
     })),
     ...sent.map((contract) => ({
       severity: "Media",
@@ -108,7 +108,7 @@ function getOperationalQueueData() {
       area: "Aguardando retorno",
       title: contract.id,
       detail: "Desconto enviado para folha, aguardando retorno de processamento.",
-      target: "payroll",
+      target: "import",
     })),
     ...openTickets.map((ticket) => ({
       severity: "Baixa",
