@@ -8,63 +8,95 @@ if (!profileConfig.manager.views.includes("readiness")) {
 }
 
 function getReadinessGroups() {
-  return [
+  const marginValidation = state.lastMarginValidation;
+  const insertionValidation = state.lastInsertionValidation;
+  const returnReconciliation = state.lastReturnReconciliation;
+  const qaScenarios = typeof getPilotQaScenarios === "function" ? getPilotQaScenarios() : [];
+  const qaApproved = qaScenarios.filter((scenario) => scenario.ok).length;
+  const qaScore = qaScenarios.length ? Math.round((qaApproved / qaScenarios.length) * 100) : 0;
+  const hasProtocols = Boolean(marginValidation || insertionValidation || returnReconciliation);
+  const hasAccessMatrix = profileConfig.manager.views.includes("access") && !profileConfig.employee.views.includes("access");
+  const hasEnrollments = Array.isArray(state.enrollments) && state.enrollments.length >= state.employees.length;
+  const hasFileGuards = Boolean(marginValidation || insertionValidation || returnReconciliation);
+  const hasReturnGuard = Boolean(returnReconciliation);
+  const hasInsertionGuard = Boolean(insertionValidation);
+  const hasMarginGuard = Boolean(marginValidation);
+  const hasContracts = state.contracts.length > 0;
+  const hasAudit = state.movements.length > 0;
+  const hasApiPlan = profileConfig.manager.views.includes("api") || profileConfig.manager.views.includes("integrations");
+
+  const status = (condition, mapped = "Mapeado", pending = "Pendente") => (condition ? mapped : pending);
+  const scoreFromItems = (items) => {
+    const weights = { Demo: 100, Mapeado: 85, Parcial: 55, Pesquisa: 35, Futuro: 20, Pendente: 0 };
+    return Math.round(items.reduce((sum, [, itemStatus]) => sum + (weights[itemStatus] ?? 0), 0) / items.length);
+  };
+
+  const groups = [
     {
       title: "Seguranca e acesso",
-      score: 35,
       items: [
         ["Login real com sessao segura", "Pendente"],
-        ["Permissoes por perfil e convenio", "Mapeado"],
-        ["Auditoria de operacoes sensiveis", "Parcial"],
+        ["Permissoes por perfil e convenio", status(hasAccessMatrix)],
+        ["Auditoria de operacoes sensiveis", status(hasAudit, "Parcial")],
         ["Politica LGPD e minimizacao de dados", "Pendente"],
       ],
     },
     {
       title: "Dados e folha",
-      score: 55,
       items: [
-        ["Layout de margem importada", "Parcial"],
-        ["Arquivo de insercao para folha", "Mapeado"],
-        ["Arquivo retorno com motivos", "Mapeado"],
-        ["Historico por competencia", "Parcial"],
+        ["Layout de margem importada", status(hasMarginGuard, "Demo", "Parcial")],
+        ["Arquivo de insercao para folha", status(hasInsertionGuard, "Demo", "Mapeado")],
+        ["Arquivo retorno com motivos", status(hasReturnGuard, "Demo", "Mapeado")],
+        ["Protocolos por competencia", status(hasProtocols, "Parcial")],
       ],
     },
     {
       title: "Motor de margem",
-      score: 50,
       items: [
-        ["Calculo por matricula", "Mapeado"],
-        ["Reserva reduzindo saldo", "Demo"],
-        ["Contrato consumindo margem", "Demo"],
-        ["Bloqueios e margem negativa", "Parcial"],
+        ["Calculo por matricula", status(hasEnrollments)],
+        ["Reserva reduzindo saldo", status(hasContracts, "Demo")],
+        ["Contrato consumindo margem", status(hasContracts, "Demo")],
+        ["Bloqueios e margem negativa", status(hasFileGuards, "Parcial")],
       ],
     },
     {
       title: "Operacao piloto",
-      score: 40,
       items: [
         ["Convenio piloto definido", "Pendente"],
-        ["Massa homologada", "Pendente"],
-        ["Roteiro de teste de ponta a ponta", "Parcial"],
-        ["Aceite do gestor/RH", "Pendente"],
+        ["Massa homologada", qaScore >= 80 ? "Parcial" : "Pendente"],
+        ["Roteiro de teste de ponta a ponta", status(qaScenarios.length, "Parcial")],
+        ["Aceite do gestor/RH", qaScore >= 100 ? "Mapeado" : "Pendente"],
       ],
     },
     {
       title: "Integracoes",
-      score: 25,
       items: [
-        ["API interna desenhada", "Mapeado"],
+        ["API interna desenhada", status(hasApiPlan)],
         ["Webhooks de eventos", "Pesquisa"],
         ["Conector de folha", "Futuro"],
         ["Consulta de fonte publica", "Pesquisa"],
       ],
     },
   ];
+
+  return groups.map((group) => ({ ...group, score: scoreFromItems(group.items) }));
+}
+
+function getReadinessCurrentDecision(groups) {
+  const average = Math.round(groups.reduce((total, group) => total + group.score, 0) / groups.length);
+  const critical = groups.flatMap((group) => group.items).filter(([, status]) => status === "Pendente").length;
+  const nextGroup = groups.slice().sort((a, b) => a.score - b.score)[0];
+  return {
+    average,
+    critical,
+    nextGroup,
+    label: average >= 75 ? "MVP forte para demonstracao" : average >= 55 ? "MVP em maturacao operacional" : "MVP ainda exige consolidacao",
+  };
 }
 
 function getReadinessStatusClass(status) {
   if (status === "Demo" || status === "Mapeado") return "";
-  if (status === "Parcial" || status === "Pesquisa") return "warning";
+  if (status === "Parcial" || status === "Pesquisa" || status === "Futuro") return "warning";
   return "danger";
 }
 
@@ -93,6 +125,8 @@ function ensureReadinessView() {
           </div>
           <button class="primary-button" id="readiness-audit-button" type="button">Registrar checkpoint</button>
         </div>
+
+        <section class="panel readiness-command" id="readiness-command"></section>
 
         <div class="readiness-summary-grid" id="readiness-summary-grid"></div>
 
@@ -125,14 +159,30 @@ function renderReadiness() {
   ensureReadinessView();
 
   const summary = document.getElementById("readiness-summary-grid");
+  const command = document.getElementById("readiness-command");
   const grid = document.getElementById("readiness-grid");
   const decisions = document.getElementById("readiness-decisions");
-  if (!summary || !grid || !decisions) return;
+  if (!summary || !command || !grid || !decisions) return;
 
   const groups = getReadinessGroups();
-  const average = Math.round(groups.reduce((total, group) => total + group.score, 0) / groups.length);
+  const decision = getReadinessCurrentDecision(groups);
+  const average = decision.average;
   const mappedItems = groups.flatMap((group) => group.items).filter(([, status]) => ["Demo", "Mapeado", "Parcial"].includes(status)).length;
-  const pendingItems = groups.flatMap((group) => group.items).filter(([, status]) => status === "Pendente").length;
+  const pendingItems = decision.critical;
+
+  command.innerHTML = `
+    <div>
+      <span class="readiness-command-label">${decision.label}</span>
+      <strong>${decision.nextGroup.title}</strong>
+      <p>Frente com menor maturidade atual: ${decision.nextGroup.score}%. Use isso para priorizar o proximo bloco antes de pensar em producao.</p>
+    </div>
+    <div class="readiness-command-actions">
+      <div class="readiness-command-meter" aria-label="${average}% de prontidao geral">
+        <span style="width: ${average}%"></span>
+      </div>
+      <button class="primary-button readiness-next-action" data-target-view="qa" type="button">Abrir homologacao</button>
+    </div>
+  `;
 
   summary.innerHTML = [
     ["Prontidao geral", `${average}%`],
@@ -182,8 +232,8 @@ function renderReadiness() {
 
   decisions.innerHTML = `
     <div class="readiness-decision">
-      <strong>Manter a demo estatica ate fechar narrativa e regras</strong>
-      <span>A demo ainda e a melhor ferramenta para validar produto com baixo risco tecnico.</span>
+      <strong>Manter a demo estatica ate fechar aceite operacional</strong>
+      <span>A demo ja valida regras importantes; agora a decisao deve ser guiada por homologacao, protocolos e pendencias reais.</span>
     </div>
     <div class="readiness-decision">
       <strong>Comecar backend somente com nucleo bem definido</strong>
@@ -194,6 +244,10 @@ function renderReadiness() {
       <span>Um convenio, um layout de margem, um fluxo de insercao/retorno e poucas consignatarias homologadas.</span>
     </div>
   `;
+
+  document.querySelector(".readiness-next-action")?.addEventListener("click", (event) => {
+    openView(event.currentTarget.dataset.targetView);
+  });
 }
 
 const readinessStyle = document.createElement("style");
@@ -207,10 +261,50 @@ readinessStyle.textContent = `
     grid-template-columns: repeat(4, minmax(150px, 1fr));
     margin-bottom: 18px;
   }
+  .readiness-command {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #f8fafc, #eef6ff);
+  }
+  .readiness-command-label {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .readiness-command strong {
+    display: block;
+    font-size: 20px;
+  }
+  .readiness-command p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .readiness-command-actions {
+    display: grid;
+    gap: 10px;
+  }
+  .readiness-command-meter {
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--line);
+  }
+  .readiness-command-meter span {
+    display: block;
+    height: 100%;
+    background: var(--primary);
+  }
   .readiness-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .readiness-summary-card,
+  .readiness-command,
   .readiness-card,
   .readiness-decision {
     border: 1px solid var(--line);
@@ -276,6 +370,9 @@ readinessStyle.textContent = `
     .readiness-summary-grid,
     .readiness-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .readiness-command {
+      grid-template-columns: 1fr;
     }
   }
   @media (max-width: 700px) {

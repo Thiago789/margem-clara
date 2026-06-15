@@ -67,6 +67,7 @@ O MVP ja possui uma base navegavel com:
 - Arquivo de margem deve ser validado antes de atualizar a base, bloqueando cabecalho/campo obrigatorio ausente, CPF ou matricula duplicados, renda invalida, desconto acima da renda e status funcional desconhecido.
 - Layouts de margem, insercao e retorno devem ter versao por competencia e status de homologacao, para evitar misturar arquivos de convenios ou layouts diferentes.
 - Protocolos de remessa devem refletir as validacoes reais de margem, insercao e retorno, incluindo linhas, erros criticos, alertas, layout, competencia e status operacional.
+- Prontidao V1 deve ser calculada a partir do estado real do MVP, usando validacoes, homologacao, protocolos, permissoes, contratos, auditoria e integracoes mapeadas.
 
 ## Campos Importantes Ja Mapeados
 
