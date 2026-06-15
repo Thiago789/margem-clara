@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260615-1`;
+  script.src = `${filename}?v=20260615-2`;
   document.body.appendChild(script);
 }
 
@@ -100,6 +100,7 @@ function loadMissingAddons() {
     "file-layouts-addon.js",
     "access-control-addon.js",
     "dashboard-command-addon.js",
+    "navigation-guard-addon.js",
   ].forEach(loadAddonScript);
 }
 
