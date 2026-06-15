@@ -16,7 +16,9 @@ function getFileLayouts() {
       direction: "Entrada",
       format: "CSV ou TXT delimitado",
       status: "Obrigatorio",
-      fields: ["cpf", "matricula", "nome", "renda_base", "descontos_obrigatorios", "status_servidor"],
+      version: "MARGEM v1.1",
+      homologation: "Homologado para MVP",
+      fields: ["nome", "cpf", "matricula", "renda_base", "descontos_obrigatorios", "status"],
       validations: ["CPF e matricula unicos", "Renda numerica", "Servidor ativo ou bloqueado identificado"],
       effect: "Atualiza base do servidor, margem bruta, margem liquida e bloqueios operacionais.",
     },
@@ -27,7 +29,9 @@ function getFileLayouts() {
       direction: "Saida",
       format: "CSV, TXT fixo ou API",
       status: "Gerado pelo sistema",
-      fields: ["contrato", "cpf", "matricula", "rubrica", "valor_parcela", "prazo", "competencia", "acao"],
+      version: "INSERCAO v1.2",
+      homologation: "Em validacao",
+      fields: ["contrato", "cpf", "matricula", "produto", "tipo_contrato", "rubrica", "parcela", "prazo", "parcela_atual", "competencia", "valor_contratado", "taxa_mensal", "cet_mensal", "primeiro_vencimento", "primeira_competencia", "acao"],
       validations: ["Reserva ativa", "Rubrica valida", "Valor dentro da margem", "Competencia aberta"],
       effect: "Envia os descontos que devem ser incluidos, alterados ou excluidos na folha.",
     },
@@ -38,11 +42,32 @@ function getFileLayouts() {
       direction: "Entrada",
       format: "CSV ou TXT delimitado",
       status: "Fecha competencia",
-      fields: ["contrato", "cpf", "rubrica", "status", "motivo", "valor_descontado", "competencia"],
+      version: "RETORNO v1.1",
+      homologation: "Homologado para MVP",
+      fields: ["contrato", "competencia", "status", "motivo", "valor_descontado"],
       validations: ["Contrato conhecido", "Status padronizado", "Motivo quando rejeitado", "Valor conciliado"],
       effect: "Confirma desconto, aponta rejeicoes e alimenta pendencias para a proxima competencia.",
     },
   ];
+}
+
+function getLayoutVersionPlan() {
+  const competency = state.conventionSettings?.payrollCompetency || today().slice(0, 7);
+  return getFileLayouts().map((layout) => ({
+    code: layout.code,
+    version: layout.version,
+    agreement: "Prefeitura Modelo",
+    competency,
+    owner: layout.direction === "Saida" ? "Margem Clara" : "Folha de pagamento",
+    status: layout.homologation,
+    requiredBeforePilot: layout.code !== "INSERCAO" ? "Aprovado" : "Validar com massa teste",
+  }));
+}
+
+function layoutVersionStatusClass(status) {
+  if (/validacao|teste/i.test(status)) return "warning";
+  if (/pendente|bloqueado/i.test(status)) return "danger";
+  return "";
 }
 
 function ensureFileLayoutsView() {
@@ -80,6 +105,13 @@ function ensureFileLayoutsView() {
           <div class="layout-list" id="layout-list"></div>
         </section>
 
+        <section class="panel layout-panel">
+          <div class="panel-heading">
+            <h3>Versoes por competencia</h3>
+          </div>
+          <div class="layout-version-list" id="layout-version-list"></div>
+        </section>
+
         <div class="content-grid layout-content">
           <section class="panel">
             <div class="panel-heading">
@@ -112,11 +144,13 @@ function renderFileLayouts() {
 
   const summary = document.getElementById("layout-summary-grid");
   const list = document.getElementById("layout-list");
+  const versions = document.getElementById("layout-version-list");
   const standards = document.getElementById("layout-standards");
   const controls = document.getElementById("layout-controls");
-  if (!summary || !list || !standards || !controls) return;
+  if (!summary || !list || !versions || !standards || !controls) return;
 
   const layouts = getFileLayouts();
+  const versionPlan = getLayoutVersionPlan();
   const inbound = layouts.filter((layout) => layout.direction === "Entrada").length;
   const outbound = layouts.filter((layout) => layout.direction === "Saida").length;
   const fields = layouts.reduce((sum, layout) => sum + layout.fields.length, 0);
@@ -126,6 +160,7 @@ function renderFileLayouts() {
     ["Layouts base", layouts.length],
     ["Entradas da folha", inbound],
     ["Saidas para folha", outbound],
+    ["Campos mapeados", fields],
     ["Validacoes", validations],
   ];
 
@@ -158,14 +193,42 @@ function renderFileLayouts() {
             <strong>${layout.format}</strong>
           </div>
           <div>
+            <span>Versao</span>
+            <strong>${layout.version}</strong>
+          </div>
+          <div>
             <span class="status ${statusClass}">${layout.status}</span>
           </div>
+          <p><strong>Homologacao:</strong> ${layout.homologation}.</p>
           <p>${layout.effect}</p>
           <p><strong>Campos:</strong> ${layout.fields.join(", ")}.</p>
           <p><strong>Validacoes:</strong> ${layout.validations.join("; ")}.</p>
         </article>
       `;
     })
+    .join("");
+
+  versions.innerHTML = versionPlan
+    .map(
+      (item) => `
+        <article class="layout-version-row">
+          <div>
+            <strong>${item.version}</strong>
+            <span>${item.code} - ${item.agreement}</span>
+          </div>
+          <div>
+            <span>Competencia</span>
+            <strong>${item.competency}</strong>
+          </div>
+          <div>
+            <span>Responsavel</span>
+            <strong>${item.owner}</strong>
+          </div>
+          <span class="status ${layoutVersionStatusClass(item.status)}">${item.status}</span>
+          <p><strong>Antes do piloto:</strong> ${item.requiredBeforePilot}.</p>
+        </article>
+      `
+    )
     .join("");
 
   standards.innerHTML = `
@@ -203,7 +266,7 @@ const fileLayoutsStyle = document.createElement("style");
 fileLayoutsStyle.textContent = `
   .layout-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(5, minmax(140px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }
@@ -233,23 +296,30 @@ fileLayoutsStyle.textContent = `
     font-size: 26px;
   }
   .layout-list,
-  .layout-notes {
+  .layout-notes,
+  .layout-version-list {
     display: grid;
     gap: 10px;
   }
-  .layout-row {
+  .layout-row,
+  .layout-version-row {
     display: grid;
-    grid-template-columns: 1.3fr 0.65fr 1fr auto;
+    grid-template-columns: 1.3fr 0.65fr 1fr 0.8fr auto;
     gap: 12px;
     align-items: center;
     padding: 12px;
     background: var(--surface-2);
   }
-  .layout-row p {
+  .layout-version-row {
+    grid-template-columns: 1.2fr 0.8fr 1fr auto;
+  }
+  .layout-row p,
+  .layout-version-row p {
     grid-column: 1 / -1;
     margin: 0;
   }
-  .layout-row p strong {
+  .layout-row p strong,
+  .layout-version-row p strong {
     color: var(--text);
     font-size: 13px;
   }
@@ -267,10 +337,14 @@ fileLayoutsStyle.textContent = `
     .layout-row {
       grid-template-columns: 1fr 1fr;
     }
+    .layout-version-row {
+      grid-template-columns: 1fr 1fr;
+    }
   }
   @media (max-width: 640px) {
     .layout-summary-grid,
-    .layout-row {
+    .layout-row,
+    .layout-version-row {
       grid-template-columns: 1fr;
     }
   }
