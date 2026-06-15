@@ -44,10 +44,99 @@ function getDemoScenarios() {
   ];
 }
 
+function demoValidationDetail(overrides = {}) {
+  return {
+    line: overrides.line || 2,
+    cpf: overrides.cpf || "123.456.789-10",
+    enrollment: overrides.enrollment || "MAT-1001",
+    name: overrides.name || "Ana Paula Santos",
+    contractId: overrides.contractId || "RSV-2026-003",
+    competency: overrides.competency || today().slice(0, 7),
+    status: overrides.status || "Apto",
+    critical: overrides.critical || [],
+    warnings: overrides.warnings || [],
+    reason: overrides.reason || "Linha apta para demonstracao.",
+    category: overrides.category || "ok",
+  };
+}
+
+function applyDemoValidationArtifacts(kind) {
+  const competency = today().slice(0, 7);
+
+  state.demoScriptChecks = [];
+  state.lastMarginValidation = {
+    processedAt: today(),
+    totalRows: state.employees.length,
+    critical: 0,
+    warnings: state.employees.filter((employee) => employee.status === "Em revisao").length,
+    blocked: false,
+    details: state.employees.map((employee, index) =>
+      demoValidationDetail({
+        line: index + 2,
+        cpf: employee.cpf,
+        enrollment: employee.enrollment,
+        name: employee.name,
+        status: employee.status === "Em revisao" ? "Revisar" : "Apto",
+        warnings: employee.status === "Em revisao" ? ["Servidor importado em revisao"] : [],
+      })
+    ),
+  };
+
+  state.lastInsertionValidation = {
+    processedAt: today(),
+    totalRows: 1,
+    critical: 0,
+    warnings: kind === "base" ? 1 : 0,
+    blocked: false,
+    details: [
+      {
+        contractId: "RSV-2026-003",
+        competency,
+        status: kind === "base" ? "Revisar" : "Apto",
+        critical: [],
+        warnings: kind === "base" ? ["Primeiro vencimento nao informado"] : [],
+      },
+    ],
+  };
+
+  state.lastReturnReconciliation = {
+    processedAt: today(),
+    blocked: false,
+    totalRows: kind === "base" ? 0 : 1,
+    ok: kind === "competence-ok" ? 1 : 0,
+    invalid: 0,
+    divergent: 0,
+    pending: ["return-rejected", "margin-risk"].includes(kind) ? 1 : 0,
+    duplicate: 0,
+    notFound: 0,
+    details:
+      kind === "base"
+        ? []
+        : [
+            {
+              contractId: kind === "return-rejected" ? "RSV-2026-004" : kind === "margin-risk" ? "CTR-2026-005" : "RSV-2026-003",
+              competency,
+              status: kind === "competence-ok" ? "Descontando" : "Nao descontado",
+              amount: kind === "competence-ok" ? 210 : 0,
+              expected: kind === "margin-risk" ? 680 : kind === "return-rejected" ? 380 : 210,
+              difference: kind === "competence-ok" ? 0 : kind === "margin-risk" ? -680 : -380,
+              reason:
+                kind === "competence-ok"
+                  ? "Conciliado."
+                  : kind === "margin-risk"
+                    ? "Margem insuficiente apos atualizacao da base."
+                    : "Matricula sem vinculo ativo na competencia informada.",
+              category: kind === "competence-ok" ? "ok" : "pending",
+            },
+          ],
+  };
+}
+
 function applyDemoScenario(scenarioId) {
   state = cloneInitialState();
   state.currentProfile = "manager";
   normalizeState();
+  applyDemoValidationArtifacts(scenarioId);
 
   if (scenarioId === "competence-ok") {
     state.contracts = state.contracts.map((contract) => {
@@ -55,10 +144,21 @@ function applyDemoScenario(scenarioId) {
       return {
         ...contract,
         status: "Descontando",
+        currentInstallment: 1,
         sentToPayrollAt: today(),
         returnProcessedAt: today(),
         discountedValue: contract.installment,
         returnReason: "Desconto processado com sucesso.",
+        installmentHistory: [
+          {
+            competency: today().slice(0, 7),
+            status: "Descontando",
+            amount: contract.installment,
+            reason: "Processado pela massa de teste.",
+            duplicate: false,
+            processedAt: today(),
+          },
+        ],
       };
     });
     state.movements.unshift(
@@ -90,6 +190,16 @@ function applyDemoScenario(scenarioId) {
       returnProcessedAt: today(),
       discountedValue: 0,
       returnReason: "Matricula sem vinculo ativo na competencia informada.",
+      installmentHistory: [
+        {
+          competency: today().slice(0, 7),
+          status: "Rejeitado",
+          amount: 0,
+          reason: "Matricula sem vinculo ativo na competencia informada.",
+          duplicate: false,
+          processedAt: today(),
+        },
+      ],
     });
     state.tickets.unshift({
       id: "SUP-002",
@@ -128,6 +238,16 @@ function applyDemoScenario(scenarioId) {
       returnProcessedAt: today(),
       discountedValue: 0,
       returnReason: "Margem insuficiente apos atualizacao da base.",
+      installmentHistory: [
+        {
+          competency: today().slice(0, 7),
+          status: "Nao descontado",
+          amount: 0,
+          reason: "Margem insuficiente apos atualizacao da base.",
+          duplicate: false,
+          processedAt: today(),
+        },
+      ],
     });
     state.movements.unshift({
       date: today(),

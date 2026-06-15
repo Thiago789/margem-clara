@@ -71,6 +71,7 @@ O MVP ja possui uma base navegavel com:
 - Painel inicial do gestor deve exibir um cockpit operacional com proxima acao do fluxo piloto, fila de pendencias e prontidao V1.
 - Atalhos para modulos inexistentes ou indisponiveis por perfil devem ser redirecionados com registro de auditoria, evitando queda silenciosa no painel.
 - Massa de teste deve incluir roteiro de apresentacao com etapas marcaveis e atalhos para os modulos, facilitando demonstracao do MVP para terceiros.
+- Cenarios de massa de teste devem preencher tambem validacoes, protocolos, conciliacao de retorno e prontidao, para que a demonstracao reflita o fluxo operacional completo.
 
 ## Campos Importantes Ja Mapeados
 
