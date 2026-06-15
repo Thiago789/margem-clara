@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260615-2`;
+  script.src = `${filename}?v=20260615-3`;
   document.body.appendChild(script);
 }
 
@@ -83,6 +83,7 @@ function loadMissingAddons() {
     "enrollment-addon.js",
     "readiness-addon.js",
     "demo-data-addon.js",
+    "demo-script-addon.js",
     "reservation-lifecycle-addon.js",
     "product-rules-addon.js",
     "product-margin-addon.js",
