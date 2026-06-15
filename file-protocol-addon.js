@@ -14,47 +14,79 @@ function getFileProtocolBatches() {
   const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha");
   const returned = state.contracts.filter((contract) => ["Descontando", "Rejeitado", "Nao descontado"].includes(contract.status));
   const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const marginValidation = state.lastMarginValidation;
+  const insertionValidation = state.lastInsertionValidation;
+  const returnReconciliation = state.lastReturnReconciliation;
+  const competency = state.conventionSettings?.payrollCompetency || month;
 
   return [
     {
-      id: `MRG-${month}-001`,
+      id: `MRG-${competency}-001`,
       type: "Arquivo de margem",
       direction: "Folha -> Margem Clara",
-      layout: "MARGEM v1",
-      status: importedEmployees ? "Processado" : "Pendente",
-      records: importedEmployees,
+      layout: "MARGEM v1.1",
+      status: marginValidation?.blocked ? "Bloqueado" : marginValidation?.totalRows ? "Processado" : importedEmployees ? "Processado" : "Pendente",
+      records: marginValidation?.totalRows ?? importedEmployees,
       amount: state.employees.reduce((total, employee) => total + Number(employee.income || 0), 0),
-      evidence: "Hash, competencia, layout, usuario e resumo de validacao.",
-      issue: importedEmployees ? "Sem bloqueio critico na demo atual." : "Aguardando arquivo da folha.",
+      critical: marginValidation?.critical || 0,
+      warnings: marginValidation?.warnings || 0,
+      evidence: marginValidation
+        ? `${marginValidation.totalRows} linha(s), ${marginValidation.critical} erro(s), ${marginValidation.warnings} alerta(s).`
+        : "Hash, competencia, layout, usuario e resumo de validacao.",
+      issue: marginValidation?.blocked
+        ? "Arquivo de margem bloqueado por validacao critica."
+        : importedEmployees
+          ? "Sem bloqueio critico na demo atual."
+          : "Aguardando arquivo da folha.",
     },
     {
-      id: `INS-${month}-001`,
+      id: `INS-${competency}-001`,
       type: "Arquivo de insercao",
       direction: "Margem Clara -> Folha",
-      layout: "INSERCAO v1",
-      status: sent.length ? "Enviado" : reserved.length ? "Pronto para gerar" : "Sem movimento",
-      records: sent.length || reserved.length,
+      layout: "INSERCAO v1.2",
+      status: insertionValidation?.blocked ? "Bloqueado" : sent.length ? "Enviado" : reserved.length ? "Pronto para gerar" : "Sem movimento",
+      records: insertionValidation?.totalRows ?? (sent.length || reserved.length),
       amount: [...sent, ...reserved].reduce((total, contract) => total + Number(contract.installment || 0), 0),
-      evidence: "Reservas, rubricas, competencia, usuario gerador e arquivo entregue.",
-      issue: reserved.length ? "Existem reservas que ainda podem virar remessa." : "Nenhuma reserva pendente.",
+      critical: insertionValidation?.critical || 0,
+      warnings: insertionValidation?.warnings || 0,
+      evidence: insertionValidation
+        ? `${insertionValidation.totalRows} linha(s), ${insertionValidation.critical} erro(s), ${insertionValidation.warnings} alerta(s).`
+        : "Reservas, rubricas, competencia, usuario gerador e arquivo entregue.",
+      issue: insertionValidation?.blocked
+        ? "Arquivo de insercao bloqueado antes de sair para a folha."
+        : reserved.length
+          ? "Existem reservas que ainda podem virar remessa."
+          : "Nenhuma reserva pendente.",
     },
     {
-      id: `RET-${month}-001`,
+      id: `RET-${competency}-001`,
       type: "Arquivo retorno",
       direction: "Folha -> Margem Clara",
-      layout: "RETORNO v1",
-      status: returned.length ? (rejected.length ? "Processado com pendencia" : "Conciliado") : sent.length ? "Aguardando retorno" : "Pendente",
-      records: returned.length,
+      layout: "RETORNO v1.1",
+      status: returnReconciliation?.blocked
+        ? "Bloqueado"
+        : returned.length
+          ? (rejected.length || returnReconciliation?.divergent || returnReconciliation?.pending ? "Processado com pendencia" : "Conciliado")
+          : sent.length ? "Aguardando retorno" : "Pendente",
+      records: returnReconciliation?.totalRows ?? returned.length,
       amount: returned.reduce((total, contract) => total + Number(contract.discountedValue || contract.installment || 0), 0),
-      evidence: "Status por contrato, motivo, valor descontado e divergencias.",
-      issue: rejected.length ? `${rejected.length} contrato(s) exigem tratamento.` : "Sem rejeicoes processadas na demo atual.",
+      critical: Number(returnReconciliation?.invalid || 0) + Number(returnReconciliation?.notFound || 0) + Number(returnReconciliation?.duplicate || 0),
+      warnings: Number(returnReconciliation?.divergent || 0) + Number(returnReconciliation?.pending || 0),
+      evidence: returnReconciliation
+        ? `${returnReconciliation.totalRows} linha(s), ${returnReconciliation.ok} conciliada(s), ${returnReconciliation.divergent} divergente(s), ${returnReconciliation.duplicate} duplicada(s).`
+        : "Status por contrato, motivo, valor descontado e divergencias.",
+      issue: returnReconciliation?.blocked
+        ? "Retorno bloqueado por erro critico antes de alterar contratos."
+        : rejected.length
+          ? `${rejected.length} contrato(s) exigem tratamento.`
+          : "Sem rejeicoes processadas na demo atual.",
     },
   ];
 }
 
 function getProtocolStatusClass(status) {
   if (["Processado com pendencia", "Aguardando retorno", "Pronto para gerar"].includes(status)) return "warning";
-  if (["Pendente"].includes(status)) return "danger";
+  if (["Pendente", "Bloqueado"].includes(status)) return "danger";
   return "";
 }
 
@@ -168,6 +200,7 @@ function renderFileProtocols() {
           </div>
           <span class="status ${getProtocolStatusClass(batch.status)}">${batch.status}</span>
           <p><strong>Resumo:</strong> ${batch.records} registro(s), total de ${formatMoney(batch.amount)}.</p>
+          <p><strong>Validacao:</strong> ${batch.critical} erro(s) critico(s), ${batch.warnings} alerta(s).</p>
           <p><strong>Evidencia:</strong> ${batch.evidence}</p>
           <p><strong>Ponto de atencao:</strong> ${batch.issue}</p>
         </article>
