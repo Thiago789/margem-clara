@@ -3,6 +3,7 @@ const marginPercent = 0.35;
 const marginUsageStatuses = ["Descontando", "Averbado", "Enviado para folha"];
 const marginReservationStatuses = ["Reservado"];
 const marginReleasedStatuses = ["Liquidado", "Cancelado", "Rejeitado"];
+const returnIssueStatuses = ["Rejeitado", "Nao descontado"];
 
 const lenders = [
   { id: "lender-1", name: "Banco Horizonte", rate: 1.72, cet: 1.91 },
@@ -203,6 +204,10 @@ function contractConsumesMargin(contract) {
 
 function contractReleasesMargin(contract) {
   return marginReleasedStatuses.includes(contract.status);
+}
+
+function contractHasReturnIssue(contract) {
+  return returnIssueStatuses.includes(contract.status);
 }
 
 function calculateMargin(employee) {

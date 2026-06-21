@@ -74,6 +74,7 @@ O MVP ja possui uma base navegavel com:
 - Cenarios de massa de teste devem preencher tambem validacoes, protocolos, conciliacao de retorno e prontidao, para que a demonstracao reflita o fluxo operacional completo.
 - A tela de competencias deve evidenciar saldo de parcelas, contratos proximos da liquidacao e pendencias de retorno, pois a baixa de parcela depende de retorno confirmado.
 - O consumo de margem deve usar uma regra central de status: descontando/averbado/enviado consomem, reservado bloqueia reserva, e liquidado/cancelado/rejeitado liberam a margem.
+- Status de retorno com pendencia devem ser tratados por regra propria: rejeitado e nao descontado exigem fila operacional, mas nao descontado permanece pendente ate decisao formal.
 
 ## Campos Importantes Ja Mapeados
 

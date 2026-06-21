@@ -62,9 +62,9 @@ function ensureOperationalQueueView() {
 }
 
 function getOperationalQueueData() {
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha");
-  const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const rejected = state.contracts.filter(contractHasReturnIssue);
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
   const negativeEmployees = state.employees.filter((employee) => calculateMargin(employee).available < 0);
   const openTickets = state.tickets.filter((ticket) => ticket.status === "Aberto");
@@ -173,7 +173,7 @@ function renderOperationalQueue() {
   actions.innerHTML = `
     <div class="queue-action-row">
       <strong>1. Tratar prioridade alta</strong>
-      <span>Margem negativa e retorno rejeitado devem ser analisados antes de nova liberacao.</span>
+      <span>Margem negativa e retorno com pendencia devem ser analisados antes de nova liberacao.</span>
     </div>
     <div class="queue-action-row">
       <strong>2. Fechar ciclo da folha</strong>

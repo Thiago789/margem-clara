@@ -69,19 +69,19 @@ function getReservationLifecycleData() {
   const contracts = state.currentProfile === "lender"
     ? state.contracts.filter((contract) => contract.lenderId === "lender-1")
     : state.contracts;
-  const reserved = contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = contracts.filter((contract) => contract.status === "Enviado para folha");
-  const active = contracts.filter((contract) => ["Averbado", "Descontando"].includes(contract.status));
-  const rejected = contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha");
+  const rejected = contracts.filter(contractHasReturnIssue);
   const activeCodes = state.authorizationCodes.filter((authorization) => authorization.status === "Ativo");
 
   const rows = contracts
-    .filter((contract) => ["Reservado", "Enviado para folha", "Rejeitado", "Nao descontado"].includes(contract.status))
+    .filter((contract) => marginReservationStatuses.includes(contract.status) || contract.status === "Enviado para folha" || contractHasReturnIssue(contract))
     .map((contract) => {
       const employee = employeeById(contract.employeeId);
       const margin = employee ? calculateMargin(employee) : null;
       const code = activeCodes.find((authorization) => authorization.employeeId === contract.employeeId);
-      const needsAction = contract.status === "Reservado" || ["Rejeitado", "Nao descontado"].includes(contract.status);
+      const needsAction = marginReservationStatuses.includes(contract.status) || contractHasReturnIssue(contract);
       return {
         contract,
         employee,
@@ -124,9 +124,9 @@ function renderReservationLifecycle() {
   list.innerHTML = data.rows.length
     ? data.rows
         .map(({ contract, employee, margin, code, needsAction }) => {
-          const statusClass = ["Rejeitado", "Nao descontado"].includes(contract.status)
+          const statusClass = contractHasReturnIssue(contract)
             ? "danger"
-            : contract.status === "Reservado" || contract.status === "Enviado para folha"
+            : marginReservationStatuses.includes(contract.status) || contract.status === "Enviado para folha"
               ? "warning"
               : "";
           return `
@@ -163,7 +163,7 @@ function renderReservationLifecycle() {
     </div>
     <div class="reservation-rule">
       <strong>Retorno com erro</strong>
-      <span>Rejeicao ou nao desconto deve liberar margem ou voltar para tratamento manual.</span>
+      <span>Rejeicao libera margem conforme regra central; nao desconto fica pendente ate decisao formal.</span>
     </div>
     <div class="reservation-rule">
       <strong>Auditoria</strong>
