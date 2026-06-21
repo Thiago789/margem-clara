@@ -1,5 +1,8 @@
 const STORAGE_KEY = "margem-clara-v1";
 const marginPercent = 0.35;
+const marginUsageStatuses = ["Descontando", "Averbado", "Enviado para folha"];
+const marginReservationStatuses = ["Reservado"];
+const marginReleasedStatuses = ["Liquidado", "Cancelado", "Rejeitado"];
 
 const lenders = [
   { id: "lender-1", name: "Banco Horizonte", rate: 1.72, cet: 1.91 },
@@ -184,14 +187,22 @@ function activeContracts(employeeId) {
   return state.contracts.filter(
     (contract) =>
       contract.employeeId === employeeId &&
-      ["Descontando", "Averbado", "Enviado para folha"].includes(contract.status)
+      marginUsageStatuses.includes(contract.status)
   );
 }
 
 function reservedContracts(employeeId) {
   return state.contracts.filter(
-    (contract) => contract.employeeId === employeeId && contract.status === "Reservado"
+    (contract) => contract.employeeId === employeeId && marginReservationStatuses.includes(contract.status)
   );
+}
+
+function contractConsumesMargin(contract) {
+  return marginUsageStatuses.includes(contract.status) || marginReservationStatuses.includes(contract.status);
+}
+
+function contractReleasesMargin(contract) {
+  return marginReleasedStatuses.includes(contract.status);
 }
 
 function calculateMargin(employee) {

@@ -44,12 +44,13 @@ function contractsByEnrollment(enrollmentId, statuses) {
 
 function calculateEnrollmentMargin(enrollment) {
   const calculationBase = Math.max(Number(enrollment.baseSalary || 0) - Number(enrollment.mandatoryDeductions || 0), 0);
-  const total = calculationBase * marginPercent;
-  const used = contractsByEnrollment(enrollment.id, ["Descontando", "Averbado", "Enviado para folha"]).reduce(
+  const percentage = Number(state.conventionSettings?.marginPercentage || marginPercent * 100) / 100;
+  const total = calculationBase * percentage;
+  const used = contractsByEnrollment(enrollment.id, marginUsageStatuses).reduce(
     (sum, contract) => sum + Number(contract.installment || 0),
     0
   );
-  const reserved = contractsByEnrollment(enrollment.id, ["Reservado"]).reduce((sum, contract) => sum + Number(contract.installment || 0), 0);
+  const reserved = contractsByEnrollment(enrollment.id, marginReservationStatuses).reduce((sum, contract) => sum + Number(contract.installment || 0), 0);
   const blocked = enrollment.status === "Em revisao" ? total * 0.1 : 0;
   const available = total - used - reserved - blocked;
 
