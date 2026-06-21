@@ -70,10 +70,10 @@ function ensurePayrollCycleView() {
 
 function getPayrollCycleData() {
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha");
   const discounted = state.contracts.filter((contract) => contract.status === "Descontando");
-  const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const rejected = state.contracts.filter(contractHasReturnIssue);
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
 
   const steps = [

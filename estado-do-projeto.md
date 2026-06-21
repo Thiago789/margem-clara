@@ -76,6 +76,7 @@ O MVP ja possui uma base navegavel com:
 - O consumo de margem deve usar uma regra central de status: descontando/averbado/enviado consomem, reservado bloqueia reserva, e liquidado/cancelado/rejeitado liberam a margem.
 - Status de retorno com pendencia devem ser tratados por regra propria: rejeitado e nao descontado exigem fila operacional, mas nao descontado permanece pendente ate decisao formal.
 - Leituras de margem por produto, endividamento e saldo devedor devem consumir as mesmas regras centrais de status para evitar divergencia entre paineis.
+- Troca de arquivos, validacao e competencia da folha devem usar as regras centrais de reserva e pendencia de retorno para manter o ciclo mensal consistente.
 
 ## Campos Importantes Ja Mapeados
 

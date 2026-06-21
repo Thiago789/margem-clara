@@ -36,10 +36,10 @@ function getFileValidationSchemas() {
 function getFileValidationMetrics() {
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
   const invalidIncome = state.employees.filter((employee) => Number(employee.income || 0) <= 0);
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha");
-  const returned = state.contracts.filter((contract) => ["Descontando", "Rejeitado", "Nao descontado"].includes(contract.status));
-  const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const returned = state.contracts.filter((contract) => contract.status === "Descontando" || contractHasReturnIssue(contract));
+  const rejected = state.contracts.filter(contractHasReturnIssue);
   const withoutReason = rejected.filter((contract) => !contract.returnReason);
   const reconciliation = state.lastReturnReconciliation || {};
   const returnCritical = Number(reconciliation.invalid || 0) + Number(reconciliation.notFound || 0) + Number(reconciliation.duplicate || 0) + withoutReason.length;

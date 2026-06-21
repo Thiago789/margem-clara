@@ -658,10 +658,10 @@ function renderFileExchange() {
   const summary = document.getElementById("exchange-summary");
   if (!summary) return;
 
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado").length;
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length;
   const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha").length;
   const discounted = state.contracts.filter((contract) => contract.status === "Descontando").length;
-  const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status)).length;
+  const rejected = state.contracts.filter(contractHasReturnIssue).length;
 
   const cards = [
     ["Reservas prontas", reserved],
@@ -755,7 +755,7 @@ function downloadCsv(filename, content) {
 
 function buildInsertionRows() {
   return state.contracts
-    .filter((contract) => contract.status === "Reservado")
+    .filter((contract) => marginReservationStatuses.includes(contract.status))
     .map((contract) => {
       const employee = employeeById(contract.employeeId);
       return {
@@ -782,7 +782,7 @@ function generateInsertionFile() {
 
   const content = buildCsv(["contrato", "cpf", "matricula", "rubrica", "parcela", "prazo", "competencia", "acao"], rows);
   state.contracts.forEach((contract) => {
-    if (contract.status === "Reservado") {
+    if (marginReservationStatuses.includes(contract.status)) {
       contract.status = "Enviado para folha";
       contract.sentToPayrollAt = today();
     }
@@ -828,7 +828,7 @@ function processReturnCsv(text) {
     contract.returnProcessedAt = today();
     processed += 1;
     if (nextStatus === "Descontando") discounted += 1;
-    if (["Rejeitado", "Nao descontado"].includes(nextStatus)) rejected += 1;
+    if (returnIssueStatuses.includes(nextStatus)) rejected += 1;
   });
 
   auditEvent(
