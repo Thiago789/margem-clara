@@ -19,9 +19,9 @@ function getDebtEmployeeOptions() {
 function getDebtReading(employee) {
   const margin = calculateMargin(employee);
   const contracts = state.contracts.filter((contract) => contract.employeeId === employee.id);
-  const active = contracts.filter((contract) => ["Averbado", "Descontando", "Enviado para folha"].includes(contract.status));
-  const reserved = contracts.filter((contract) => contract.status === "Reservado");
-  const rejected = contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status));
+  const reserved = contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
+  const rejected = contracts.filter(contractHasReturnIssue);
   const openTickets = state.tickets.filter((ticket) => ticket.employeeId === employee.id && ticket.status === "Aberto");
   const usage = margin.total > 0 ? ((margin.used + margin.reserved + margin.blocked) / margin.total) * 100 : 0;
   const installmentLoad = employee.income > 0

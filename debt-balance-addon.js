@@ -19,7 +19,7 @@ function estimateDebtBalance(contract) {
 
 function getDebtBalanceRows() {
   return state.contracts
-    .filter((contract) => !["Cancelado", "Rejeitado"].includes(contract.status))
+    .filter((contract) => !contractReleasesMargin(contract))
     .map((contract) => {
       const employee = employeeById(contract.employeeId);
       const balance = estimateDebtBalance(contract);

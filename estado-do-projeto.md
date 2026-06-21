@@ -75,6 +75,7 @@ O MVP ja possui uma base navegavel com:
 - A tela de competencias deve evidenciar saldo de parcelas, contratos proximos da liquidacao e pendencias de retorno, pois a baixa de parcela depende de retorno confirmado.
 - O consumo de margem deve usar uma regra central de status: descontando/averbado/enviado consomem, reservado bloqueia reserva, e liquidado/cancelado/rejeitado liberam a margem.
 - Status de retorno com pendencia devem ser tratados por regra propria: rejeitado e nao descontado exigem fila operacional, mas nao descontado permanece pendente ate decisao formal.
+- Leituras de margem por produto, endividamento e saldo devedor devem consumir as mesmas regras centrais de status para evitar divergencia entre paineis.
 
 ## Campos Importantes Ja Mapeados
 

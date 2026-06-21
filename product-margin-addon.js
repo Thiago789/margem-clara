@@ -33,7 +33,7 @@ function productMarginForEnrollment(enrollment, rule) {
   const total = calculationBase * (rule.percentage / 100);
   const used = state.contracts
     .filter((contract) => contract.enrollmentId === enrollment.id && contract.product === rule.product)
-    .filter((contract) => ["Descontando", "Averbado", "Enviado para folha", "Reservado"].includes(contract.status))
+    .filter(contractConsumesMargin)
     .reduce((sum, contract) => sum + Number(contract.installment || 0), 0);
   return {
     total,
