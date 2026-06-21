@@ -1,6 +1,6 @@
 # Estado do Projeto - Margem Clara
 
-Atualizado em: 2026-06-12
+Atualizado em: 2026-06-21
 
 ## Objetivo
 
@@ -72,6 +72,7 @@ O MVP ja possui uma base navegavel com:
 - Atalhos para modulos inexistentes ou indisponiveis por perfil devem ser redirecionados com registro de auditoria, evitando queda silenciosa no painel.
 - Massa de teste deve incluir roteiro de apresentacao com etapas marcaveis e atalhos para os modulos, facilitando demonstracao do MVP para terceiros.
 - Cenarios de massa de teste devem preencher tambem validacoes, protocolos, conciliacao de retorno e prontidao, para que a demonstracao reflita o fluxo operacional completo.
+- A tela de competencias deve evidenciar saldo de parcelas, contratos proximos da liquidacao e pendencias de retorno, pois a baixa de parcela depende de retorno confirmado.
 
 ## Campos Importantes Ja Mapeados
 

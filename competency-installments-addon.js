@@ -25,6 +25,50 @@ function expectedReturnAmount(contract) {
   return Number(contract.installment || 0);
 }
 
+function remainingInstallments(contract) {
+  return Math.max(Number(contract.installments || 0) - Number(contract.currentInstallment || 0), 0);
+}
+
+function competencyContractStage(contract) {
+  if (contract.status === "Liquidado") {
+    return {
+      label: "Liquidado",
+      className: "ok",
+      detail: "Prazo final atingido; margem deve estar liberada.",
+    };
+  }
+
+  if (["Rejeitado", "Nao descontado"].includes(contract.status)) {
+    return {
+      label: "Pendencia",
+      className: "danger",
+      detail: contract.returnReason || "Aguardando decisao formal antes de alterar parcela.",
+    };
+  }
+
+  if (remainingInstallments(contract) <= 3 && Number(contract.installments || 0) > 0) {
+    return {
+      label: "Reta final",
+      className: "warning",
+      detail: "Acompanhar proximos retornos para liquidacao automatica.",
+    };
+  }
+
+  if (contract.status === "Enviado para folha") {
+    return {
+      label: "Aguardando retorno",
+      className: "warning",
+      detail: "Contrato enviado e ainda sem baixa confirmada nesta competencia.",
+    };
+  }
+
+  return {
+    label: "Em dia",
+    className: "",
+    detail: "Evolucao depende de retorno descontado pela folha.",
+  };
+}
+
 function returnAmountTolerance() {
   return 0.01;
 }
@@ -93,6 +137,13 @@ function ensureCompetenciesView() {
 
         <section class="panel competency-panel">
           <div class="panel-heading">
+            <h3>Controle de baixa e liquidacao</h3>
+          </div>
+          <div class="competency-control-grid" id="competency-control-grid"></div>
+        </section>
+
+        <section class="panel competency-panel">
+          <div class="panel-heading">
             <h3>Historico por contrato</h3>
           </div>
           <div class="competency-list" id="competency-list"></div>
@@ -114,8 +165,9 @@ function renderCompetenciesView() {
   ensureCompetenciesView();
 
   const summary = document.getElementById("competency-grid");
+  const control = document.getElementById("competency-control-grid");
   const list = document.getElementById("competency-list");
-  if (!summary || !list) return;
+  if (!summary || !control || !list) return;
 
   const history = state.contracts.flatMap((contract) =>
     contract.installmentHistory.map((item) => ({ ...item, contractId: contract.id }))
@@ -141,6 +193,56 @@ function renderCompetenciesView() {
       `
     )
     .join("");
+
+  const contractsWithStage = state.contracts.map((contract) => ({
+    contract,
+    employee: employeeById(contract.employeeId),
+    stage: competencyContractStage(contract),
+    remaining: remainingInstallments(contract),
+  }));
+  const pendingContracts = contractsWithStage.filter(({ stage }) => stage.className === "danger").length;
+  const nearLiquidation = contractsWithStage.filter(({ stage }) => stage.label === "Reta final").length;
+  const totalRemaining = contractsWithStage.reduce((sum, item) => sum + item.remaining, 0);
+  const nextAction = pendingContracts
+    ? "Resolver pendencias de retorno"
+    : nearLiquidation
+      ? "Acompanhar liquidacoes proximas"
+      : "Aguardar retorno da proxima competencia";
+
+  control.innerHTML = `
+    <article class="competency-control-card">
+      <span>Parcelas restantes</span>
+      <strong>${totalRemaining}</strong>
+      <p>Soma do saldo de parcelas dos contratos cadastrados.</p>
+    </article>
+    <article class="competency-control-card">
+      <span>Perto de liquidar</span>
+      <strong>${nearLiquidation}</strong>
+      <p>Contratos com ate 3 parcelas restantes.</p>
+    </article>
+    <article class="competency-control-card">
+      <span>Acao recomendada</span>
+      <strong>${nextAction}</strong>
+      <p>Prioridade operacional calculada pela situacao das parcelas.</p>
+    </article>
+    <div class="competency-control-list">
+      ${contractsWithStage
+        .map(
+          ({ contract, employee, stage, remaining }) => `
+            <div class="competency-control-row">
+              <div>
+                <strong>${contract.id}</strong>
+                <span>${employee?.name || "Servidor"} - ${contract.currentInstallment || 0}/${contract.installments || 0}</span>
+              </div>
+              <span class="status ${stage.className}">${stage.label}</span>
+              <span>${remaining} parcela(s) restante(s)</span>
+              <p>${stage.detail}</p>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
 
   list.innerHTML = state.contracts
     .map((contract) => {
@@ -297,9 +399,48 @@ competencyStyle.textContent = `
     font-size: 22px;
   }
   .competency-list,
+  .competency-control-grid,
+  .competency-control-list,
   .competency-lines {
     display: grid;
     gap: 10px;
+  }
+  .competency-control-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 4px;
+  }
+  .competency-control-card,
+  .competency-control-row {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    padding: 12px;
+  }
+  .competency-control-card span,
+  .competency-control-card p,
+  .competency-control-row span,
+  .competency-control-row p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 4px 0 0;
+  }
+  .competency-control-card strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 20px;
+  }
+  .competency-control-list {
+    grid-column: 1 / -1;
+  }
+  .competency-control-row {
+    display: grid;
+    grid-template-columns: 1.2fr 0.6fr 0.7fr 1.4fr;
+    gap: 10px;
+    align-items: center;
+  }
+  .competency-control-row p {
+    margin: 0;
   }
   .competency-row {
     display: grid;
@@ -314,16 +455,20 @@ competencyStyle.textContent = `
     padding: 10px;
   }
   @media (max-width: 1040px) {
-    .competency-grid {
+    .competency-grid,
+    .competency-control-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .competency-line {
+    .competency-line,
+    .competency-control-row {
       grid-template-columns: 1fr 1fr;
     }
   }
   @media (max-width: 640px) {
     .competency-grid,
-    .competency-line {
+    .competency-control-grid,
+    .competency-line,
+    .competency-control-row {
       grid-template-columns: 1fr;
     }
   }
