@@ -13,9 +13,9 @@ function getPayrollClosingData() {
   const protocols = typeof getFileProtocolBatches === "function" ? getFileProtocolBatches() : [];
   const reconciliationRows = typeof getReconciliationRows === "function" ? getReconciliationRows() : [];
 
-  const reserved = cycle?.reserved || state.contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = cycle?.reserved || state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = cycle?.sent || state.contracts.filter((contract) => contract.status === "Enviado para folha");
-  const rejected = cycle?.rejected || state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const rejected = cycle?.rejected || state.contracts.filter(contractHasReturnIssue);
   const reviewEmployees = cycle?.reviewEmployees || state.employees.filter((employee) => employee.status === "Em revisao");
   const criticalValidation = validation
     ? validation.margin.critical + validation.insertion.critical + validation.returnFile.critical

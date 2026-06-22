@@ -30,7 +30,7 @@ function validateInsertionRows() {
       const term = Number(row.prazo || 0);
       const expectedRubric = typeof contractRulesPayrollCode === "function" ? contractRulesPayrollCode(contract.product) : row.rubrica;
 
-      if (contract.status !== "Reservado") issues.push(`Contrato com status ${contract.status}, esperado Reservado`);
+      if (!marginReservationStatuses.includes(contract.status)) issues.push(`Contrato com status ${contract.status}, esperado Reservado`);
       if (!employee) issues.push("Servidor do contrato nao localizado");
       if (contract.enrollmentId && !enrollment) issues.push("Matricula/vinculo do contrato nao localizado");
       if (enrollment && enrollment.status !== "Ativo") issues.push(`Matricula com status ${enrollment.status}`);

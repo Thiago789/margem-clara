@@ -29,9 +29,9 @@ function adjustmentTypeForContract(contract) {
 
 function getPayrollAdjustmentItems() {
   normalizePayrollAdjustmentRecords();
-  const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const rejected = state.contracts.filter(contractHasReturnIssue);
   const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha");
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
 
   return [
