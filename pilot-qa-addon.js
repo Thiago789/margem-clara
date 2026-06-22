@@ -18,10 +18,10 @@ function getPilotQaScenarios() {
   if (typeof normalizeContractFinancialFields === "function") normalizeContractFinancialFields();
   if (typeof normalizeContractOperationFields === "function") normalizeContractOperationFields();
   const enrollments = state.enrollments || [];
-  const reserved = contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = contracts.filter((contract) => contract.status === "Enviado para folha");
-  const active = contracts.filter((contract) => ["Averbado", "Descontando"].includes(contract.status));
-  const rejected = contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha");
+  const rejected = contracts.filter(contractHasReturnIssue);
   const hasReturnReconciliation = Boolean(state.lastReturnReconciliation);
   const hasContractTimeline = contracts.some((contract) => contract.adjustmentHistory?.length || contract.returnHistory?.length || contract.statusHistory?.length);
   const reviewEmployees = employees.filter((employee) => employee.status === "Em revisao");

@@ -13,10 +13,10 @@ function getPilotFlowSteps() {
   const movements = state.movements || [];
   if (typeof normalizeEnrollments === "function") normalizeEnrollments();
   const enrollments = state.enrollments || [];
-  const reserved = contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = contracts.filter((contract) => contract.status === "Enviado para folha");
-  const active = contracts.filter((contract) => ["Averbado", "Descontando"].includes(contract.status));
-  const rejected = contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha");
+  const rejected = contracts.filter(contractHasReturnIssue);
   const pendingAdjustments = contracts.filter((contract) => contract.pendingAdjustment || contract.status === "Ajuste pendente");
   const hasMarginImport = movements.some((movement) => /margem|folha/i.test(`${movement.text} ${movement.source || ""}`));
   const hasInsertion = movements.some((movement) => /insercao/i.test(`${movement.text} ${movement.source || ""}`));
@@ -189,7 +189,7 @@ function renderPilotFlow() {
   const done = steps.filter((step) => step.done).length;
   const pending = steps.length - done;
   const contracts = state.contracts || [];
-  const rejected = contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status)).length;
+  const rejected = contracts.filter(contractHasReturnIssue).length;
 
   command.innerHTML = `
     <div>
