@@ -286,8 +286,8 @@ if (typeof generateInsertionFile !== "function") {
       const status = row.querySelector(".status");
       if (!contract || !status) return;
 
-      status.classList.toggle("warning", ["Reservado", "Enviado para folha", "Nao descontado"].includes(contract.status));
-      status.classList.toggle("danger", ["Cancelado", "Rejeitado"].includes(contract.status));
+      status.classList.toggle("warning", contractStatusClass(contract) === "warning");
+      status.classList.toggle("danger", contractStatusClass(contract) === "danger");
       if (contract.returnReason && !row.querySelector(".return-reason")) {
         status.insertAdjacentHTML("afterend", `<div class="muted return-reason">${contract.returnReason}</div>`);
       }

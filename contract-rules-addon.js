@@ -242,11 +242,7 @@ renderContracts = function renderContractsWithContractRules() {
   table.innerHTML = visibleContracts
     .map((contract) => {
       const employee = employeeById(contract.employeeId);
-      const statusClass = marginReservationStatuses.includes(contract.status) || contract.status === "Enviado para folha" || contract.status === "Nao descontado"
-        ? "warning"
-        : ["Cancelado", "Rejeitado"].includes(contract.status)
-          ? "danger"
-          : "";
+      const statusClass = contractStatusClass(contract);
       return `
         <tr>
           <td><strong>${contract.id}</strong></td>

@@ -210,6 +210,14 @@ function contractHasReturnIssue(contract) {
   return returnIssueStatuses.includes(contract.status);
 }
 
+function contractStatusClass(contract) {
+  if (["Cancelado", "Rejeitado"].includes(contract.status)) return "danger";
+  if (marginReservationStatuses.includes(contract.status) || contract.status === "Enviado para folha" || contract.status === "Nao descontado") {
+    return "warning";
+  }
+  return "";
+}
+
 function calculateMargin(employee) {
   const calculationBase = Math.max(employee.income - employee.mandatoryDeductions, 0);
   const total = calculationBase * marginPercent;
@@ -557,11 +565,7 @@ function renderContracts() {
   document.getElementById("contracts-table").innerHTML = visibleContracts
     .map((contract) => {
       const employee = employeeById(contract.employeeId);
-      const statusClass = ["Reservado", "Enviado para folha", "Nao descontado"].includes(contract.status)
-        ? "warning"
-        : ["Cancelado", "Rejeitado"].includes(contract.status)
-          ? "danger"
-          : "";
+      const statusClass = contractStatusClass(contract);
       return `
         <tr>
           <td><strong>${contract.id}</strong></td>
