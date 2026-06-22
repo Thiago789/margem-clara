@@ -72,7 +72,7 @@ function getIdentityScore(employee) {
   const hasEnrollment = Boolean(employee.enrollment);
   const hasActiveAuthorization = authorizations.some((authorization) => authorization.status === "Ativo");
   const hasPayrollIssue = employee.status === "Em revisao" || margin.available < 0;
-  const hasReturnIssue = contracts.some((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const hasReturnIssue = contracts.some(contractHasReturnIssue);
 
   const checks = [
     {

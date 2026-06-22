@@ -26,7 +26,7 @@ function getAuthenticityReading(employee) {
   const contracts = state.contracts.filter((contract) => contract.employeeId === employee.id);
   const activeCode = state.authorizationCodes.find((authorization) => authorization.employeeId === employee.id && authorization.status === "Ativo");
   const openTickets = state.tickets.filter((ticket) => ticket.employeeId === employee.id && ticket.status === "Aberto");
-  const returnIssue = contracts.some((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const returnIssue = contracts.some(contractHasReturnIssue);
   const hasCpfShape = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(employee.cpf);
   const hasEnrollment = Boolean(employee.enrollment);
   const hasPayrollBase = employee.income > 0 && employee.mandatoryDeductions >= 0;

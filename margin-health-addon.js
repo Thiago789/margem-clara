@@ -51,7 +51,7 @@ function ensureMarginHealthView() {
 
 function getHealthLevel(margin, contracts) {
   const usage = margin.total > 0 ? ((margin.used + margin.reserved + margin.blocked) / margin.total) * 100 : 0;
-  const hasRejected = contracts.some((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const hasRejected = contracts.some(contractHasReturnIssue);
 
   if (margin.available < 0 || usage >= 95 || hasRejected) {
     return { label: "Critica", className: "danger", usage };
@@ -91,7 +91,7 @@ function renderMarginHealth() {
   const contracts = state.contracts.filter((contract) => contract.employeeId === employee.id);
   const active = activeContracts(employee.id);
   const reserved = reservedContracts(employee.id);
-  const rejected = contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const rejected = contracts.filter(contractHasReturnIssue);
   const level = getHealthLevel(margin, contracts);
   const usageLabel = Number.isFinite(level.usage) ? `${Math.min(level.usage, 100).toFixed(0)}%` : "0%";
 
