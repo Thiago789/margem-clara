@@ -51,6 +51,16 @@ Joao Martins,456.789.012-33,MAT-1004,4100,350,Ativo
 
 Este MVP ainda nao possui backend, banco de dados ou autenticacao real. Ele foi feito como prototipo funcional para validar fluxo, regra de margem e experiencia de uso antes da implementacao completa da API.
 
+## Checagem estatica
+
+Antes de publicar uma mudanca, rode:
+
+```text
+node tools/static-check.js
+```
+
+Essa checagem valida a versao de cache, a lista de addons carregados e duplicacoes de regras centrais de status.
+
 Validacoes tecnicas realizadas:
 
 - Arquivos principais criados: `index.html`, `styles.css`, `app.js`.

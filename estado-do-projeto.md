@@ -151,6 +151,7 @@ Servidor/matricula:
 - Evitar crescer apenas criando novas telas; priorizar fluxos completos e consistentes.
 - Manter modelo de dados evolutivo, pois novos campos e regras aparecerao durante a descoberta.
 - Registrar ideias novas no backlog antes de implementar, salvo quando forem essenciais ao fluxo principal.
+- Manter checagem estatica para validar cache, addons carregados e duplicacao de regras centrais antes de publicar.
 
 ## Backlog Importante
 
