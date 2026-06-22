@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260621-14`;
+  script.src = `${filename}?v=20260621-15`;
   document.body.appendChild(script);
 }
 
@@ -95,6 +95,7 @@ function loadMissingAddons() {
     "contract-operation-fields-addon.js",
     "enrollment-contract-binding-addon.js",
     "insertion-validation-addon.js",
+    "insertion-batch-addon.js",
     "contract-timeline-addon.js",
     "return-reconciliation-addon.js",
     "lender-management-addon.js",
