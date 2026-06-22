@@ -14,10 +14,10 @@ if (!pageTitles.lenders) {
 function getLenderManagementRows() {
   return lenders.map((lender, index) => {
     const contracts = state.contracts.filter((contract) => contract.lenderId === lender.id);
-    const reserved = contracts.filter((contract) => contract.status === "Reservado").length;
-    const active = contracts.filter((contract) => ["Averbado", "Descontando"].includes(contract.status)).length;
+    const reserved = contracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length;
+    const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha").length;
     const sent = contracts.filter((contract) => contract.status === "Enviado para folha").length;
-    const rejected = contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status)).length;
+    const rejected = contracts.filter(contractHasReturnIssue).length;
     const statuses = ["Homologada", "Em homologacao", "Ativa", "Pendente de contrato"];
     const integration = ["API ativa", "Arquivo manual", "API em teste", "Sem integracao"];
     const products = index === 0

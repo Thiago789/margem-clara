@@ -332,12 +332,12 @@ function renderEmployeeMetrics() {
 function renderLenderMetrics() {
   const lenderContracts = state.contracts.filter((contract) => contract.lenderId === "lender-1");
   const activeValue = lenderContracts
-    .filter((contract) => ["Descontando", "Averbado", "Enviado para folha"].includes(contract.status))
+    .filter((contract) => marginUsageStatuses.includes(contract.status))
     .reduce((sum, contract) => sum + contract.installment, 0);
   const cards = [
     ["Contratos proprios", lenderContracts.length],
     ["Carteira mensal", money.format(activeValue)],
-    ["Reservas pendentes", lenderContracts.filter((contract) => contract.status === "Reservado").length],
+    ["Reservas pendentes", lenderContracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length],
     ["Codigos ativos", state.authorizationCodes.filter((authorization) => authorization.status === "Ativo").length],
   ];
 
@@ -360,7 +360,7 @@ function renderAlerts() {
   }
 
   if (state.currentProfile === "lender") {
-    const reserved = state.contracts.filter((contract) => contract.lenderId === "lender-1" && contract.status === "Reservado");
+    const reserved = state.contracts.filter((contract) => contract.lenderId === "lender-1" && marginReservationStatuses.includes(contract.status));
     const alerts = [
       ...reserved.map((contract) => `${contract.id} precisa ser confirmado ou cancelado.`),
       `${state.authorizationCodes.filter((authorization) => authorization.status === "Ativo").length} codigo(s) ativo(s) disponiveis para operacao.`,
@@ -371,7 +371,7 @@ function renderAlerts() {
 
   const negativeEmployees = state.employees.filter((employee) => calculateMargin(employee).available < 0);
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
 
   const alerts = [
     ...negativeEmployees.map((employee) => `${employee.name} esta com margem negativa.`),

@@ -10,10 +10,10 @@ if (!profileConfig.manager.views.includes("protocols")) {
 function getFileProtocolBatches() {
   const month = new Date().toISOString().slice(0, 7);
   const importedEmployees = state.employees.length;
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha");
-  const returned = state.contracts.filter((contract) => ["Descontando", "Rejeitado", "Nao descontado"].includes(contract.status));
-  const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const returned = state.contracts.filter((contract) => contract.status === "Descontando" || contractHasReturnIssue(contract));
+  const rejected = state.contracts.filter(contractHasReturnIssue);
   const marginValidation = state.lastMarginValidation;
   const insertionValidation = state.lastInsertionValidation;
   const returnReconciliation = state.lastReturnReconciliation;

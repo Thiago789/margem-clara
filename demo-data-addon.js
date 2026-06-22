@@ -343,10 +343,10 @@ function renderDemoData() {
   if (!summary || !list || !usage || !care) return;
 
   const contracts = state.contracts || [];
-  const pending = contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status)).length;
-  const reserved = contracts.filter((contract) => contract.status === "Reservado").length;
+  const pending = contracts.filter(contractHasReturnIssue).length;
+  const reserved = contracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length;
   const sent = contracts.filter((contract) => contract.status === "Enviado para folha").length;
-  const active = contracts.filter((contract) => ["Averbado", "Descontando"].includes(contract.status)).length;
+  const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha").length;
 
   const cards = [
     ["Servidores", state.employees.length],
