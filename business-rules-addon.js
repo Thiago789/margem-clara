@@ -73,9 +73,9 @@ function ensureBusinessRulesView() {
 function getBusinessRuleRows() {
   const policy = state.conventionPolicy || {};
   const requiresCode = policy.requireAuthorizationForReservation;
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado").length;
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length;
   const sentToPayroll = state.contracts.filter((contract) => contract.status === "Enviado para folha").length;
-  const returnIssues = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status)).length;
+  const returnIssues = state.contracts.filter(contractHasReturnIssue).length;
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao").length;
 
   return [

@@ -79,9 +79,9 @@ function buildAssistantInsights() {
   const margins = state.employees.map((employee) => ({ employee, margin: calculateMargin(employee) }));
   const negativeMargins = margins.filter((item) => item.margin.available < 0);
   const reviewMargins = margins.filter((item) => item.employee.status === "Em revisao");
-  const reserved = state.contracts.filter((contract) => contract.status === "Reservado");
+  const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sentToPayroll = state.contracts.filter((contract) => contract.status === "Enviado para folha");
-  const returnIssues = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status));
+  const returnIssues = state.contracts.filter(contractHasReturnIssue);
   const openTickets = state.tickets.filter((ticket) => ticket.status === "Aberto");
   const activeCodes = state.authorizationCodes.filter((authorization) => authorization.status === "Ativo");
 
