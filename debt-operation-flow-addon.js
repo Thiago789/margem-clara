@@ -207,7 +207,7 @@ function updateDebtOperationStatus(contract, action) {
   contract.debtOperationStatus = nextStatus;
   contract.debtOperationUpdatedAt = today();
 
-  if (nextStatus === "Novo contrato gerado" && contract.status === "Reservado") {
+  if (nextStatus === "Novo contrato gerado" && marginReservationStatuses.includes(contract.status)) {
     contract.status = "Averbado";
   }
 

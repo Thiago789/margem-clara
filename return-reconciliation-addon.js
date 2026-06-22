@@ -70,7 +70,7 @@ function classifyReturnReconciliationRow(row) {
     };
   }
 
-  if (["Rejeitado", "Nao descontado"].includes(normalizedStatus)) {
+  if (returnIssueStatuses.includes(normalizedStatus)) {
     return {
       contractId: contract.id,
       competency,

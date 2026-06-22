@@ -38,7 +38,7 @@ function competencyContractStage(contract) {
     };
   }
 
-  if (["Rejeitado", "Nao descontado"].includes(contract.status)) {
+  if (contractHasReturnIssue(contract)) {
     return {
       label: "Pendencia",
       className: "danger",
@@ -173,7 +173,7 @@ function renderCompetenciesView() {
     contract.installmentHistory.map((item) => ({ ...item, contractId: contract.id }))
   );
   const discounted = history.filter((item) => item.status === "Descontando").length;
-  const rejected = history.filter((item) => ["Rejeitado", "Nao descontado"].includes(item.status)).length;
+  const rejected = history.filter((item) => returnIssueStatuses.includes(item.status)).length;
   const duplicates = history.filter((item) => item.duplicate).length;
   const competencies = new Set(history.map((item) => item.competency)).size;
 
@@ -347,7 +347,7 @@ processReturnCsv = function processReturnCsvWithCompetencies(text) {
       }
     }
 
-    if (["Rejeitado", "Nao descontado"].includes(processing.status)) rejected += 1;
+    if (returnIssueStatuses.includes(processing.status)) rejected += 1;
     processed += 1;
   });
 

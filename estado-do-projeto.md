@@ -85,6 +85,7 @@ O MVP ja possui uma base navegavel com:
 - Fluxo piloto e homologacao devem usar os helpers centrais para que prontidao, aceite e demonstracao reflitam a mesma regra operacional.
 - Saude da margem, validacao do servidor e autenticidade devem usar a regra central de pendencia de retorno ao classificar risco operacional.
 - Painel inicial, protocolos, consignatarias e massa de teste devem consumir os helpers centrais para manter os resumos alinhados ao fluxo de folha.
+- Competencias, linha do tempo, conciliacao detalhada e operacoes de divida devem reutilizar os helpers centrais de status quando classificarem retorno ou reserva.
 
 ## Campos Importantes Ja Mapeados
 

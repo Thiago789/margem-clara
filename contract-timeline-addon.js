@@ -35,7 +35,7 @@ function contractTimelineEvents(contract) {
         ]
           .filter(Boolean)
           .join(" - "),
-        type: item.duplicate || item.divergent || ["Rejeitado", "Nao descontado"].includes(item.status) ? "warning" : "ok",
+        type: item.duplicate || item.divergent || returnIssueStatuses.includes(item.status) ? "warning" : "ok",
       });
     });
   } else if (contract.returnProcessedAt) {
@@ -43,7 +43,7 @@ function contractTimelineEvents(contract) {
       date: contract.returnProcessedAt,
       title: `Retorno: ${contract.status}`,
       detail: contract.returnReason || `Valor retornado ${money.format(Number(contract.discountedValue || 0))}.`,
-      type: ["Rejeitado", "Nao descontado"].includes(contract.status) ? "warning" : "ok",
+      type: contractHasReturnIssue(contract) ? "warning" : "ok",
     });
   }
 
