@@ -80,6 +80,7 @@ O MVP ja possui uma base navegavel com:
 - Fechamento, ajustes e validacao de insercao devem usar os mesmos helpers centrais de reserva e pendencia para evitar decisoes divergentes no fim da competencia.
 - Regras de contrato e geradores de insercao com campos financeiros/operacionais devem usar os helpers centrais de status antes de enviar dados para a folha.
 - A classificacao visual de status de contrato deve ser centralizada para evitar que a mesma situacao operacional apareca com severidades diferentes entre telas.
+- Conciliacao do retorno deve selecionar contratos e pintar status usando os helpers centrais, mantendo consistencia com fechamento, ajustes e troca de arquivos.
 
 ## Campos Importantes Ja Mapeados
 

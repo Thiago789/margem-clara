@@ -9,7 +9,7 @@ if (!profileConfig.manager.views.includes("reconciliation")) {
 
 function getPayrollSentContracts() {
   return state.contracts.filter((contract) =>
-    ["Enviado para folha", "Descontando", "Rejeitado", "Nao descontado"].includes(contract.status)
+    contract.status === "Enviado para folha" || contract.status === "Descontando" || contractHasReturnIssue(contract)
   );
 }
 
@@ -154,7 +154,7 @@ function renderReconciliation() {
             <tr>
               <td><strong>${row.id}</strong><span>${row.enrollment}</span></td>
               <td>${row.employee}</td>
-              <td><span class="status ${row.hasIssue ? "warning" : ""}">${row.status}</span></td>
+              <td><span class="status ${contractStatusClass({ status: row.status }) || (row.hasIssue ? "warning" : "")}">${row.status}</span></td>
               <td>${formatMoney(row.expected)}</td>
               <td>${formatMoney(row.discounted)}</td>
               <td class="${row.hasIssue ? "reconciliation-diff" : ""}">${formatMoney(row.difference)}</td>
