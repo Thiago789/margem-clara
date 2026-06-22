@@ -133,7 +133,7 @@ buildInsertionRows = function buildInsertionRowsWithOperationFields() {
 };
 
 generateInsertionFile = function generateInsertionFileWithOperationFields() {
-  const reservedCount = state.contracts.filter((contract) => contract.status === "Reservado").length;
+  const reservedCount = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length;
   const rows = buildInsertionRows();
   const result = document.getElementById("insertion-result");
 

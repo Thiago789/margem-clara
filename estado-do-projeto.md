@@ -78,6 +78,7 @@ O MVP ja possui uma base navegavel com:
 - Leituras de margem por produto, endividamento e saldo devedor devem consumir as mesmas regras centrais de status para evitar divergencia entre paineis.
 - Troca de arquivos, validacao e competencia da folha devem usar as regras centrais de reserva e pendencia de retorno para manter o ciclo mensal consistente.
 - Fechamento, ajustes e validacao de insercao devem usar os mesmos helpers centrais de reserva e pendencia para evitar decisoes divergentes no fim da competencia.
+- Regras de contrato e geradores de insercao com campos financeiros/operacionais devem usar os helpers centrais de status antes de enviar dados para a folha.
 
 ## Campos Importantes Ja Mapeados
 

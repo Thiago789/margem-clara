@@ -242,7 +242,7 @@ renderContracts = function renderContractsWithContractRules() {
   table.innerHTML = visibleContracts
     .map((contract) => {
       const employee = employeeById(contract.employeeId);
-      const statusClass = ["Reservado", "Enviado para folha", "Nao descontado"].includes(contract.status)
+      const statusClass = marginReservationStatuses.includes(contract.status) || contract.status === "Enviado para folha" || contract.status === "Nao descontado"
         ? "warning"
         : ["Cancelado", "Rejeitado"].includes(contract.status)
           ? "danger"
@@ -271,7 +271,7 @@ buildInsertionRows = function buildInsertionRowsWithContractRules() {
   normalizeContractRuleFields();
   const cutoffDay = Number(state.conventionPolicy.insertionCutoffDay || 20);
   return state.contracts
-    .filter((contract) => contract.status === "Reservado")
+    .filter((contract) => marginReservationStatuses.includes(contract.status))
     .filter((contract) => contractRulesCreatedDay(contract) <= cutoffDay)
     .map((contract) => {
       const employee = employeeById(contract.employeeId);
@@ -292,7 +292,7 @@ buildInsertionRows = function buildInsertionRowsWithContractRules() {
 };
 
 generateInsertionFile = function generateInsertionFileWithContractRules() {
-  const reservedCount = state.contracts.filter((contract) => contract.status === "Reservado").length;
+  const reservedCount = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length;
   const rows = buildInsertionRows();
   const result = document.getElementById("insertion-result");
 
@@ -356,7 +356,7 @@ processReturnCsv = function processReturnCsvWithContractRules(text) {
     }
     processed += 1;
     if (nextStatus === "Descontando") discounted += 1;
-    if (["Rejeitado", "Nao descontado"].includes(nextStatus)) rejected += 1;
+    if (returnIssueStatuses.includes(nextStatus)) rejected += 1;
   });
 
   auditEvent(
