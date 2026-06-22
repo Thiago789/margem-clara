@@ -87,6 +87,7 @@ O MVP ja possui uma base navegavel com:
 - Painel inicial, protocolos, consignatarias e massa de teste devem consumir os helpers centrais para manter os resumos alinhados ao fluxo de folha.
 - Competencias, linha do tempo, conciliacao detalhada e operacoes de divida devem reutilizar os helpers centrais de status quando classificarem retorno ou reserva.
 - Geracao de arquivo de insercao deve registrar lote por competencia e bloquear novo envio do mesmo contrato na mesma competencia sem ajuste formal.
+- Retorno da folha deve atualizar o lote de insercao da competencia, separando retornados, pendentes, divergentes e duplicados.
 
 ## Campos Importantes Ja Mapeados
 
