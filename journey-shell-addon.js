@@ -120,6 +120,22 @@ function getJourneyAttentionByView() {
   return result;
 }
 
+function getJourneyPrimaryItemByView() {
+  const result = new Map();
+  if (typeof getOperationalQueueData !== "function") return result;
+  const severityRank = { Alta: 0, Media: 1, Baixa: 2 };
+
+  getOperationalQueueData().items.forEach((item) => {
+    if (!item.target) return;
+    const current = result.get(item.target);
+    if (!current || (severityRank[item.severity] ?? 3) < (severityRank[current.severity] ?? 3)) {
+      result.set(item.target, item);
+    }
+  });
+
+  return result;
+}
+
 function getJourneyPriorityTargetForStage(stage) {
   if (typeof getOperationalQueueData !== "function") return null;
   const available = getAvailableJourneyViews(stage);
@@ -218,6 +234,7 @@ function renderJourneyShell() {
   const stages = getJourneyStages();
   const attentionByStage = getJourneyAttentionByStage();
   const attentionByView = getJourneyAttentionByView();
+  const primaryItemByView = getJourneyPrimaryItemByView();
   const pilotSteps = typeof getPilotFlowSteps === "function" ? getPilotFlowSteps() : [];
   const journey = typeof getPilotJourneyHealth === "function" && pilotSteps.length ? getPilotJourneyHealth(pilotSteps) : null;
   const focusItem = getJourneyFocusItem();
@@ -272,9 +289,14 @@ function renderJourneyShell() {
             const attention = attentionByView.get(view) || { high: 0, medium: 0 };
             const attentionTotal = attention.high + attention.medium;
             const attentionClass = attention.high ? "danger" : attention.medium ? "warning" : "";
+            const primaryItem = primaryItemByView.get(view);
+            const moduleLabel = pageTitles[view] || view;
+            const moduleHint = primaryItem
+              ? compactJourneyText(`${moduleLabel}: ${primaryItem.severity} - ${primaryItem.area}: ${primaryItem.title}`, 110)
+              : `Abrir ${moduleLabel}`;
             return `
-              <button class="journey-module ${view === activeView ? "active" : ""} ${attentionClass}" type="button" data-target-view="${view}">
-                <span>${pageTitles[view] || view}</span>
+              <button class="journey-module ${view === activeView ? "active" : ""} ${attentionClass}" type="button" data-target-view="${view}" title="${escapeJourneyText(moduleHint)}" aria-label="${escapeJourneyText(moduleHint)}">
+                <span>${escapeJourneyText(moduleLabel)}</span>
                 ${attentionTotal ? `<strong>${attentionTotal}</strong>` : ""}
               </button>
             `;

@@ -103,6 +103,7 @@ O MVP ja possui uma base navegavel com:
 - Cada etapa da jornada deve exibir um objetivo operacional curto e o proximo atalho sugerido.
 - Atalhos da jornada devem usar os mesmos IDs reais das telas criadas pelos addons para evitar modulos invisiveis.
 - Clique em uma etapa da jornada com pendencia deve abrir o modulo prioritario daquela etapa, nao apenas o primeiro modulo.
+- Modulos da jornada com alerta devem expor o motivo principal da pendencia no proprio atalho.
 
 ## Campos Importantes Ja Mapeados
 
