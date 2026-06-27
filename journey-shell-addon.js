@@ -67,6 +67,25 @@ function getJourneyFocusItem() {
   return data.items.find((item) => item.severity === "Alta") || data.items.find((item) => item.severity === "Media") || null;
 }
 
+function escapeJourneyText(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function compactJourneyText(value, limit = 76) {
+  const text = String(value ?? "").trim();
+  if (text.length <= limit) return text;
+  return `${text.slice(0, Math.max(0, limit - 3)).trim()}...`;
+}
+
+function getJourneyFocusSummary(item) {
+  if (!item) return "";
+  return compactJourneyText(`${item.severity}: ${item.area} - ${item.title}`);
+}
+
 function getJourneyAttentionByStage() {
   const result = new Map(getJourneyStages().map((stage) => [stage.id, { high: 0, medium: 0 }]));
   if (typeof getOperationalQueueData !== "function") return result;
@@ -183,6 +202,8 @@ function renderJourneyShell() {
   const pilotSteps = typeof getPilotFlowSteps === "function" ? getPilotFlowSteps() : [];
   const journey = typeof getPilotJourneyHealth === "function" && pilotSteps.length ? getPilotJourneyHealth(pilotSteps) : null;
   const focusItem = getJourneyFocusItem();
+  const focusSummary = getJourneyFocusSummary(focusItem);
+  const focusDetail = compactJourneyText(focusItem?.detail || focusItem?.description || focusItem?.title || "", 140);
   const nextTarget = focusItem?.target || journey?.current?.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
 
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
@@ -197,7 +218,7 @@ function renderJourneyShell() {
       <div class="journey-health-meter" aria-label="${journey.percent}% do ciclo validado">
         <span style="width: ${journey.percent}%"></span>
       </div>
-      <small>${focusItem ? `${focusItem.severity}: ${focusItem.area}` : `${journey.warnings + journey.critical} alerta(s) no ciclo`}</small>
+      <small title="${escapeJourneyText(focusDetail)}">${focusItem ? escapeJourneyText(focusSummary) : `${journey.warnings + journey.critical} alerta(s) no ciclo`}</small>
     `
     : `
       <div class="journey-health-row">
@@ -301,6 +322,12 @@ journeyShellStyle.textContent = `
   .journey-health {
     display: grid;
     gap: 5px;
+    min-width: 0;
+  }
+  .journey-health small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .journey-health-row {
     display: flex;
@@ -412,6 +439,9 @@ journeyShellStyle.textContent = `
     }
     .journey-head .secondary-button {
       width: 100%;
+    }
+    .journey-health small {
+      white-space: normal;
     }
   }
 `;

@@ -98,6 +98,7 @@ O MVP ja possui uma base navegavel com:
 - Botao principal da jornada deve priorizar pendencias altas ou medias da fila antes do roteiro comum.
 - Etapas da jornada devem sinalizar onde estao concentradas pendencias altas ou medias.
 - Modulos da jornada devem destacar quando sao destino direto de pendencias operacionais.
+- Resumo da jornada deve mostrar a pendencia prioritaria com severidade, area e titulo, mantendo texto compacto.
 
 ## Campos Importantes Ja Mapeados
 
