@@ -4,25 +4,25 @@ function getJourneyStages() {
       id: "base",
       title: "Base",
       detail: "Dados, vinculo e margem.",
-      views: ["employees", "identity", "enrollment", "margin", "validation"],
+      views: ["employees", "identity", "enrollment", "margin", "validation", "marginhealth", "authenticity"],
     },
     {
       id: "operation",
       title: "Operacao",
       detail: "Simulacao, reserva e autorizacao.",
-      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops"],
+      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debtinsights"],
     },
     {
       id: "payroll",
       title: "Folha",
       detail: "Arquivos, retorno e fechamento.",
-      views: ["import", "payroll", "protocols", "reconciliation", "competencies", "adjustments", "closing"],
+      views: ["import", "payroll", "protocols", "reconciliation", "competencies", "adjustments", "closing", "layouts"],
     },
     {
       id: "management",
       title: "Gestao",
       detail: "Pendencias, prontidao e auditoria.",
-      views: ["dashboard", "queue", "pilot", "readiness", "audit", "roadmap"],
+      views: ["dashboard", "queue", "pilot", "readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "apisandbox", "accesscontrol"],
     },
   ];
 }
