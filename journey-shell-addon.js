@@ -67,6 +67,21 @@ function getJourneyFocusItem() {
   return data.items.find((item) => item.severity === "Alta") || data.items.find((item) => item.severity === "Media") || null;
 }
 
+function getJourneyAttentionByStage() {
+  const result = new Map(getJourneyStages().map((stage) => [stage.id, { high: 0, medium: 0 }]));
+  if (typeof getOperationalQueueData !== "function") return result;
+
+  getOperationalQueueData().items.forEach((item) => {
+    const stage = getJourneyStages().find((candidate) => candidate.views.includes(item.target));
+    if (!stage) return;
+    const attention = result.get(stage.id);
+    if (item.severity === "Alta") attention.high += 1;
+    if (item.severity === "Media") attention.medium += 1;
+  });
+
+  return result;
+}
+
 function organizeSidebarNavigation() {
   const nav = document.querySelector(".nav-list");
   if (!nav || nav.dataset.journeyOrganizing === "true") return;
@@ -148,6 +163,7 @@ function renderJourneyShell() {
   const activeView = document.querySelector(".view.active")?.id?.replace("-view", "") || "dashboard";
   const activeStage = getActiveJourneyStage(activeView);
   const stages = getJourneyStages();
+  const attentionByStage = getJourneyAttentionByStage();
   const pilotSteps = typeof getPilotFlowSteps === "function" ? getPilotFlowSteps() : [];
   const journey = typeof getPilotJourneyHealth === "function" && pilotSteps.length ? getPilotJourneyHealth(pilotSteps) : null;
   const focusItem = getJourneyFocusItem();
@@ -179,10 +195,13 @@ function renderJourneyShell() {
   stageList.innerHTML = stages
     .map((stage) => {
       const available = getAvailableJourneyViews(stage);
+      const attention = attentionByStage.get(stage.id) || { high: 0, medium: 0 };
+      const attentionTotal = attention.high + attention.medium;
+      const attentionClass = attention.high ? "danger" : attention.medium ? "warning" : "";
       return `
         <button class="journey-stage ${stage.id === activeStage.id ? "active" : ""}" type="button" data-journey-stage="${stage.id}" ${available.length ? "" : "disabled"}>
           <span>${stage.title}</span>
-          <strong>${available.length}</strong>
+          <strong class="${attentionClass}">${attentionTotal || available.length}</strong>
         </button>
       `;
     })
@@ -319,6 +338,14 @@ journeyShellStyle.textContent = `
     background: #ffffff;
     color: var(--primary);
     font-size: 13px;
+  }
+  .journey-stage strong.warning {
+    color: #ffffff;
+    background: var(--accent);
+  }
+  .journey-stage strong.danger {
+    color: #ffffff;
+    background: var(--danger);
   }
   .journey-module {
     padding: 0 12px;
