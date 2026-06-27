@@ -88,6 +88,7 @@ O MVP ja possui uma base navegavel com:
 - Competencias, linha do tempo, conciliacao detalhada e operacoes de divida devem reutilizar os helpers centrais de status quando classificarem retorno ou reserva.
 - Geracao de arquivo de insercao deve registrar lote por competencia e bloquear novo envio do mesmo contrato na mesma competencia sem ajuste formal.
 - Retorno da folha deve atualizar o lote de insercao da competencia, separando retornados, pendentes, divergentes e duplicados.
+- Fechamento da competencia deve considerar lotes de insercao sem retorno ou com pendencia nao resolvida como bloqueio operacional.
 
 ## Campos Importantes Ja Mapeados
 

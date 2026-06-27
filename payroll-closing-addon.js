@@ -12,11 +12,24 @@ function getPayrollClosingData() {
   const validation = typeof getFileValidationMetrics === "function" ? getFileValidationMetrics() : null;
   const protocols = typeof getFileProtocolBatches === "function" ? getFileProtocolBatches() : [];
   const reconciliationRows = typeof getReconciliationRows === "function" ? getReconciliationRows() : [];
+  const closingMonth = cycle?.currentMonth || (typeof currentCompetency === "function" ? currentCompetency() : new Date().toISOString().slice(0, 7));
 
   const reserved = cycle?.reserved || state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
   const sent = cycle?.sent || state.contracts.filter((contract) => contract.status === "Enviado para folha");
   const rejected = cycle?.rejected || state.contracts.filter(contractHasReturnIssue);
   const reviewEmployees = cycle?.reviewEmployees || state.employees.filter((employee) => employee.status === "Em revisao");
+  const insertionBatchRows = state.contracts.flatMap((contract) =>
+    (contract.insertionBatches || [])
+      .filter((batch) => batch.competency === closingMonth && batch.status !== "Cancelado")
+      .map((batch) => ({ ...batch, contractId: contract.id, contractStatus: contract.status, returnDivergent: contract.returnDivergent }))
+  );
+  const batchAwaitingReturn = insertionBatchRows.filter((batch) => batch.status === "Enviado");
+  const batchReturned = insertionBatchRows.filter((batch) => ["Retornado", "Retorno recebido"].includes(batch.status));
+  const batchUnresolved = insertionBatchRows.filter(
+    (batch) =>
+      ["Pendente", "Divergente", "Retorno duplicado"].includes(batch.status) &&
+      (returnIssueStatuses.includes(batch.contractStatus) || batch.returnDivergent || batch.status === "Retorno duplicado")
+  );
   const criticalValidation = validation
     ? validation.margin.critical + validation.insertion.critical + validation.returnFile.critical
     : 0;
@@ -28,6 +41,8 @@ function getPayrollClosingData() {
 
   if (criticalValidation) blockers.push([`${criticalValidation} erro(s) critico(s) de validacao`, "Corrigir arquivo ou cadastro antes do fechamento."]);
   if (sent.length) blockers.push([`${sent.length} contrato(s) aguardando retorno`, "Processar retorno da folha ou registrar excecao formal."]);
+  if (batchAwaitingReturn.length) blockers.push([`${batchAwaitingReturn.length} item(ns) de lote sem retorno`, "Todo lote enviado precisa ter retorno processado ou excecao formal."]);
+  if (batchUnresolved.length) blockers.push([`${batchUnresolved.length} item(ns) de lote com pendencia`, "Resolver divergencia, nao desconto, rejeicao ou duplicidade antes de fechar."]);
   if (reviewEmployees.length) warnings.push([`${reviewEmployees.length} servidor(es) em revisao`, "Conferir vinculo e base de calculo antes de congelar a competencia."]);
   if (reserved.length) warnings.push([`${reserved.length} reserva(s) sem insercao`, "Gerar remessa, cancelar reserva ou carregar para proxima competencia."]);
   if (rejected.length) warnings.push([`${rejected.length} retorno(s) com pendencia`, "Tratar rejeicao, nao desconto ou liberar margem conforme regra."]);
@@ -38,7 +53,7 @@ function getPayrollClosingData() {
   const className = blockers.length ? "danger" : warnings.length ? "warning" : "";
 
   return {
-    month: cycle?.currentMonth || new Date().toISOString().slice(0, 7),
+    month: closingMonth,
     decision,
     className,
     blockers,
@@ -49,6 +64,10 @@ function getPayrollClosingData() {
     reviewEmployees,
     protocolPending,
     reconciliationIssues,
+    insertionBatchRows,
+    batchAwaitingReturn,
+    batchReturned,
+    batchUnresolved,
   };
 }
 
@@ -143,6 +162,8 @@ function renderPayrollClosing() {
     ["Aguardando retorno", data.sent.length],
     ["Pendencias retorno", data.rejected.length],
     ["Servidores em revisao", data.reviewEmployees.length],
+    ["Itens em lote", data.insertionBatchRows.length],
+    ["Lote retornado", data.batchReturned.length],
   ]
     .map(
       ([label, value]) => `
@@ -166,6 +187,7 @@ function renderPayrollClosing() {
     ["Arquivo de margem validado", data.reviewEmployees.length ? "Conferir" : "Ok"],
     ["Insercao enviada ou justificada", data.reserved.length ? "Conferir" : "Ok"],
     ["Retorno processado", data.sent.length ? "Pendente" : "Ok"],
+    ["Lotes conciliados", data.batchAwaitingReturn.length || data.batchUnresolved.length ? "Pendente" : "Ok"],
     ["Conciliacao revisada", data.reconciliationIssues ? "Conferir" : "Ok"],
     ["Protocolos completos", data.protocolPending ? "Conferir" : "Ok"],
     ["Auditoria registrada", "Ok"],
@@ -213,7 +235,7 @@ payrollClosingStyle.textContent = `
   }
   .closing-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(6, minmax(130px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }
