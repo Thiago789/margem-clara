@@ -38,16 +38,44 @@ function getPayrollClosingData() {
 
   const blockers = [];
   const warnings = [];
+  const actions = [];
 
-  if (criticalValidation) blockers.push([`${criticalValidation} erro(s) critico(s) de validacao`, "Corrigir arquivo ou cadastro antes do fechamento."]);
-  if (sent.length) blockers.push([`${sent.length} contrato(s) aguardando retorno`, "Processar retorno da folha ou registrar excecao formal."]);
-  if (batchAwaitingReturn.length) blockers.push([`${batchAwaitingReturn.length} item(ns) de lote sem retorno`, "Todo lote enviado precisa ter retorno processado ou excecao formal."]);
-  if (batchUnresolved.length) blockers.push([`${batchUnresolved.length} item(ns) de lote com pendencia`, "Resolver divergencia, nao desconto, rejeicao ou duplicidade antes de fechar."]);
-  if (reviewEmployees.length) warnings.push([`${reviewEmployees.length} servidor(es) em revisao`, "Conferir vinculo e base de calculo antes de congelar a competencia."]);
-  if (reserved.length) warnings.push([`${reserved.length} reserva(s) sem insercao`, "Gerar remessa, cancelar reserva ou carregar para proxima competencia."]);
-  if (rejected.length) warnings.push([`${rejected.length} retorno(s) com pendencia`, "Tratar rejeicao, nao desconto ou liberar margem conforme regra."]);
-  if (protocolPending) warnings.push([`${protocolPending} protocolo(s) pendente(s)`, "Completar rastreabilidade das remessas da competencia."]);
-  if (reconciliationIssues) warnings.push([`${reconciliationIssues} divergencia(s) de conciliacao`, "Conferir valores esperados versus descontados."]);
+  if (criticalValidation) {
+    blockers.push([`${criticalValidation} erro(s) critico(s) de validacao`, "Corrigir arquivo ou cadastro antes do fechamento."]);
+    actions.push(["Corrigir validacoes criticas", "Revise arquivos de margem, insercao e retorno antes de congelar a competencia.", "validation", "Alta"]);
+  }
+  if (sent.length) {
+    blockers.push([`${sent.length} contrato(s) aguardando retorno`, "Processar retorno da folha ou registrar excecao formal."]);
+    actions.push(["Processar retorno da folha", "Ha contratos enviados que ainda nao tiveram baixa confirmada.", "import", "Alta"]);
+  }
+  if (batchAwaitingReturn.length) {
+    blockers.push([`${batchAwaitingReturn.length} item(ns) de lote sem retorno`, "Todo lote enviado precisa ter retorno processado ou excecao formal."]);
+    actions.push(["Conciliar lote sem retorno", "Confira o retorno da competencia ou registre excecao formal.", "reconciliation", "Alta"]);
+  }
+  if (batchUnresolved.length) {
+    blockers.push([`${batchUnresolved.length} item(ns) de lote com pendencia`, "Resolver divergencia, nao desconto, rejeicao ou duplicidade antes de fechar."]);
+    actions.push(["Resolver pendencias do lote", "Trate divergencias, rejeicoes, nao descontos ou duplicidades antes do fechamento.", "adjustments", "Alta"]);
+  }
+  if (reviewEmployees.length) {
+    warnings.push([`${reviewEmployees.length} servidor(es) em revisao`, "Conferir vinculo e base de calculo antes de congelar a competencia."]);
+    actions.push(["Revisar servidores", "Conferir vinculo, status funcional e base de calculo.", "employees", "Media"]);
+  }
+  if (reserved.length) {
+    warnings.push([`${reserved.length} reserva(s) sem insercao`, "Gerar remessa, cancelar reserva ou carregar para proxima competencia."]);
+    actions.push(["Tratar reservas abertas", "Gerar insercao, cancelar reserva ou carregar para a proxima competencia.", "queue", "Media"]);
+  }
+  if (rejected.length) {
+    warnings.push([`${rejected.length} retorno(s) com pendencia`, "Tratar rejeicao, nao desconto ou liberar margem conforme regra."]);
+    actions.push(["Decidir retornos pendentes", "Registrar aceite, reenvio, cancelamento ou manutencao da pendencia.", "adjustments", "Media"]);
+  }
+  if (protocolPending) {
+    warnings.push([`${protocolPending} protocolo(s) pendente(s)`, "Completar rastreabilidade das remessas da competencia."]);
+    actions.push(["Completar protocolos", "Fechar rastreabilidade de margem, insercao e retorno.", "protocols", "Media"]);
+  }
+  if (reconciliationIssues) {
+    warnings.push([`${reconciliationIssues} divergencia(s) de conciliacao`, "Conferir valores esperados versus descontados."]);
+    actions.push(["Revisar conciliacao", "Comparar valores esperados, retornados e diferencas.", "reconciliation", "Media"]);
+  }
 
   const decision = blockers.length ? "Bloquear fechamento" : warnings.length ? "Fechar com ressalva" : "Pode fechar";
   const className = blockers.length ? "danger" : warnings.length ? "warning" : "";
@@ -68,6 +96,7 @@ function getPayrollClosingData() {
     batchAwaitingReturn,
     batchReturned,
     batchUnresolved,
+    actions,
   };
 }
 
@@ -98,6 +127,13 @@ function ensurePayrollClosingView() {
         </div>
 
         <section class="closing-decision-panel" id="closing-decision-panel"></section>
+
+        <section class="panel closing-action-panel">
+          <div class="panel-heading">
+            <h3>Plano de desbloqueio</h3>
+          </div>
+          <div class="closing-action-list" id="closing-action-list"></div>
+        </section>
 
         <div class="closing-summary-grid" id="closing-summary-grid"></div>
 
@@ -144,7 +180,8 @@ function renderPayrollClosing() {
   const blockers = document.getElementById("closing-blockers");
   const warnings = document.getElementById("closing-warnings");
   const checklist = document.getElementById("closing-checklist");
-  if (!decisionPanel || !summary || !blockers || !warnings || !checklist) return;
+  const actionList = document.getElementById("closing-action-list");
+  if (!decisionPanel || !summary || !blockers || !warnings || !checklist || !actionList) return;
 
   const data = getPayrollClosingData();
 
@@ -156,6 +193,27 @@ function renderPayrollClosing() {
     </div>
     <span class="status ${data.className}">${data.decision}</span>
   `;
+
+  actionList.innerHTML = data.actions.length
+    ? data.actions
+        .map(
+          ([title, detail, target, severity]) => `
+            <article class="closing-action-row">
+              <div>
+                <strong>${title}</strong>
+                <span>${detail}</span>
+              </div>
+              <span class="status ${severity === "Alta" ? "danger" : "warning"}">${severity}</span>
+              <button class="secondary-button closing-action-button" type="button" data-target-view="${target}">Abrir</button>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="closing-note"><strong>Sem acao pendente</strong><span>A competencia nao tem bloqueios ou ressalvas abertas neste momento.</span></div>`;
+
+  actionList.querySelectorAll(".closing-action-button").forEach((button) => {
+    button.addEventListener("click", () => openView(button.dataset.targetView));
+  });
 
   summary.innerHTML = [
     ["Reservas abertas", data.reserved.length],
@@ -201,6 +259,7 @@ payrollClosingStyle.textContent = `
   .closing-decision-panel,
   .closing-summary-card,
   .closing-note,
+  .closing-action-row,
   .closing-check {
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -248,15 +307,18 @@ payrollClosingStyle.textContent = `
     font-size: 24px;
   }
   .closing-content,
+  .closing-action-panel,
   .closing-panel {
     margin-top: 18px;
   }
   .closing-list,
+  .closing-action-list,
   .closing-checklist {
     display: grid;
     gap: 10px;
   }
   .closing-note,
+  .closing-action-row,
   .closing-check {
     padding: 12px;
   }
@@ -269,6 +331,19 @@ payrollClosingStyle.textContent = `
     gap: 12px;
     align-items: center;
   }
+  .closing-action-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .closing-action-row span {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-top: 4px;
+  }
   @media (max-width: 1040px) {
     .closing-summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -277,6 +352,7 @@ payrollClosingStyle.textContent = `
   @media (max-width: 640px) {
     .closing-decision-panel,
     .closing-summary-grid,
+    .closing-action-row,
     .closing-check {
       grid-template-columns: 1fr;
     }
