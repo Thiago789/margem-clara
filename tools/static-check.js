@@ -113,9 +113,20 @@ function checkDuplicatedStatusRules() {
     });
 }
 
+function checkJourneyViewAliases() {
+  const journey = read("journey-shell-addon.js");
+  const staleViews = ["enrollment", "marginhealth", "debtinsights", "apisandbox", "accesscontrol"];
+  staleViews.forEach((view) => {
+    if (journey.includes(`"${view}"`)) {
+      fail(`journey-shell-addon.js usa alias de tela obsoleto: ${view}.`);
+    }
+  });
+}
+
 checkCacheVersion();
 checkAddonFiles();
 checkDuplicatedStatusRules();
+checkJourneyViewAliases();
 
 if (failures.length) {
   console.error("Static check failed:");

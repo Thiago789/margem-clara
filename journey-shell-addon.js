@@ -5,14 +5,14 @@ function getJourneyStages() {
       title: "Base",
       detail: "Dados, vinculo e margem.",
       guidance: "Garanta que servidor, vinculo, identidade e margem estejam confiaveis antes de qualquer operacao.",
-      views: ["employees", "identity", "enrollment", "margin", "validation", "marginhealth", "authenticity"],
+      views: ["employees", "identity", "enrollments", "margin", "validation", "health", "authenticity"],
     },
     {
       id: "operation",
       title: "Operacao",
       detail: "Simulacao, reserva e autorizacao.",
       guidance: "Use a etapa para simular, reservar, validar contrato e controlar autorizacoes antes do envio a folha.",
-      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debtinsights"],
+      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debt"],
     },
     {
       id: "payroll",
@@ -26,7 +26,7 @@ function getJourneyStages() {
       title: "Gestao",
       detail: "Pendencias, prontidao e auditoria.",
       guidance: "Acompanhe pendencias, prontidao, auditoria, credenciamento, integracoes e acessos do ambiente.",
-      views: ["dashboard", "queue", "pilot", "readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "apisandbox", "accesscontrol"],
+      views: ["dashboard", "queue", "pilot", "readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "api", "access"],
     },
   ];
 }
@@ -39,11 +39,11 @@ function getSidebarGroups() {
     },
     {
       title: "Base",
-      views: ["employees", "identity", "enrollment", "margin", "validation", "marginhealth", "authenticity"],
+      views: ["employees", "identity", "enrollments", "margin", "validation", "health", "authenticity"],
     },
     {
       title: "Operacao",
-      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debtinsights"],
+      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debt"],
     },
     {
       title: "Folha",
@@ -51,7 +51,7 @@ function getSidebarGroups() {
     },
     {
       title: "Gestao",
-      views: ["readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "apisandbox", "accesscontrol"],
+      views: ["readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "api", "access"],
     },
   ];
 }

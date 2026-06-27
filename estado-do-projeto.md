@@ -101,6 +101,7 @@ O MVP ja possui uma base navegavel com:
 - Resumo da jornada deve mostrar a pendencia prioritaria com severidade, area e titulo, mantendo texto compacto.
 - Jornada e menu lateral devem usar o mesmo agrupamento conceitual para evitar modulos soltos fora do fluxo.
 - Cada etapa da jornada deve exibir um objetivo operacional curto e o proximo atalho sugerido.
+- Atalhos da jornada devem usar os mesmos IDs reais das telas criadas pelos addons para evitar modulos invisiveis.
 
 ## Campos Importantes Ja Mapeados
 
