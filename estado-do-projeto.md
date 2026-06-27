@@ -90,6 +90,7 @@ O MVP ja possui uma base navegavel com:
 - Retorno da folha deve atualizar o lote de insercao da competencia, separando retornados, pendentes, divergentes e duplicados.
 - Fechamento da competencia deve considerar lotes de insercao sem retorno ou com pendencia nao resolvida como bloqueio operacional.
 - Tela de fechamento deve indicar plano de desbloqueio com proxima acao e atalho para o modulo responsavel.
+- Fila de pendencias deve reaproveitar o plano de desbloqueio do fechamento para manter prioridade operacional consistente.
 
 ## Campos Importantes Ja Mapeados
 

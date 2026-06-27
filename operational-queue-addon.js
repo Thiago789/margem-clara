@@ -68,8 +68,18 @@ function getOperationalQueueData() {
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
   const negativeEmployees = state.employees.filter((employee) => calculateMargin(employee).available < 0);
   const openTickets = state.tickets.filter((ticket) => ticket.status === "Aberto");
+  const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
+  const closingItems = closingData?.actions?.map(([title, detail, target, severity]) => ({
+    severity,
+    className: severity === "Alta" ? "danger" : "warning",
+    area: "Fechamento",
+    title,
+    detail,
+    target,
+  })) || [];
 
   const items = [
+    ...closingItems,
     ...negativeEmployees.map((employee) => ({
       severity: "Alta",
       className: "danger",
@@ -138,6 +148,7 @@ function renderOperationalQueue() {
   const cards = [
     ["Prioridade alta", highPriority, highPriority ? "danger" : ""],
     ["Prioridade media", mediumPriority, mediumPriority ? "warning" : ""],
+    ["Bloqueios fechamento", data.items.filter((item) => item.area === "Fechamento" && item.severity === "Alta").length, data.items.some((item) => item.area === "Fechamento" && item.severity === "Alta") ? "danger" : ""],
     ["Tickets abertos", data.openTickets.length, data.openTickets.length ? "warning" : ""],
     ["Total na fila", data.items.length, data.items.length ? "" : ""],
   ];
@@ -173,7 +184,7 @@ function renderOperationalQueue() {
   actions.innerHTML = `
     <div class="queue-action-row">
       <strong>1. Tratar prioridade alta</strong>
-      <span>Margem negativa e retorno com pendencia devem ser analisados antes de nova liberacao.</span>
+      <span>Bloqueios de fechamento, margem negativa e retorno com pendencia devem ser analisados antes de nova liberacao.</span>
     </div>
     <div class="queue-action-row">
       <strong>2. Fechar ciclo da folha</strong>
@@ -194,7 +205,7 @@ const queueStyle = document.createElement("style");
 queueStyle.textContent = `
   .queue-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }
