@@ -32,26 +32,30 @@ function getJourneyStages() {
 }
 
 function getSidebarGroups() {
+  const stages = getJourneyStages();
+  const stageById = Object.fromEntries(stages.map((stage) => [stage.id, stage]));
+  const startViews = ["dashboard", "queue", "pilot"];
+
   return [
     {
       title: "Inicio",
-      views: ["dashboard", "queue", "pilot"],
+      views: startViews,
     },
     {
-      title: "Base",
-      views: ["employees", "identity", "enrollments", "margin", "validation", "health", "authenticity"],
+      title: stageById.base.title,
+      views: stageById.base.views,
     },
     {
-      title: "Operacao",
-      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debt"],
+      title: stageById.operation.title,
+      views: stageById.operation.views,
     },
     {
-      title: "Folha",
-      views: ["import", "payroll", "protocols", "reconciliation", "competencies", "adjustments", "closing", "layouts"],
+      title: stageById.payroll.title,
+      views: stageById.payroll.views,
     },
     {
-      title: "Gestao",
-      views: ["readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "api", "access"],
+      title: stageById.management.title,
+      views: stageById.management.views.filter((view) => !startViews.includes(view)),
     },
   ];
 }
