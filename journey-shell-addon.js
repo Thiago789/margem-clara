@@ -27,6 +27,31 @@ function getJourneyStages() {
   ];
 }
 
+function getSidebarGroups() {
+  return [
+    {
+      title: "Inicio",
+      views: ["dashboard", "queue", "pilot"],
+    },
+    {
+      title: "Base",
+      views: ["employees", "identity", "enrollment", "margin", "validation", "marginhealth", "authenticity"],
+    },
+    {
+      title: "Operacao",
+      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debtinsights"],
+    },
+    {
+      title: "Folha",
+      views: ["import", "payroll", "protocols", "reconciliation", "competencies", "adjustments", "closing", "layouts"],
+    },
+    {
+      title: "Gestao",
+      views: ["readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "apisandbox", "accesscontrol"],
+    },
+  ];
+}
+
 function getAvailableJourneyViews(stage) {
   const config = profileConfig[state.currentProfile] || profileConfig.manager;
   return stage.views.filter((view) => config.views.includes(view) && document.getElementById(`${view}-view`));
@@ -34,6 +59,46 @@ function getAvailableJourneyViews(stage) {
 
 function getActiveJourneyStage(activeView) {
   return getJourneyStages().find((stage) => stage.views.includes(activeView)) || getJourneyStages()[0];
+}
+
+function organizeSidebarNavigation() {
+  const nav = document.querySelector(".nav-list");
+  if (!nav || nav.dataset.journeyOrganizing === "true") return;
+
+  nav.dataset.journeyOrganizing = "true";
+  nav.querySelectorAll(".nav-section-label").forEach((label) => label.remove());
+
+  const buttons = Array.from(nav.querySelectorAll(".nav-item"));
+  const byView = new Map(buttons.map((button) => [button.dataset.view, button]));
+  const placed = new Set();
+
+  getSidebarGroups().forEach((group) => {
+    const groupButtons = group.views.map((view) => byView.get(view)).filter(Boolean);
+    if (!groupButtons.length) return;
+
+    const label = document.createElement("div");
+    label.className = "nav-section-label";
+    label.textContent = group.title;
+    label.hidden = groupButtons.every((button) => button.hidden);
+    nav.appendChild(label);
+
+    groupButtons.forEach((button) => {
+      nav.appendChild(button);
+      placed.add(button.dataset.view);
+    });
+  });
+
+  const remaining = buttons.filter((button) => !placed.has(button.dataset.view));
+  if (remaining.length) {
+    const label = document.createElement("div");
+    label.className = "nav-section-label";
+    label.textContent = "Outros";
+    label.hidden = remaining.every((button) => button.hidden);
+    nav.appendChild(label);
+    remaining.forEach((button) => nav.appendChild(button));
+  }
+
+  nav.dataset.journeyOrganizing = "false";
 }
 
 function ensureJourneyShell() {
@@ -60,6 +125,7 @@ function ensureJourneyShell() {
 }
 
 function renderJourneyShell() {
+  organizeSidebarNavigation();
   ensureJourneyShell();
   const shell = document.getElementById("journey-shell");
   const stageList = document.getElementById("journey-stage-list");
@@ -133,6 +199,17 @@ journeyShellStyle.textContent = `
     border-radius: 8px;
     background: var(--surface);
     box-shadow: var(--shadow);
+  }
+  .nav-section-label {
+    padding: 12px 14px 2px;
+    color: #8fa69b;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+  .nav-section-label[hidden] {
+    display: none;
   }
   .journey-head {
     display: flex;
