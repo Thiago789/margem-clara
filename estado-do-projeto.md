@@ -94,6 +94,7 @@ O MVP ja possui uma base navegavel com:
 - Decisao formal de ajuste deve atualizar tambem o lote de insercao, removendo bloqueios quando houver aceite, reprocessamento ou cancelamento.
 - Navegacao deve reduzir complexidade percebida com uma jornada operacional permanente agrupando modulos por etapa.
 - Menu lateral deve organizar modulos por grupos operacionais para reduzir sensacao de lista extensa.
+- Jornada operacional deve mostrar progresso do ciclo, etapa atual e alertas para orientar o proximo passo.
 
 ## Campos Importantes Ja Mapeados
 

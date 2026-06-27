@@ -115,6 +115,7 @@ function ensureJourneyShell() {
             <span>Jornada operacional</span>
             <strong id="journey-current-title">Fluxo do MVP</strong>
           </div>
+          <div class="journey-health" id="journey-health"></div>
           <button class="secondary-button" id="journey-primary-action" type="button">Abrir proxima acao</button>
         </div>
         <div class="journey-stage-list" id="journey-stage-list"></div>
@@ -132,7 +133,8 @@ function renderJourneyShell() {
   const moduleList = document.getElementById("journey-module-list");
   const title = document.getElementById("journey-current-title");
   const action = document.getElementById("journey-primary-action");
-  if (!shell || !stageList || !moduleList || !title || !action) return;
+  const health = document.getElementById("journey-health");
+  if (!shell || !stageList || !moduleList || !title || !action || !health) return;
 
   shell.hidden = state.currentProfile !== "manager";
   if (shell.hidden) return;
@@ -147,6 +149,25 @@ function renderJourneyShell() {
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
   action.textContent = journey?.current?.action || "Abrir etapa";
   action.dataset.targetView = nextTarget;
+  health.innerHTML = journey
+    ? `
+      <div class="journey-health-row">
+        <span>${journey.label}</span>
+        <strong>${journey.done}/${pilotSteps.length}</strong>
+      </div>
+      <div class="journey-health-meter" aria-label="${journey.percent}% do ciclo validado">
+        <span style="width: ${journey.percent}%"></span>
+      </div>
+      <small>${journey.warnings + journey.critical} alerta(s) no ciclo</small>
+    `
+    : `
+      <div class="journey-health-row">
+        <span>Ciclo</span>
+        <strong>-</strong>
+      </div>
+      <div class="journey-health-meter" aria-label="Progresso indisponivel"><span style="width: 0%"></span></div>
+      <small>Aguardando fluxo piloto.</small>
+    `;
 
   stageList.innerHTML = stages
     .map((stage) => {
@@ -212,13 +233,14 @@ journeyShellStyle.textContent = `
     display: none;
   }
   .journey-head {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 260px) auto;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
   }
   .journey-head span,
-  .journey-empty {
+  .journey-empty,
+  .journey-health small {
     display: block;
     color: var(--muted);
     font-size: 13px;
@@ -227,6 +249,33 @@ journeyShellStyle.textContent = `
   .journey-head strong {
     display: block;
     margin-top: 3px;
+  }
+  .journey-health {
+    display: grid;
+    gap: 5px;
+  }
+  .journey-health-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .journey-health-row strong {
+    margin: 0;
+    font-size: 13px;
+    color: var(--primary-strong);
+  }
+  .journey-health-meter {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--line);
+  }
+  .journey-health-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--primary);
   }
   .journey-stage-list,
   .journey-module-list {
@@ -280,7 +329,7 @@ journeyShellStyle.textContent = `
   @media (max-width: 720px) {
     .journey-head {
       align-items: stretch;
-      flex-direction: column;
+      grid-template-columns: 1fr;
     }
     .journey-head .secondary-button {
       width: 100%;
