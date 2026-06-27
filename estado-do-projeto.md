@@ -92,6 +92,7 @@ O MVP ja possui uma base navegavel com:
 - Tela de fechamento deve indicar plano de desbloqueio com proxima acao e atalho para o modulo responsavel.
 - Fila de pendencias deve reaproveitar o plano de desbloqueio do fechamento para manter prioridade operacional consistente.
 - Decisao formal de ajuste deve atualizar tambem o lote de insercao, removendo bloqueios quando houver aceite, reprocessamento ou cancelamento.
+- Navegacao deve reduzir complexidade percebida com uma jornada operacional permanente agrupando modulos por etapa.
 
 ## Campos Importantes Ja Mapeados
 
