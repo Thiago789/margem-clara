@@ -95,6 +95,7 @@ O MVP ja possui uma base navegavel com:
 - Navegacao deve reduzir complexidade percebida com uma jornada operacional permanente agrupando modulos por etapa.
 - Menu lateral deve organizar modulos por grupos operacionais para reduzir sensacao de lista extensa.
 - Jornada operacional deve mostrar progresso do ciclo, etapa atual e alertas para orientar o proximo passo.
+- Botao principal da jornada deve priorizar pendencias altas ou medias da fila antes do roteiro comum.
 
 ## Campos Importantes Ja Mapeados
 

@@ -61,6 +61,12 @@ function getActiveJourneyStage(activeView) {
   return getJourneyStages().find((stage) => stage.views.includes(activeView)) || getJourneyStages()[0];
 }
 
+function getJourneyFocusItem() {
+  if (typeof getOperationalQueueData !== "function") return null;
+  const data = getOperationalQueueData();
+  return data.items.find((item) => item.severity === "Alta") || data.items.find((item) => item.severity === "Media") || null;
+}
+
 function organizeSidebarNavigation() {
   const nav = document.querySelector(".nav-list");
   if (!nav || nav.dataset.journeyOrganizing === "true") return;
@@ -144,10 +150,11 @@ function renderJourneyShell() {
   const stages = getJourneyStages();
   const pilotSteps = typeof getPilotFlowSteps === "function" ? getPilotFlowSteps() : [];
   const journey = typeof getPilotJourneyHealth === "function" && pilotSteps.length ? getPilotJourneyHealth(pilotSteps) : null;
-  const nextTarget = journey?.current?.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
+  const focusItem = getJourneyFocusItem();
+  const nextTarget = focusItem?.target || journey?.current?.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
 
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
-  action.textContent = journey?.current?.action || "Abrir etapa";
+  action.textContent = focusItem ? "Abrir prioridade" : journey?.current?.action || "Abrir etapa";
   action.dataset.targetView = nextTarget;
   health.innerHTML = journey
     ? `
@@ -158,7 +165,7 @@ function renderJourneyShell() {
       <div class="journey-health-meter" aria-label="${journey.percent}% do ciclo validado">
         <span style="width: ${journey.percent}%"></span>
       </div>
-      <small>${journey.warnings + journey.critical} alerta(s) no ciclo</small>
+      <small>${focusItem ? `${focusItem.severity}: ${focusItem.area}` : `${journey.warnings + journey.critical} alerta(s) no ciclo`}</small>
     `
     : `
       <div class="journey-health-row">
