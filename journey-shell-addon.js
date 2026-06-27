@@ -120,6 +120,19 @@ function getJourneyAttentionByView() {
   return result;
 }
 
+function getJourneyPriorityTargetForStage(stage) {
+  if (typeof getOperationalQueueData !== "function") return null;
+  const available = getAvailableJourneyViews(stage);
+  const items = getOperationalQueueData().items
+    .filter((item) => available.includes(item.target))
+    .sort((a, b) => {
+      const severityRank = { Alta: 0, Media: 1 };
+      return (severityRank[a.severity] ?? 2) - (severityRank[b.severity] ?? 2);
+    });
+
+  return items[0]?.target || null;
+}
+
 function organizeSidebarNavigation() {
   const nav = document.querySelector(".nav-list");
   if (!nav || nav.dataset.journeyOrganizing === "true") return;
@@ -279,8 +292,8 @@ function renderJourneyShell() {
   stageList.querySelectorAll(".journey-stage").forEach((button) => {
     button.addEventListener("click", () => {
       const stage = stages.find((item) => item.id === button.dataset.journeyStage);
-      const firstView = stage ? getAvailableJourneyViews(stage)[0] : null;
-      if (firstView) openView(firstView);
+      const targetView = stage ? getJourneyPriorityTargetForStage(stage) || getAvailableJourneyViews(stage)[0] : null;
+      if (targetView) openView(targetView);
     });
   });
 
