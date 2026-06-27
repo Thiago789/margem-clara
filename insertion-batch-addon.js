@@ -106,6 +106,36 @@ function syncInsertionBatchesFromLastReturn() {
   });
 }
 
+function findLatestInsertionBatchForAdjustment(contract) {
+  normalizeInsertionBatches();
+  return contract.insertionBatches
+    .slice()
+    .reverse()
+    .find((batch) => ["Pendente", "Divergente", "Retorno duplicado", "Enviado"].includes(batch.status));
+}
+
+function applyInsertionBatchAdjustmentDecision(contract, decision) {
+  const batch = findLatestInsertionBatchForAdjustment(contract);
+  if (!batch) return false;
+
+  batch.adjustedAt = today();
+  batch.adjustmentDecision = decision;
+  batch.adjustmentResolution = typeof payrollAdjustmentDecisionText === "function" ? payrollAdjustmentDecisionText(decision) : decision;
+
+  if (decision === "accept_difference") {
+    batch.status = "Ajustado";
+    batch.returnStatus = "Descontando";
+  } else if (decision === "reprocess_next") {
+    batch.status = "Reprocessar";
+  } else if (decision === "cancel_release") {
+    batch.status = "Cancelado";
+  } else {
+    batch.status = "Pendente";
+  }
+
+  return true;
+}
+
 const validateInsertionRowsBeforeBatchGuard = validateInsertionRows;
 validateInsertionRows = function validateInsertionRowsWithBatchGuard() {
   const validation = validateInsertionRowsBeforeBatchGuard();
@@ -126,6 +156,20 @@ validateInsertionRows = function validateInsertionRowsWithBatchGuard() {
   validation.batchCompetency = competency;
 
   return validation;
+};
+
+const applyPayrollAdjustmentDecisionBeforeInsertionBatch = applyPayrollAdjustmentDecision;
+applyPayrollAdjustmentDecision = function applyPayrollAdjustmentDecisionWithInsertionBatch(contractId, decision) {
+  applyPayrollAdjustmentDecisionBeforeInsertionBatch(contractId, decision);
+  const contract = state.contracts.find((item) => item.id === contractId);
+  if (!contract) return;
+
+  if (applyInsertionBatchAdjustmentDecision(contract, decision)) {
+    auditEvent(`Lote de insercao do contrato ${contract.id} atualizado por ajuste formal.`, "Arquivo de insercao");
+    saveState();
+    render();
+  }
+  openView("adjustments");
 };
 
 const processReturnCsvBeforeInsertionBatch = processReturnCsv;

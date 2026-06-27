@@ -91,6 +91,7 @@ O MVP ja possui uma base navegavel com:
 - Fechamento da competencia deve considerar lotes de insercao sem retorno ou com pendencia nao resolvida como bloqueio operacional.
 - Tela de fechamento deve indicar plano de desbloqueio com proxima acao e atalho para o modulo responsavel.
 - Fila de pendencias deve reaproveitar o plano de desbloqueio do fechamento para manter prioridade operacional consistente.
+- Decisao formal de ajuste deve atualizar tambem o lote de insercao, removendo bloqueios quando houver aceite, reprocessamento ou cancelamento.
 
 ## Campos Importantes Ja Mapeados
 
