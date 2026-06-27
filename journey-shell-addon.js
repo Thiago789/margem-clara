@@ -82,6 +82,21 @@ function getJourneyAttentionByStage() {
   return result;
 }
 
+function getJourneyAttentionByView() {
+  const result = new Map();
+  if (typeof getOperationalQueueData !== "function") return result;
+
+  getOperationalQueueData().items.forEach((item) => {
+    if (!item.target) return;
+    const current = result.get(item.target) || { high: 0, medium: 0 };
+    if (item.severity === "Alta") current.high += 1;
+    if (item.severity === "Media") current.medium += 1;
+    result.set(item.target, current);
+  });
+
+  return result;
+}
+
 function organizeSidebarNavigation() {
   const nav = document.querySelector(".nav-list");
   if (!nav || nav.dataset.journeyOrganizing === "true") return;
@@ -164,6 +179,7 @@ function renderJourneyShell() {
   const activeStage = getActiveJourneyStage(activeView);
   const stages = getJourneyStages();
   const attentionByStage = getJourneyAttentionByStage();
+  const attentionByView = getJourneyAttentionByView();
   const pilotSteps = typeof getPilotFlowSteps === "function" ? getPilotFlowSteps() : [];
   const journey = typeof getPilotJourneyHealth === "function" && pilotSteps.length ? getPilotJourneyHealth(pilotSteps) : null;
   const focusItem = getJourneyFocusItem();
@@ -211,11 +227,17 @@ function renderJourneyShell() {
   moduleList.innerHTML = currentViews.length
     ? currentViews
         .map(
-          (view) => `
-            <button class="journey-module ${view === activeView ? "active" : ""}" type="button" data-target-view="${view}">
-              ${pageTitles[view] || view}
-            </button>
-          `
+          (view) => {
+            const attention = attentionByView.get(view) || { high: 0, medium: 0 };
+            const attentionTotal = attention.high + attention.medium;
+            const attentionClass = attention.high ? "danger" : attention.medium ? "warning" : "";
+            return `
+              <button class="journey-module ${view === activeView ? "active" : ""} ${attentionClass}" type="button" data-target-view="${view}">
+                <span>${pageTitles[view] || view}</span>
+                ${attentionTotal ? `<strong>${attentionTotal}</strong>` : ""}
+              </button>
+            `;
+          }
         )
         .join("")
     : `<span class="journey-empty">Nenhum modulo disponivel para este perfil.</span>`;
@@ -349,6 +371,29 @@ journeyShellStyle.textContent = `
   }
   .journey-module {
     padding: 0 12px;
+  }
+  .journey-module {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .journey-module strong {
+    display: grid;
+    place-items: center;
+    min-width: 22px;
+    min-height: 22px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--primary);
+    font-size: 12px;
+  }
+  .journey-module.warning strong {
+    color: #ffffff;
+    background: var(--accent);
+  }
+  .journey-module.danger strong {
+    color: #ffffff;
+    background: var(--danger);
   }
   .journey-stage.active,
   .journey-module.active {

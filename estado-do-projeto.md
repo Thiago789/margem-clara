@@ -97,6 +97,7 @@ O MVP ja possui uma base navegavel com:
 - Jornada operacional deve mostrar progresso do ciclo, etapa atual e alertas para orientar o proximo passo.
 - Botao principal da jornada deve priorizar pendencias altas ou medias da fila antes do roteiro comum.
 - Etapas da jornada devem sinalizar onde estao concentradas pendencias altas ou medias.
+- Modulos da jornada devem destacar quando sao destino direto de pendencias operacionais.
 
 ## Campos Importantes Ja Mapeados
 
