@@ -4,24 +4,28 @@ function getJourneyStages() {
       id: "base",
       title: "Base",
       detail: "Dados, vinculo e margem.",
+      guidance: "Garanta que servidor, vinculo, identidade e margem estejam confiaveis antes de qualquer operacao.",
       views: ["employees", "identity", "enrollment", "margin", "validation", "marginhealth", "authenticity"],
     },
     {
       id: "operation",
       title: "Operacao",
       detail: "Simulacao, reserva e autorizacao.",
+      guidance: "Use a etapa para simular, reservar, validar contrato e controlar autorizacoes antes do envio a folha.",
       views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debtinsights"],
     },
     {
       id: "payroll",
       title: "Folha",
       detail: "Arquivos, retorno e fechamento.",
+      guidance: "Conduza insercao, retorno, conciliacao e fechamento da competencia com bloqueios visiveis.",
       views: ["import", "payroll", "protocols", "reconciliation", "competencies", "adjustments", "closing", "layouts"],
     },
     {
       id: "management",
       title: "Gestao",
       detail: "Pendencias, prontidao e auditoria.",
+      guidance: "Acompanhe pendencias, prontidao, auditoria, credenciamento, integracoes e acessos do ambiente.",
       views: ["dashboard", "queue", "pilot", "readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "apisandbox", "accesscontrol"],
     },
   ];
@@ -175,6 +179,7 @@ function ensureJourneyShell() {
         </div>
         <div class="journey-stage-list" id="journey-stage-list"></div>
         <div class="journey-module-list" id="journey-module-list"></div>
+        <div class="journey-stage-note" id="journey-stage-note"></div>
       </section>
     `
   );
@@ -186,10 +191,11 @@ function renderJourneyShell() {
   const shell = document.getElementById("journey-shell");
   const stageList = document.getElementById("journey-stage-list");
   const moduleList = document.getElementById("journey-module-list");
+  const stageNote = document.getElementById("journey-stage-note");
   const title = document.getElementById("journey-current-title");
   const action = document.getElementById("journey-primary-action");
   const health = document.getElementById("journey-health");
-  if (!shell || !stageList || !moduleList || !title || !action || !health) return;
+  if (!shell || !stageList || !moduleList || !stageNote || !title || !action || !health) return;
 
   shell.hidden = state.currentProfile !== "manager";
   if (shell.hidden) return;
@@ -205,6 +211,7 @@ function renderJourneyShell() {
   const focusSummary = getJourneyFocusSummary(focusItem);
   const focusDetail = compactJourneyText(focusItem?.detail || focusItem?.description || focusItem?.title || "", 140);
   const nextTarget = focusItem?.target || journey?.current?.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
+  const nextLabel = pageTitles[nextTarget] || nextTarget;
 
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
   action.textContent = focusItem ? "Abrir prioridade" : journey?.current?.action || "Abrir etapa";
@@ -262,6 +269,12 @@ function renderJourneyShell() {
         )
         .join("")
     : `<span class="journey-empty">Nenhum modulo disponivel para este perfil.</span>`;
+
+  stageNote.innerHTML = `
+    <span>Objetivo da etapa</span>
+    <strong>${escapeJourneyText(activeStage.guidance)}</strong>
+    <em>Proximo atalho: ${escapeJourneyText(nextLabel)}</em>
+  `;
 
   stageList.querySelectorAll(".journey-stage").forEach((button) => {
     button.addEventListener("click", () => {
@@ -359,6 +372,35 @@ journeyShellStyle.textContent = `
     overflow-x: auto;
     padding-bottom: 2px;
   }
+  .journey-stage-note {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #f8faf8;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .journey-stage-note span {
+    color: var(--primary-strong);
+    font-weight: 800;
+  }
+  .journey-stage-note strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+    font-weight: 700;
+  }
+  .journey-stage-note em {
+    color: var(--muted);
+    font-style: normal;
+    white-space: nowrap;
+  }
   .journey-stage,
   .journey-module {
     min-height: 38px;
@@ -441,6 +483,13 @@ journeyShellStyle.textContent = `
       width: 100%;
     }
     .journey-health small {
+      white-space: normal;
+    }
+    .journey-stage-note {
+      grid-template-columns: 1fr;
+    }
+    .journey-stage-note strong,
+    .journey-stage-note em {
       white-space: normal;
     }
   }

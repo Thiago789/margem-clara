@@ -100,6 +100,7 @@ O MVP ja possui uma base navegavel com:
 - Modulos da jornada devem destacar quando sao destino direto de pendencias operacionais.
 - Resumo da jornada deve mostrar a pendencia prioritaria com severidade, area e titulo, mantendo texto compacto.
 - Jornada e menu lateral devem usar o mesmo agrupamento conceitual para evitar modulos soltos fora do fluxo.
+- Cada etapa da jornada deve exibir um objetivo operacional curto e o proximo atalho sugerido.
 
 ## Campos Importantes Ja Mapeados
 

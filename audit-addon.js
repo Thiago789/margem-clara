@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260627-12`;
+  script.src = `${filename}?v=20260627-13`;
   document.body.appendChild(script);
 }
 
