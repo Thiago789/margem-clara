@@ -18,6 +18,12 @@ function getPayrollClosingData() {
   const sent = cycle?.sent || state.contracts.filter((contract) => contract.status === "Enviado para folha");
   const rejected = cycle?.rejected || state.contracts.filter(contractHasReturnIssue);
   const reviewEmployees = cycle?.reviewEmployees || state.employees.filter((employee) => employee.status === "Em revisao");
+  const missingInstallmentProgress = state.contracts.filter(
+    (contract) =>
+      contract.status === "Descontando" &&
+      Number(contract.currentInstallment || 0) === 0 &&
+      !contract.installmentHistory?.some((item) => item.status === "Descontando")
+  );
   const insertionBatchRows = state.contracts.flatMap((contract) =>
     (contract.insertionBatches || [])
       .filter((batch) => batch.competency === closingMonth && batch.status !== "Cancelado")
@@ -68,6 +74,9 @@ function getPayrollClosingData() {
     warnings.push([`${rejected.length} retorno(s) com pendencia`, "Tratar rejeicao, nao desconto ou liberar margem conforme regra."]);
     actions.push(["Decidir retornos pendentes", "Registrar aceite, reenvio, cancelamento ou manutencao da pendencia.", "adjustments", "Media"]);
   }
+  if (missingInstallmentProgress.length) {
+    warnings.push([`${missingInstallmentProgress.length} baixa(s) sem evidencia`, "Conferir parcela atual e historico antes de fechar a competencia."]);
+  }
   if (protocolPending) {
     warnings.push([`${protocolPending} protocolo(s) pendente(s)`, "Completar rastreabilidade das remessas da competencia."]);
     actions.push(["Completar protocolos", "Fechar rastreabilidade de margem, insercao e retorno.", "protocols", "Media"]);
@@ -90,6 +99,7 @@ function getPayrollClosingData() {
     sent,
     rejected,
     reviewEmployees,
+    missingInstallmentProgress,
     protocolPending,
     reconciliationIssues,
     insertionBatchRows,
@@ -220,6 +230,7 @@ function renderPayrollClosing() {
     ["Aguardando retorno", data.sent.length],
     ["Pendencias retorno", data.rejected.length],
     ["Servidores em revisao", data.reviewEmployees.length],
+    ["Baixas sem evidencia", data.missingInstallmentProgress.length],
     ["Itens em lote", data.insertionBatchRows.length],
     ["Lote retornado", data.batchReturned.length],
   ]
@@ -246,6 +257,7 @@ function renderPayrollClosing() {
     ["Insercao enviada ou justificada", data.reserved.length ? "Conferir" : "Ok"],
     ["Retorno processado", data.sent.length ? "Pendente" : "Ok"],
     ["Lotes conciliados", data.batchAwaitingReturn.length || data.batchUnresolved.length ? "Pendente" : "Ok"],
+    ["Baixas de parcela conferidas", data.missingInstallmentProgress.length ? "Conferir" : "Ok"],
     ["Conciliacao revisada", data.reconciliationIssues ? "Conferir" : "Ok"],
     ["Protocolos completos", data.protocolPending ? "Conferir" : "Ok"],
     ["Auditoria registrada", "Ok"],
