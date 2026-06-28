@@ -14,6 +14,7 @@ function ensureAuditControls() {
   tablePanel.insertAdjacentHTML(
     "beforebegin",
     `
+      <div class="audit-summary-grid" id="audit-summary-grid"></div>
       <section class="panel audit-tools">
         <div class="audit-toolbar">
           <label>
@@ -59,6 +60,19 @@ function ensureAuditControls() {
   });
 
   document.getElementById("audit-export").addEventListener("click", exportAuditCsv);
+}
+
+function getAuditSummaryCards(rows) {
+  const sensitiveEvents = rows.filter((movement) => /permiss|acesso|navegacao|redirecionado|bloquead|auditoria|fechamento/i.test(`${movement.text} ${movement.source || ""}`));
+  const navigationEvents = rows.filter((movement) => /redirecionado|navegacao/i.test(`${movement.text} ${movement.source || ""}`));
+
+  return [
+    ["Eventos filtrados", rows.length],
+    ["Eventos sensiveis", sensitiveEvents.length],
+    ["Navegacao protegida", navigationEvents.length],
+    ["Origens", uniqueAuditValues("source").length],
+    ["Perfis", uniqueAuditValues("profile").length],
+  ];
 }
 
 function uniqueAuditValues(field) {
@@ -130,6 +144,29 @@ function exportAuditCsv() {
 
 const auditEnhancementStyle = document.createElement("style");
 auditEnhancementStyle.textContent = `
+  .audit-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .audit-summary-card {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .audit-summary-card span {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .audit-summary-card strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 26px;
+  }
   .audit-tools {
     margin-bottom: 18px;
   }
@@ -147,11 +184,19 @@ auditEnhancementStyle.textContent = `
     font-weight: 700;
   }
   @media (max-width: 980px) {
+    .audit-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .audit-toolbar {
       grid-template-columns: 1fr;
     }
     .audit-toolbar button {
       width: 100%;
+    }
+  }
+  @media (max-width: 640px) {
+    .audit-summary-grid {
+      grid-template-columns: 1fr;
     }
   }
 `;
@@ -163,9 +208,25 @@ renderAudit = function renderAuditWithFilters() {
   updateAuditFilterOptions();
 
   const table = document.getElementById("audit-table");
+  const summary = document.getElementById("audit-summary-grid");
   if (!table) return;
 
-  const rows = getFilteredAuditRows().map((movement) => {
+  const filteredRows = getFilteredAuditRows();
+
+  if (summary) {
+    summary.innerHTML = getAuditSummaryCards(filteredRows)
+      .map(
+        ([label, value]) => `
+          <article class="audit-summary-card">
+            <span>${label}</span>
+            <strong>${value}</strong>
+          </article>
+        `
+      )
+      .join("");
+  }
+
+  const rows = filteredRows.map((movement) => {
     const profile = movement.profile || "Sistema";
     const source = movement.source || "MVP";
     return `
