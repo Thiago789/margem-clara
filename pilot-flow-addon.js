@@ -18,6 +18,8 @@ function getPilotFlowSteps() {
   const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha");
   const rejected = contracts.filter(contractHasReturnIssue);
   const pendingAdjustments = contracts.filter((contract) => contract.pendingAdjustment || contract.status === "Ajuste pendente");
+  const progressed = contracts.filter((contract) => Number(contract.currentInstallment || 0) > 0);
+  const liquidated = contracts.filter((contract) => contract.status === "Liquidado");
   const hasMarginImport = movements.some((movement) => /margem|folha/i.test(`${movement.text} ${movement.source || ""}`));
   const hasInsertion = movements.some((movement) => /insercao/i.test(`${movement.text} ${movement.source || ""}`));
   const hasReturn = movements.some((movement) => /retorno/i.test(`${movement.text} ${movement.source || ""}`)) || rejected.length > 0 || active.length > 0;
@@ -82,7 +84,16 @@ function getPilotFlowSteps() {
       done: pendingAdjustments.length === 0,
     },
     {
-      label: "7. Auditar competencia",
+      label: "7. Baixar parcela/liquidar",
+      status: liquidated.length ? "Com liquidacao" : progressed.length ? "Parcela atualizada" : hasReturn ? "Conferir baixa" : "Aguardando retorno",
+      className: progressed.length || liquidated.length ? "" : "warning",
+      target: "competencies",
+      action: progressed.length || liquidated.length ? "Conferir parcelas" : "Validar baixa",
+      detail: `${progressed.length} contrato(s) com parcela atualizada e ${liquidated.length} liquidado(s).`,
+      done: progressed.length > 0 || liquidated.length > 0,
+    },
+    {
+      label: "8. Auditar competencia",
       status: movements.length ? "Com trilha" : "Sem eventos",
       className: movements.length ? "" : "warning",
       target: "audit",
