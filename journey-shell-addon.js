@@ -242,10 +242,12 @@ function renderJourneyShell() {
   const pilotSteps = typeof getPilotFlowSteps === "function" ? getPilotFlowSteps() : [];
   const journey = typeof getPilotJourneyHealth === "function" && pilotSteps.length ? getPilotJourneyHealth(pilotSteps) : null;
   const focusItem = getJourneyFocusItem();
+  const roadmapFocus = typeof getRoadmapCurrentFocus === "function" ? getRoadmapCurrentFocus() : null;
   const focusSummary = getJourneyFocusSummary(focusItem);
   const focusDetail = compactJourneyText(focusItem?.detail || focusItem?.description || focusItem?.title || "", 140);
   const nextTarget = focusItem?.target || journey?.current?.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
   const nextLabel = pageTitles[nextTarget] || nextTarget;
+  const focusLabel = focusItem ? `Prioridade: ${focusSummary}` : roadmapFocus ? `Foco recomendado: ${roadmapFocus.title}` : `Proximo atalho: ${nextLabel}`;
 
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
   action.textContent = focusItem ? "Abrir prioridade" : journey?.current?.action || "Abrir etapa";
@@ -312,7 +314,7 @@ function renderJourneyShell() {
   stageNote.innerHTML = `
     <span>Objetivo da etapa</span>
     <strong>${escapeJourneyText(activeStage.guidance)}</strong>
-    <em>Proximo atalho: ${escapeJourneyText(nextLabel)}</em>
+    <em>${escapeJourneyText(focusLabel)}</em>
   `;
 
   stageList.querySelectorAll(".journey-stage").forEach((button) => {
