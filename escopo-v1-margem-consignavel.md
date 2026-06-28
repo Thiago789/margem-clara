@@ -12,7 +12,7 @@ A primeira versao deve ser mais enxuta que plataformas consolidadas como eConsig
 - Importar dados de folha por arquivo.
 - Calcular margem consignavel com regras parametrizaveis.
 - Permitir consulta de margem com explicacao detalhada do calculo.
-- Permitir reserva, confirmacao, averbação, cancelamento e liquidacao de contratos.
+- Permitir reserva, confirmacao, averbacao, cancelamento e liquidacao de contratos.
 - Registrar historico completo de margem e operacoes.
 - Permitir simulacao de emprestimo e ranking de taxas.
 - Disponibilizar paineis separados para gestor/RH, consignataria e servidor.
@@ -275,7 +275,7 @@ Eventos auditados:
 - Recalculo de margem.
 - Consulta de margem por consignataria.
 - Geracao e uso de codigo de autorizacao.
-- Reserva, confirmacao, averbação e cancelamento.
+- Reserva, confirmacao, averbacao e cancelamento.
 - Alteracao de contrato.
 - Abertura e resposta de ticket.
 

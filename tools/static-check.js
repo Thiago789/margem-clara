@@ -295,6 +295,18 @@ function checkDocumentationBasics() {
   });
 }
 
+function checkAsciiMarkdownDocs() {
+  fs.readdirSync(root)
+    .filter((file) => file.endsWith(".md"))
+    .forEach((file) => {
+      const content = read(file);
+      const match = content.match(/[^\x00-\x7F]/);
+      if (match) {
+        fail(`${file}: caractere nao ASCII encontrado. Padronize documentos em ASCII para evitar problemas de encoding.`);
+      }
+    });
+}
+
 checkCacheVersion();
 checkAddonFiles();
 checkAddonListIntegrity();
@@ -305,6 +317,7 @@ checkJourneyViewAliases();
 checkJourneyViewsExist();
 checkRecentDecisionCoverage();
 checkDocumentationBasics();
+checkAsciiMarkdownDocs();
 
 if (failures.length) {
   console.error("Static check failed:");
