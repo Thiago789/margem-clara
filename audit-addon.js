@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260628-11`;
+  script.src = `${filename}?v=20260628-12`;
   document.body.appendChild(script);
 }
 
@@ -74,6 +74,7 @@ function loadMissingAddons() {
     "debt-operation-guards-addon.js",
     "business-rules-addon.js",
     "module-jump-addon.js",
+    "navigation-guard-addon.js",
     "operational-queue-addon.js",
     "pilot-flow-addon.js",
     "pilot-qa-addon.js",
@@ -81,7 +82,6 @@ function loadMissingAddons() {
     "data-model-addon.js",
     "field-catalog-addon.js",
     "enrollment-addon.js",
-    "navigation-guard-addon.js",
     "readiness-addon.js",
     "demo-data-addon.js",
     "demo-script-addon.js",

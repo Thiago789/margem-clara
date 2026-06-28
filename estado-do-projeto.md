@@ -127,6 +127,7 @@ O MVP ja possui uma base navegavel com:
 - Tela de permissoes deve evidenciar que a navegacao protegida esta ativa no MVP.
 - Auditoria deve resumir eventos sensiveis e redirecionamentos de navegacao protegida.
 - Prontidao V1 deve considerar resumo de auditoria sensivel e navegacao protegida na frente de seguranca.
+- Homologacao deve validar navegacao protegida e resumo de auditoria sensivel como criterios de seguranca.
 
 ## Campos Importantes Ja Mapeados
 

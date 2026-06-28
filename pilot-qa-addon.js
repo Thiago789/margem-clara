@@ -31,6 +31,8 @@ function getPilotQaScenarios() {
   const hasContractTimeline = contracts.some((contract) => contract.adjustmentHistory?.length || contract.returnHistory?.length || contract.statusHistory?.length);
   const reviewEmployees = employees.filter((employee) => employee.status === "Em revisao");
   const hasAuditSources = movements.some((movement) => movement.source || movement.profile);
+  const hasSensitiveAuditSummary = typeof getAuditSummaryCards === "function";
+  const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
 
   return [
     {
@@ -130,6 +132,14 @@ function getPilotQaScenarios() {
       evidence: "Menus por perfil e modulo de permissoes habilitados para gestor.",
       target: "access",
       ok: profileConfig.manager.views.includes("access") && !profileConfig.employee.views.includes("access"),
+    },
+    {
+      area: "Seguranca",
+      title: "Navegacao protegida e auditoria sensivel",
+      expected: "Modulo indisponivel por perfil deve redirecionar com aviso e aparecer no resumo de auditoria.",
+      evidence: `${hasGuardedNavigation ? "Navegacao protegida ativa" : "Navegacao protegida pendente"}; ${hasSensitiveAuditSummary ? "resumo sensivel ativo" : "resumo sensivel pendente"}.`,
+      target: "access",
+      ok: hasGuardedNavigation && hasSensitiveAuditSummary,
     },
     {
       area: "Auditoria",
