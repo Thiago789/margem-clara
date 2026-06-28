@@ -39,17 +39,9 @@ function checkCacheVersion() {
 }
 
 function checkAddonFiles() {
-  const audit = read("audit-addon.js");
-  const addonBlock = audit.match(/function loadMissingAddons\(\) \{[\s\S]*?\[([\s\S]*?)\]\.forEach\(loadAddonScript\);/);
-
-  if (!addonBlock) {
-    fail("Nao foi possivel localizar a lista de addons em audit-addon.js.");
-    return;
-  }
-
-  const addons = Array.from(addonBlock[1].matchAll(/"([^"]+\.js)"/g), (match) => match[1]);
+  const addons = getLoadedAddons();
   if (!addons.length) {
-    fail("A lista de addons em audit-addon.js esta vazia.");
+    fail("Nao foi possivel localizar a lista de addons em audit-addon.js.");
     return;
   }
 
@@ -65,6 +57,18 @@ function getLoadedAddons() {
   const addonBlock = audit.match(/function loadMissingAddons\(\) \{[\s\S]*?\[([\s\S]*?)\]\.forEach\(loadAddonScript\);/);
   if (!addonBlock) return [];
   return Array.from(addonBlock[1].matchAll(/"([^"]+\.js)"/g), (match) => match[1]);
+}
+
+function checkAddonListIntegrity() {
+  const addons = getLoadedAddons();
+  const duplicates = addons.filter((addon, index) => addons.indexOf(addon) !== index);
+  Array.from(new Set(duplicates)).forEach((addon) => {
+    fail(`audit-addon.js carrega addon duplicado: ${addon}.`);
+  });
+
+  if (addons.at(-1) !== "journey-shell-addon.js") {
+    fail("journey-shell-addon.js deve ser o ultimo addon carregado para consolidar navegacao e jornada.");
+  }
 }
 
 function checkJavaScriptSyntax() {
@@ -171,6 +175,7 @@ function checkJourneyViewsExist() {
 
 checkCacheVersion();
 checkAddonFiles();
+checkAddonListIntegrity();
 checkJavaScriptSyntax();
 checkDuplicatedStatusRules();
 checkJourneyViewAliases();
