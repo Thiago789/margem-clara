@@ -158,6 +158,7 @@ function renderOperationalQueue() {
   const data = getOperationalQueueData();
   const highPriority = data.items.filter((item) => item.severity === "Alta").length;
   const mediumPriority = data.items.filter((item) => item.severity === "Media").length;
+  const nextItem = data.items[0] || null;
 
   const cards = [
     ["Prioridade alta", highPriority, highPriority ? "danger" : ""],
@@ -195,20 +196,34 @@ function renderOperationalQueue() {
         .join("")
     : `<div class="empty-state">Nenhuma pendencia operacional critica no momento.</div>`;
 
-  actions.innerHTML = `
-    <div class="queue-action-row">
-      <strong>1. Tratar prioridade alta</strong>
-      <span>Bloqueios de fechamento, margem negativa e retorno com pendencia devem ser analisados antes de nova liberacao.</span>
-    </div>
-    <div class="queue-action-row">
-      <strong>2. Fechar ciclo da folha</strong>
-      <span>Resolver reservas, descontos enviados e baixas de parcela antes do fechamento da competencia.</span>
-    </div>
-    <div class="queue-action-row">
-      <strong>3. Registrar decisao</strong>
-      <span>Use Auditoria para manter rastro das revisoes manuais e excecoes.</span>
-    </div>
-  `;
+  actions.innerHTML = nextItem
+    ? `
+      <div class="queue-action-row queue-next-action">
+        <div>
+          <strong>1. ${nextItem.area}: ${nextItem.title}</strong>
+          <span>${nextItem.detail}</span>
+        </div>
+        <button class="primary-button queue-open" data-target-view="${nextItem.target}" type="button">Abrir prioridade</button>
+      </div>
+      <div class="queue-action-row">
+        <strong>2. Resolver itens relacionados</strong>
+        <span>Depois da prioridade, trate pendencias da mesma etapa antes de avancar para novo ciclo.</span>
+      </div>
+      <div class="queue-action-row">
+        <strong>3. Registrar decisao</strong>
+        <span>Use Auditoria para manter rastro das revisoes manuais e excecoes.</span>
+      </div>
+    `
+    : `
+      <div class="queue-action-row">
+        <strong>1. Fila limpa</strong>
+        <span>Nenhuma decisao operacional critica no momento. Avance para prontidao ou homologacao do fluxo piloto.</span>
+      </div>
+      <div class="queue-action-row">
+        <strong>2. Conferir competencia</strong>
+        <span>Valide retorno, baixa de parcela e fechamento antes de encerrar a demonstracao.</span>
+      </div>
+    `;
 
   document.querySelectorAll(".queue-open").forEach((button) => {
     button.addEventListener("click", () => openView(button.dataset.targetView));
@@ -280,6 +295,12 @@ queueStyle.textContent = `
     border-radius: 8px;
     background: var(--surface-2);
   }
+  .queue-next-action {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
   @media (max-width: 1040px) {
     .queue-summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -287,7 +308,8 @@ queueStyle.textContent = `
   }
   @media (max-width: 640px) {
     .queue-summary-grid,
-    .queue-item {
+    .queue-item,
+    .queue-next-action {
       grid-template-columns: 1fr;
     }
   }
