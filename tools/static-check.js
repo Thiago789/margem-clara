@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
 const failures = [];
@@ -55,6 +56,24 @@ function checkAddonFiles() {
   addons.forEach((addon) => {
     if (!exists(addon)) {
       fail(`Addon listado mas nao encontrado: ${addon}.`);
+    }
+  });
+}
+
+function getLoadedAddons() {
+  const audit = read("audit-addon.js");
+  const addonBlock = audit.match(/function loadMissingAddons\(\) \{[\s\S]*?\[([\s\S]*?)\]\.forEach\(loadAddonScript\);/);
+  if (!addonBlock) return [];
+  return Array.from(addonBlock[1].matchAll(/"([^"]+\.js)"/g), (match) => match[1]);
+}
+
+function checkJavaScriptSyntax() {
+  ["app.js", "audit-addon.js", ...getLoadedAddons()].forEach((file) => {
+    if (!exists(file)) return;
+    try {
+      new vm.Script(read(file), { filename: file });
+    } catch (error) {
+      fail(`${file}: erro de sintaxe JavaScript: ${error.message}`);
     }
   });
 }
@@ -152,6 +171,7 @@ function checkJourneyViewsExist() {
 
 checkCacheVersion();
 checkAddonFiles();
+checkJavaScriptSyntax();
 checkDuplicatedStatusRules();
 checkJourneyViewAliases();
 checkJourneyViewsExist();

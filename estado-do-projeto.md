@@ -106,6 +106,7 @@ O MVP ja possui uma base navegavel com:
 - Modulos da jornada com alerta devem expor o motivo principal da pendencia no proprio atalho.
 - Menu lateral deve derivar os grupos principais da mesma configuracao da jornada para evitar divergencia.
 - Checagem estatica deve validar se os modulos declarados na jornada possuem telas reais no MVP.
+- Checagem estatica deve validar sintaxe de app.js, audit-addon.js e todos os addons carregados antes de publicar.
 
 ## Campos Importantes Ja Mapeados
 
