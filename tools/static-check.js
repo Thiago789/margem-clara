@@ -79,6 +79,7 @@ function checkAddonDependencyOrder() {
     ["file-protocol-addon.js", "payroll-closing-addon.js"],
     ["file-reconciliation-addon.js", "payroll-closing-addon.js"],
     ["payroll-closing-addon.js", "operational-queue-addon.js"],
+    ["payroll-closing-addon.js", "readiness-addon.js"],
     ["operational-queue-addon.js", "dashboard-command-addon.js"],
     ["pilot-flow-addon.js", "pilot-qa-addon.js"],
     ["pilot-flow-addon.js", "dashboard-command-addon.js"],

@@ -119,6 +119,7 @@ O MVP ja possui uma base navegavel com:
 - Fila de pendencias deve indicar a proxima decisao recomendada, nao apenas listar itens.
 - Fluxo piloto deve ter fechamento da competencia como etapa propria entre baixa de parcela e auditoria.
 - Homologacao do MVP deve cobrar decisao de fechamento da competencia como criterio de aceite.
+- Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.
 
 ## Campos Importantes Ja Mapeados
 

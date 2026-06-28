@@ -14,6 +14,9 @@ function getReadinessGroups() {
   const qaScenarios = typeof getPilotQaScenarios === "function" ? getPilotQaScenarios() : [];
   const qaApproved = qaScenarios.filter((scenario) => scenario.ok).length;
   const qaScore = qaScenarios.length ? Math.round((qaApproved / qaScenarios.length) * 100) : 0;
+  const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
+  const hasClosingDecision = Boolean(closingData);
+  const hasClosingBlocker = Boolean(closingData?.blockers?.length);
   const hasProtocols = Boolean(marginValidation || insertionValidation || returnReconciliation);
   const hasAccessMatrix = profileConfig.manager.views.includes("access") && !profileConfig.employee.views.includes("access");
   const hasEnrollments = Array.isArray(state.enrollments) && state.enrollments.length >= state.employees.length;
@@ -49,6 +52,7 @@ function getReadinessGroups() {
         ["Arquivo de insercao para folha", status(hasInsertionGuard, "Demo", "Mapeado")],
         ["Arquivo retorno com motivos", status(hasReturnGuard, "Demo", "Mapeado")],
         ["Protocolos por competencia", status(hasProtocols, "Parcial")],
+        ["Fechamento da competencia", hasClosingDecision ? (hasClosingBlocker ? "Parcial" : "Demo") : "Pendente"],
       ],
     },
     {
