@@ -112,6 +112,7 @@ O MVP ja possui uma base navegavel com:
 - Fluxo piloto deve evidenciar baixa de parcela e liquidacao automatica como etapa propria apos retorno e ajustes.
 - Homologacao do MVP deve cobrar evidencia de baixa de parcela e liquidacao automatica, nao apenas retorno processado.
 - Prontidao V1 deve considerar baixa de parcela e liquidacao automatica como item explicito do motor de margem.
+- Fila de pendencias deve apontar contrato descontando sem parcela atual ou historico de baixa confirmado.
 
 ## Campos Importantes Ja Mapeados
 

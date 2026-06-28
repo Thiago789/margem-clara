@@ -68,6 +68,12 @@ function getOperationalQueueData() {
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
   const negativeEmployees = state.employees.filter((employee) => calculateMargin(employee).available < 0);
   const openTickets = state.tickets.filter((ticket) => ticket.status === "Aberto");
+  const missingInstallmentProgress = state.contracts.filter(
+    (contract) =>
+      contract.status === "Descontando" &&
+      Number(contract.currentInstallment || 0) === 0 &&
+      !contract.installmentHistory?.some((item) => item.status === "Descontando")
+  );
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
   const closingItems = closingData?.actions?.map(([title, detail, target, severity]) => ({
     severity,
@@ -120,6 +126,14 @@ function getOperationalQueueData() {
       detail: "Desconto enviado para folha, aguardando retorno de processamento.",
       target: "import",
     })),
+    ...missingInstallmentProgress.map((contract) => ({
+      severity: "Media",
+      className: "warning",
+      area: "Baixa de parcela",
+      title: contract.id,
+      detail: "Contrato consta como descontando, mas ainda nao possui parcela atual ou historico de baixa confirmado.",
+      target: "competencies",
+    })),
     ...openTickets.map((ticket) => ({
       severity: "Baixa",
       className: "",
@@ -130,7 +144,7 @@ function getOperationalQueueData() {
     })),
   ];
 
-  return { reserved, sent, rejected, reviewEmployees, negativeEmployees, openTickets, items };
+  return { reserved, sent, rejected, reviewEmployees, negativeEmployees, missingInstallmentProgress, openTickets, items };
 }
 
 function renderOperationalQueue() {
@@ -188,7 +202,7 @@ function renderOperationalQueue() {
     </div>
     <div class="queue-action-row">
       <strong>2. Fechar ciclo da folha</strong>
-      <span>Resolver reservas e descontos enviados antes do fechamento da competencia.</span>
+      <span>Resolver reservas, descontos enviados e baixas de parcela antes do fechamento da competencia.</span>
     </div>
     <div class="queue-action-row">
       <strong>3. Registrar decisao</strong>
