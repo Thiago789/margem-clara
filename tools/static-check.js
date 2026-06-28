@@ -71,6 +71,33 @@ function checkAddonListIntegrity() {
   }
 }
 
+function checkAddonDependencyOrder() {
+  const addons = getLoadedAddons();
+  const mustLoadBefore = [
+    ["payroll-cycle-addon.js", "payroll-closing-addon.js"],
+    ["file-validation-addon.js", "payroll-closing-addon.js"],
+    ["file-protocol-addon.js", "payroll-closing-addon.js"],
+    ["file-reconciliation-addon.js", "payroll-closing-addon.js"],
+    ["payroll-closing-addon.js", "operational-queue-addon.js"],
+    ["operational-queue-addon.js", "dashboard-command-addon.js"],
+    ["pilot-flow-addon.js", "pilot-qa-addon.js"],
+    ["pilot-flow-addon.js", "dashboard-command-addon.js"],
+    ["readiness-addon.js", "dashboard-command-addon.js"],
+    ["operational-queue-addon.js", "journey-shell-addon.js"],
+    ["pilot-flow-addon.js", "journey-shell-addon.js"],
+    ["navigation-guard-addon.js", "journey-shell-addon.js"],
+  ];
+
+  mustLoadBefore.forEach(([before, after]) => {
+    const beforeIndex = addons.indexOf(before);
+    const afterIndex = addons.indexOf(after);
+    if (beforeIndex === -1 || afterIndex === -1) return;
+    if (beforeIndex > afterIndex) {
+      fail(`Ordem de addons invalida: ${before} deve carregar antes de ${after}.`);
+    }
+  });
+}
+
 function checkJavaScriptSyntax() {
   ["app.js", "audit-addon.js", ...getLoadedAddons()].forEach((file) => {
     if (!exists(file)) return;
@@ -176,6 +203,7 @@ function checkJourneyViewsExist() {
 checkCacheVersion();
 checkAddonFiles();
 checkAddonListIntegrity();
+checkAddonDependencyOrder();
 checkJavaScriptSyntax();
 checkDuplicatedStatusRules();
 checkJourneyViewAliases();
