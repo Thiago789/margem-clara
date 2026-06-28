@@ -74,6 +74,14 @@ function getPayrollCycleData() {
   const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha");
   const discounted = state.contracts.filter((contract) => contract.status === "Descontando");
   const rejected = state.contracts.filter(contractHasReturnIssue);
+  const progressed = state.contracts.filter((contract) => Number(contract.currentInstallment || 0) > 0);
+  const liquidated = state.contracts.filter((contract) => contract.status === "Liquidado");
+  const missingInstallmentProgress = state.contracts.filter(
+    (contract) =>
+      contract.status === "Descontando" &&
+      Number(contract.currentInstallment || 0) === 0 &&
+      !contract.installmentHistory?.some((installment) => installment.status === "Descontando")
+  );
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
 
   const steps = [
@@ -101,16 +109,31 @@ function getPayrollCycleData() {
       className: rejected.length ? "danger" : discounted.length ? "" : "warning",
       detail: `${discounted.length} descontando, ${rejected.length} com rejeicao/nao desconto.`,
     },
+    {
+      title: "5. Baixa de parcela",
+      status: liquidated.length
+        ? "Com liquidacao"
+        : progressed.length
+          ? "Parcela atualizada"
+          : missingInstallmentProgress.length
+            ? "Conferir baixa"
+            : discounted.length
+              ? "Baixa sem evidencia"
+              : "Aguardando retorno",
+      className: missingInstallmentProgress.length || (discounted.length && !progressed.length) ? "warning" : progressed.length || liquidated.length ? "" : "warning",
+      detail: `${progressed.length} contrato(s) com parcela atualizada, ${liquidated.length} liquidado(s), ${missingInstallmentProgress.length} sem evidencia.`,
+    },
   ];
 
   const pending = [];
   if (reserved.length) pending.push([`${reserved.length} reserva(s) sem insercao`, "Gerar arquivo de insercao ou cancelar reservas expiradas."]);
   if (sent.length) pending.push([`${sent.length} contrato(s) sem retorno`, "Aguardar retorno da folha ou registrar processamento manual."]);
   if (rejected.length) pending.push([`${rejected.length} retorno(s) com pendencia`, "Tratar motivo, reprocessar ou liberar margem conforme regra."]);
+  if (missingInstallmentProgress.length) pending.push([`${missingInstallmentProgress.length} baixa(s) sem evidencia`, "Conferir parcela atual e historico antes de fechar a competencia."]);
   if (reviewEmployees.length) pending.push([`${reviewEmployees.length} servidor(es) em revisao`, "Conferir vinculo e base de calculo antes do fechamento."]);
   if (!pending.length) pending.push(["Sem pendencias criticas", "Competencia pronta para revisao final no MVP."]);
 
-  return { currentMonth, reserved, sent, discounted, rejected, reviewEmployees, steps, pending };
+  return { currentMonth, reserved, sent, discounted, rejected, progressed, liquidated, missingInstallmentProgress, reviewEmployees, steps, pending };
 }
 
 function renderPayrollCycle() {
@@ -128,7 +151,10 @@ function renderPayrollCycle() {
     ["Competencia", cycle.currentMonth],
     ["Reservas abertas", cycle.reserved.length],
     ["Aguardando retorno", cycle.sent.length],
-    ["Pendencias", cycle.rejected.length + cycle.reviewEmployees.length],
+    ["Parcelas atualizadas", cycle.progressed.length],
+    ["Liquidados", cycle.liquidated.length],
+    ["Baixas pendentes", cycle.missingInstallmentProgress.length],
+    ["Pendencias", cycle.rejected.length + cycle.reviewEmployees.length + cycle.missingInstallmentProgress.length],
   ]
     .map(
       ([label, value]) => `
@@ -165,6 +191,7 @@ function renderPayrollCycle() {
 
   closingRules.innerHTML = [
     ["Nao fechar com retorno pendente", "Contratos enviados para folha precisam ter retorno processado ou justificativa."],
+    ["Baixa exige evidencia", "Retorno descontado precisa atualizar parcela atual ou historico antes do fechamento."],
     ["Nao fechar com servidor em revisao", "Margem em revisao deve ser tratada ou formalmente liberada."],
     ["Congelar posicao da competencia", "Apos fechamento, alteracoes devem entrar como ajuste auditado."],
     ["Gerar resumo de divergencias", "Rejeicoes, nao descontos e contratos nao localizados precisam de relatorio."],
@@ -184,7 +211,7 @@ const payrollStyle = document.createElement("style");
 payrollStyle.textContent = `
   .payroll-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 14px;
   }
   .payroll-summary-card {
@@ -228,9 +255,11 @@ payrollStyle.textContent = `
     gap: 12px;
   }
   @media (max-width: 1100px) {
-    .payroll-summary-grid,
     .payroll-steps {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .payroll-summary-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
   @media (max-width: 720px) {

@@ -114,6 +114,7 @@ O MVP ja possui uma base navegavel com:
 - Prontidao V1 deve considerar baixa de parcela e liquidacao automatica como item explicito do motor de margem.
 - Fila de pendencias deve apontar contrato descontando sem parcela atual ou historico de baixa confirmado.
 - Fechamento da competencia deve tratar baixa de parcela sem evidencia como ressalva antes de congelar o ciclo.
+- Tela de competencias da folha deve evidenciar baixa de parcela, liquidacao e baixas sem evidencia antes do fechamento.
 
 ## Campos Importantes Ja Mapeados
 
