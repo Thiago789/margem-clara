@@ -145,6 +145,7 @@ function renderAccessControl() {
   const totalActions = profiles.reduce((sum, profile) => sum + profile.canAct.length, 0);
   const totalRestrictions = profiles.reduce((sum, profile) => sum + profile.restrictions.length, 0);
   const activeProfile = profileConfig[state.currentProfile] || profileConfig.manager;
+  const guardedNavigationEnabled = typeof openView === "function" && Boolean(document.getElementById("navigation-guard-notice") || document.querySelector(".topbar"));
 
   command.innerHTML = `
     <div>
@@ -166,6 +167,7 @@ function renderAccessControl() {
     ["Risco alto", highRisk],
     ["Acoes permitidas", totalActions],
     ["Restricoes", totalRestrictions],
+    ["Navegacao protegida", guardedNavigationEnabled ? "Sim" : "Nao"],
     ["Modulos mapeados", matrix.allViews.length],
   ];
 
@@ -239,6 +241,10 @@ function renderAccessControl() {
       <strong>Auditoria imutavel</strong>
       <span>Acoes criticas precisam registrar usuario, perfil, origem, antes/depois e motivo operacional.</span>
     </div>
+    <div class="access-note">
+      <strong>Navegacao protegida</strong>
+      <span>Atalhos para modulos indisponiveis por perfil redirecionam com aviso visivel e evento de auditoria.</span>
+    </div>
   `;
 
   ux.innerHTML = `
@@ -248,7 +254,7 @@ function renderAccessControl() {
     </div>
     <div class="access-note">
       <strong>Mensagens claras</strong>
-      <span>Quando uma acao for bloqueada, o sistema deve explicar a regra sem expor dado sensivel.</span>
+      <span>Quando uma acao for bloqueada, o sistema explica o redirecionamento sem expor dado sensivel.</span>
     </div>
     <div class="access-note">
       <strong>Proxima evolucao</strong>
