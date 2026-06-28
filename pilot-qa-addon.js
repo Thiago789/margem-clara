@@ -22,6 +22,8 @@ function getPilotQaScenarios() {
   const sent = contracts.filter((contract) => contract.status === "Enviado para folha");
   const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha");
   const rejected = contracts.filter(contractHasReturnIssue);
+  const progressed = contracts.filter((contract) => Number(contract.currentInstallment || 0) > 0);
+  const liquidated = contracts.filter((contract) => contract.status === "Liquidado");
   const hasReturnReconciliation = Boolean(state.lastReturnReconciliation);
   const hasContractTimeline = contracts.some((contract) => contract.adjustmentHistory?.length || contract.returnHistory?.length || contract.statusHistory?.length);
   const reviewEmployees = employees.filter((employee) => employee.status === "Em revisao");
@@ -91,6 +93,14 @@ function getPilotQaScenarios() {
         : `${active.length} ativo(s), ${rejected.length} rejeitado(s) ou nao descontado(s).`,
       target: "import",
       ok: hasReturnReconciliation || active.length > 0 || rejected.length > 0,
+    },
+    {
+      area: "Baixa de parcela",
+      title: "Parcela atual e liquidacao automatica",
+      expected: "Retorno descontado deve avancar parcela atual; ao atingir prazo final, contrato deve liquidar e liberar margem.",
+      evidence: `${progressed.length} contrato(s) com parcela atualizada, ${liquidated.length} liquidado(s).`,
+      target: "competencies",
+      ok: progressed.length > 0 || liquidated.length > 0,
     },
     {
       area: "Rastreabilidade",
