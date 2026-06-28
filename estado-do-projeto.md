@@ -121,6 +121,7 @@ O MVP ja possui uma base navegavel com:
 - Homologacao do MVP deve cobrar decisao de fechamento da competencia como criterio de aceite.
 - Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.
 - Roadmap deve apontar o proximo foco recomendado a partir da frente com menor prontidao.
+- Painel inicial deve expor o foco recomendado do roadmap para orientar o proximo passo.
 
 ## Campos Importantes Ja Mapeados
 

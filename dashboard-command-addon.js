@@ -73,6 +73,19 @@ function dashboardPayrollDecision() {
   return getPayrollClosingData();
 }
 
+function dashboardRoadmapFocus() {
+  if (typeof getRoadmapCurrentFocus !== "function") {
+    return {
+      title: "Homologacao operacional",
+      detail: "Validar o roteiro ponta a ponta antes de abrir novas frentes.",
+      target: "qa",
+      action: "Abrir homologacao",
+    };
+  }
+
+  return getRoadmapCurrentFocus();
+}
+
 function renderDashboardCommandCenter() {
   ensureDashboardCommandCenter();
   const grid = document.getElementById("dashboard-command-grid");
@@ -86,6 +99,7 @@ function renderDashboardCommandCenter() {
   const queue = dashboardQueueDecision();
   const readiness = dashboardReadinessDecision();
   const payroll = dashboardPayrollDecision();
+  const focus = dashboardRoadmapFocus();
   const queueTarget = queue.next?.target || "queue";
   const queueTitle = queue.next ? `${queue.next.area}: ${queue.next.title}` : "Fila sem pendencias criticas";
   const queueDetail = queue.next ? queue.next.detail : "Nenhuma decisao operacional critica no momento.";
@@ -122,6 +136,12 @@ function renderDashboardCommandCenter() {
       <p>Frente com menor maturidade atual: ${readiness.nextGroup.score}%.</p>
       <button class="secondary-button dashboard-command-action" data-target-view="readiness" type="button">Ver prontidao</button>
     </article>
+    <article class="dashboard-command-card">
+      <span>Foco recomendado</span>
+      <strong>${focus.title}</strong>
+      <p>${focus.detail}</p>
+      <button class="secondary-button dashboard-command-action" data-target-view="${focus.target}" type="button">${focus.action}</button>
+    </article>
   `;
 
   document.querySelectorAll(".dashboard-command-action").forEach((button) => {
@@ -136,7 +156,7 @@ dashboardCommandStyle.textContent = `
   }
   .dashboard-command-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 14px;
   }
   .dashboard-command-card {

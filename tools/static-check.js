@@ -84,6 +84,7 @@ function checkAddonDependencyOrder() {
     ["pilot-flow-addon.js", "pilot-qa-addon.js"],
     ["pilot-flow-addon.js", "dashboard-command-addon.js"],
     ["readiness-addon.js", "dashboard-command-addon.js"],
+    ["roadmap-addon.js", "dashboard-command-addon.js"],
     ["operational-queue-addon.js", "journey-shell-addon.js"],
     ["pilot-flow-addon.js", "journey-shell-addon.js"],
     ["navigation-guard-addon.js", "journey-shell-addon.js"],
