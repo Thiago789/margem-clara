@@ -123,10 +123,38 @@ function checkJourneyViewAliases() {
   });
 }
 
+function getJourneyViews() {
+  const journey = read("journey-shell-addon.js");
+  const viewBlocks = Array.from(journey.matchAll(/views:\s*\[([^\]]+)\]/g), (match) => match[1]);
+  return viewBlocks.flatMap((block) => Array.from(block.matchAll(/"([^"]+)"/g), (match) => match[1]));
+}
+
+function viewExists(view) {
+  const viewId = `${view}-view`;
+  return fs.readdirSync(root)
+    .filter((file) => file.endsWith(".html") || file.endsWith(".js"))
+    .some((file) => read(file).includes(viewId));
+}
+
+function checkJourneyViewsExist() {
+  const views = getJourneyViews();
+  const duplicates = views.filter((view, index) => views.indexOf(view) !== index);
+  Array.from(new Set(duplicates)).forEach((view) => {
+    fail(`journey-shell-addon.js declara o modulo ${view} mais de uma vez na jornada.`);
+  });
+
+  Array.from(new Set(views)).forEach((view) => {
+    if (!viewExists(view)) {
+      fail(`journey-shell-addon.js declara modulo sem tela correspondente: ${view}.`);
+    }
+  });
+}
+
 checkCacheVersion();
 checkAddonFiles();
 checkDuplicatedStatusRules();
 checkJourneyViewAliases();
+checkJourneyViewsExist();
 
 if (failures.length) {
   console.error("Static check failed:");
