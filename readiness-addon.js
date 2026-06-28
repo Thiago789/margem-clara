@@ -27,6 +27,8 @@ function getReadinessGroups() {
   const hasContracts = state.contracts.length > 0;
   const hasInstallmentProgress = state.contracts.some((contract) => Number(contract.currentInstallment || 0) > 0 || contract.status === "Liquidado");
   const hasAudit = state.movements.length > 0;
+  const hasSensitiveAuditSummary = typeof getAuditSummaryCards === "function";
+  const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
   const hasApiPlan = profileConfig.manager.views.includes("api") || profileConfig.manager.views.includes("integrations");
 
   const status = (condition, mapped = "Mapeado", pending = "Pendente") => (condition ? mapped : pending);
@@ -42,6 +44,8 @@ function getReadinessGroups() {
         ["Login real com sessao segura", "Pendente"],
         ["Permissoes por perfil e convenio", status(hasAccessMatrix)],
         ["Auditoria de operacoes sensiveis", status(hasAudit, "Parcial")],
+        ["Resumo de eventos sensiveis", status(hasSensitiveAuditSummary, "Demo", "Pendente")],
+        ["Navegacao protegida por perfil", status(hasGuardedNavigation, "Demo", "Pendente")],
         ["Politica LGPD e minimizacao de dados", "Pendente"],
       ],
     },

@@ -126,6 +126,7 @@ O MVP ja possui uma base navegavel com:
 - Navegacao bloqueada por perfil deve redirecionar com aviso visivel e registro de auditoria.
 - Tela de permissoes deve evidenciar que a navegacao protegida esta ativa no MVP.
 - Auditoria deve resumir eventos sensiveis e redirecionamentos de navegacao protegida.
+- Prontidao V1 deve considerar resumo de auditoria sensivel e navegacao protegida na frente de seguranca.
 
 ## Campos Importantes Ja Mapeados
 

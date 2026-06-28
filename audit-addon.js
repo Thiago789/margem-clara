@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260628-10`;
+  script.src = `${filename}?v=20260628-11`;
   document.body.appendChild(script);
 }
 
@@ -81,6 +81,7 @@ function loadMissingAddons() {
     "data-model-addon.js",
     "field-catalog-addon.js",
     "enrollment-addon.js",
+    "navigation-guard-addon.js",
     "readiness-addon.js",
     "demo-data-addon.js",
     "demo-script-addon.js",
@@ -102,7 +103,6 @@ function loadMissingAddons() {
     "file-layouts-addon.js",
     "access-control-addon.js",
     "dashboard-command-addon.js",
-    "navigation-guard-addon.js",
     "journey-shell-addon.js",
   ].forEach(loadAddonScript);
 }

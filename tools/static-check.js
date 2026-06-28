@@ -78,6 +78,7 @@ function checkAddonDependencyOrder() {
     ["file-validation-addon.js", "payroll-closing-addon.js"],
     ["file-protocol-addon.js", "payroll-closing-addon.js"],
     ["file-reconciliation-addon.js", "payroll-closing-addon.js"],
+    ["audit-enhancements-addon.js", "readiness-addon.js"],
     ["payroll-closing-addon.js", "operational-queue-addon.js"],
     ["payroll-closing-addon.js", "readiness-addon.js"],
     ["operational-queue-addon.js", "dashboard-command-addon.js"],
@@ -89,6 +90,7 @@ function checkAddonDependencyOrder() {
     ["pilot-flow-addon.js", "journey-shell-addon.js"],
     ["roadmap-addon.js", "journey-shell-addon.js"],
     ["navigation-guard-addon.js", "journey-shell-addon.js"],
+    ["navigation-guard-addon.js", "readiness-addon.js"],
   ];
 
   mustLoadBefore.forEach(([before, after]) => {
