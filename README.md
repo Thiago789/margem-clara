@@ -20,21 +20,16 @@ C:\Users\Thiago Moreira\Documents\Codex\2026-05-18\boa-noite-preciso-desenvolver
 
 ## O que ja funciona
 
-- Painel operacional com indicadores.
-- Listagem de servidores.
-- Cadastro de novo servidor.
-- Consulta de margem explicada.
-- Calculo de margem por renda base, descontos obrigatorios, contratos e reservas.
-- Contratos e reservas.
-- Criacao de nova reserva com validacao de margem disponivel.
-- Importacao de folha via CSV.
-- Simulacao de emprestimo.
-- Ranking de taxas.
-- Alternancia visual de perfil: Gestor/RH, Servidor e Consignataria.
-- Tela de autorizacoes/contrassenha com codigo temporario.
-- Uso automatico de codigo ativo ao criar uma reserva para o servidor.
-- Abertura de ticket de suporte/contestacao.
-- Persistencia local via `localStorage`.
+- Painel operacional com fila de pendencias, foco recomendado e decisao da competencia.
+- Jornada operacional guiada por etapas: base, operacao, folha e gestao.
+- Servidores, matriculas/vinculos e margem controlada por matricula.
+- Contratos, reservas, produtos, tipos de operacao e campos financeiros essenciais.
+- Fluxo de arquivos: margem, insercao, retorno, validacao, protocolos e conciliacao.
+- Baixa de parcela, liquidacao automatica e fechamento da competencia.
+- Homologacao do MVP, prontidao V1 e roadmap orientado pelo menor indicador de maturidade.
+- Permissoes por perfil, navegacao protegida com aviso e auditoria de eventos sensiveis.
+- Consignatarias, produtos, rubricas, credenciamento e integracoes/API em nivel de MVP.
+- Massa de demonstracao e persistencia local via `localStorage`.
 
 ## Arquivo de exemplo
 
@@ -59,7 +54,7 @@ Antes de publicar uma mudanca, rode:
 node tools/static-check.js
 ```
 
-Essa checagem valida a versao de cache, a lista de addons carregados e duplicacoes de regras centrais de status.
+Essa checagem valida cache, addons carregados, ordem de dependencias, sintaxe JavaScript, regras centrais de status, jornada e decisoes recentes de produto.
 
 Validacoes tecnicas realizadas:
 

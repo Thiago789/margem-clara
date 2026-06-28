@@ -258,6 +258,43 @@ function checkRecentDecisionCoverage() {
   });
 }
 
+function checkDocumentationBasics() {
+  const docs = [
+    {
+      file: "README.md",
+      snippets: [
+        "https://thiago789.github.io/margem-clara/",
+        "Jornada operacional guiada",
+        "navegacao protegida",
+        "node tools/static-check.js",
+      ],
+    },
+    {
+      file: "estado-do-projeto.md",
+      snippets: [
+        "Atualizado em: 2026-06-28",
+        "Navegacao bloqueada por perfil",
+        "Auditoria deve resumir eventos sensiveis",
+        "Homologacao deve validar navegacao protegida",
+      ],
+    },
+  ];
+
+  docs.forEach(({ file, snippets }) => {
+    if (!exists(file)) {
+      fail(`${file}: documento essencial nao encontrado.`);
+      return;
+    }
+
+    const content = read(file);
+    snippets.forEach((snippet) => {
+      if (!content.includes(snippet)) {
+        fail(`${file}: documentacao essencial ausente ou desatualizada: ${snippet}.`);
+      }
+    });
+  });
+}
+
 checkCacheVersion();
 checkAddonFiles();
 checkAddonListIntegrity();
@@ -267,6 +304,7 @@ checkDuplicatedStatusRules();
 checkJourneyViewAliases();
 checkJourneyViewsExist();
 checkRecentDecisionCoverage();
+checkDocumentationBasics();
 
 if (failures.length) {
   console.error("Static check failed:");
