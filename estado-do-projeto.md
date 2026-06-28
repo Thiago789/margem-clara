@@ -123,6 +123,7 @@ O MVP ja possui uma base navegavel com:
 - Roadmap deve apontar o proximo foco recomendado a partir da frente com menor prontidao.
 - Painel inicial deve expor o foco recomendado do roadmap para orientar o proximo passo.
 - Jornada superior deve mostrar prioridade da fila ou foco recomendado sem exigir abrir o roadmap.
+- Navegacao bloqueada por perfil deve redirecionar com aviso visivel e registro de auditoria.
 
 ## Campos Importantes Ja Mapeados
 
