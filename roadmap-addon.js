@@ -13,7 +13,7 @@ function getRoadmapTracks() {
       phase: "Demo atual",
       status: "Em andamento",
       goal: "Demonstrar valor, fluxo operacional e diferenciais do produto sem backend real.",
-      items: ["Fluxo piloto", "Homologacao", "Massa de teste", "API sandbox", "Autenticidade", "Endividamento"],
+      items: ["Fluxo piloto", "Fila de pendencias", "Fechamento", "Homologacao", "Prontidao V1", "API sandbox"],
       risk: "Dados ficam no navegador e servem apenas para demonstracao.",
     },
     {
@@ -38,6 +38,25 @@ function getRoadmapTracks() {
       risk: "Evitar automatizar decisao sensivel antes de ter governanca madura.",
     },
   ];
+}
+
+function getRoadmapCurrentFocus() {
+  if (typeof getReadinessGroups !== "function" || typeof getReadinessCurrentDecision !== "function") {
+    return {
+      title: "Homologacao operacional",
+      detail: "Validar o roteiro ponta a ponta antes de abrir novas frentes.",
+      target: "qa",
+      action: "Abrir homologacao",
+    };
+  }
+
+  const decision = getReadinessCurrentDecision(getReadinessGroups());
+  return {
+    title: decision.nextGroup.title,
+    detail: `${decision.nextGroup.score}% de maturidade. Priorize esta frente antes de pensar em producao ou novas integracoes.`,
+    target: "readiness",
+    action: "Ver prontidao",
+  };
 }
 
 function ensureRoadmapView() {
@@ -65,6 +84,8 @@ function ensureRoadmapView() {
           </div>
           <button class="primary-button" id="roadmap-audit-button" type="button">Registrar revisao</button>
         </div>
+
+        <section class="panel roadmap-command" id="roadmap-command"></section>
 
         <div class="roadmap-summary-grid" id="roadmap-summary-grid"></div>
 
@@ -106,18 +127,29 @@ function renderRoadmap() {
   ensureRoadmapView();
 
   const summary = document.getElementById("roadmap-summary-grid");
+  const command = document.getElementById("roadmap-command");
   const list = document.getElementById("roadmap-list");
   const now = document.getElementById("roadmap-now");
   const later = document.getElementById("roadmap-later");
-  if (!summary || !list || !now || !later) return;
+  if (!summary || !command || !list || !now || !later) return;
 
   const tracks = getRoadmapTracks();
+  const focus = getRoadmapCurrentFocus();
   const cards = [
     ["Fases", tracks.length],
     ["Demo", 1],
     ["Piloto/V1", 2],
     ["Pesquisa", 1],
   ];
+
+  command.innerHTML = `
+    <div>
+      <span>Proximo foco recomendado</span>
+      <strong>${focus.title}</strong>
+      <p>${focus.detail}</p>
+    </div>
+    <button class="primary-button roadmap-focus-action" data-target-view="${focus.target}" type="button">${focus.action}</button>
+  `;
 
   summary.innerHTML = cards
     .map(
@@ -149,8 +181,8 @@ function renderRoadmap() {
 
   now.innerHTML = `
     <div class="roadmap-note">
-      <strong>Manter demo estatica estavel</strong>
-      <span>Evitar mexer no nucleo sem necessidade e continuar adicionando modulos de decisao bem isolados.</span>
+      <strong>Priorizar o menor indicador de prontidao</strong>
+      <span>Use o foco recomendado acima para evoluir o MVP sem abrir frentes paralelas demais.</span>
     </div>
     <div class="roadmap-note">
       <strong>Validar fluxo com alguem de negocio</strong>
@@ -176,6 +208,10 @@ function renderRoadmap() {
       <span>Comecar por uma folha e uma consignataria piloto, com contrato de API e massa homologada.</span>
     </div>
   `;
+
+  document.querySelector(".roadmap-focus-action")?.addEventListener("click", (event) => {
+    openView(event.currentTarget.dataset.targetView);
+  });
 }
 
 const roadmapStyle = document.createElement("style");
@@ -187,6 +223,7 @@ roadmapStyle.textContent = `
     margin-bottom: 18px;
   }
   .roadmap-summary-card,
+  .roadmap-command,
   .roadmap-row,
   .roadmap-note {
     border: 1px solid var(--line);
@@ -197,7 +234,18 @@ roadmapStyle.textContent = `
     padding: 16px;
     box-shadow: var(--shadow);
   }
+  .roadmap-command {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 16px;
+    background: var(--surface-2);
+  }
   .roadmap-summary-card span,
+  .roadmap-command span,
+  .roadmap-command p,
   .roadmap-row span,
   .roadmap-row p,
   .roadmap-note span {
@@ -210,6 +258,14 @@ roadmapStyle.textContent = `
     display: block;
     margin-top: 8px;
     font-size: 26px;
+  }
+  .roadmap-command strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 20px;
+  }
+  .roadmap-command p {
+    margin: 6px 0 0;
   }
   .roadmap-list,
   .roadmap-note-list {
@@ -246,6 +302,7 @@ roadmapStyle.textContent = `
   }
   @media (max-width: 640px) {
     .roadmap-summary-grid,
+    .roadmap-command,
     .roadmap-row {
       grid-template-columns: 1fr;
     }

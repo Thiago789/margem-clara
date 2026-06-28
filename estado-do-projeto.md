@@ -120,6 +120,7 @@ O MVP ja possui uma base navegavel com:
 - Fluxo piloto deve ter fechamento da competencia como etapa propria entre baixa de parcela e auditoria.
 - Homologacao do MVP deve cobrar decisao de fechamento da competencia como criterio de aceite.
 - Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.
+- Roadmap deve apontar o proximo foco recomendado a partir da frente com menor prontidao.
 
 ## Campos Importantes Ja Mapeados
 
