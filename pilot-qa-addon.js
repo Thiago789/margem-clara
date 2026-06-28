@@ -24,6 +24,9 @@ function getPilotQaScenarios() {
   const rejected = contracts.filter(contractHasReturnIssue);
   const progressed = contracts.filter((contract) => Number(contract.currentInstallment || 0) > 0);
   const liquidated = contracts.filter((contract) => contract.status === "Liquidado");
+  const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
+  const closingBlockers = closingData?.blockers?.length || 0;
+  const closingWarnings = closingData?.warnings?.length || 0;
   const hasReturnReconciliation = Boolean(state.lastReturnReconciliation);
   const hasContractTimeline = contracts.some((contract) => contract.adjustmentHistory?.length || contract.returnHistory?.length || contract.statusHistory?.length);
   const reviewEmployees = employees.filter((employee) => employee.status === "Em revisao");
@@ -101,6 +104,16 @@ function getPilotQaScenarios() {
       evidence: `${progressed.length} contrato(s) com parcela atualizada, ${liquidated.length} liquidado(s).`,
       target: "competencies",
       ok: progressed.length > 0 || liquidated.length > 0,
+    },
+    {
+      area: "Fechamento",
+      title: "Decisao da competencia",
+      expected: "Competencia deve indicar se pode fechar, fechar com ressalva ou bloquear por retorno/baixa pendente.",
+      evidence: closingData
+        ? `${closingBlockers} bloqueio(s), ${closingWarnings} ressalva(s), decisao: ${closingData.decision}.`
+        : "Fechamento ainda nao calculado.",
+      target: "closing",
+      ok: Boolean(closingData) && closingBlockers === 0,
     },
     {
       area: "Rastreabilidade",

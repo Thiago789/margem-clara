@@ -118,6 +118,7 @@ O MVP ja possui uma base navegavel com:
 - Painel inicial do gestor deve resumir a decisao da competencia para reduzir cliques ate bloqueios de fechamento.
 - Fila de pendencias deve indicar a proxima decisao recomendada, nao apenas listar itens.
 - Fluxo piloto deve ter fechamento da competencia como etapa propria entre baixa de parcela e auditoria.
+- Homologacao do MVP deve cobrar decisao de fechamento da competencia como criterio de aceite.
 
 ## Campos Importantes Ja Mapeados
 
