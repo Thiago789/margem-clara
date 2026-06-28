@@ -20,6 +20,9 @@ function getPilotFlowSteps() {
   const pendingAdjustments = contracts.filter((contract) => contract.pendingAdjustment || contract.status === "Ajuste pendente");
   const progressed = contracts.filter((contract) => Number(contract.currentInstallment || 0) > 0);
   const liquidated = contracts.filter((contract) => contract.status === "Liquidado");
+  const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
+  const closingBlocked = Boolean(closingData?.blockers?.length);
+  const closingWarnings = closingData?.warnings?.length || 0;
   const hasMarginImport = movements.some((movement) => /margem|folha/i.test(`${movement.text} ${movement.source || ""}`));
   const hasInsertion = movements.some((movement) => /insercao/i.test(`${movement.text} ${movement.source || ""}`));
   const hasReturn = movements.some((movement) => /retorno/i.test(`${movement.text} ${movement.source || ""}`)) || rejected.length > 0 || active.length > 0;
@@ -93,7 +96,18 @@ function getPilotFlowSteps() {
       done: progressed.length > 0 || liquidated.length > 0,
     },
     {
-      label: "8. Auditar competencia",
+      label: "8. Fechar competencia",
+      status: closingData ? closingData.decision : "Aguardando calculo",
+      className: closingBlocked ? "danger" : closingWarnings ? "warning" : closingData ? "" : "warning",
+      target: "closing",
+      action: closingBlocked || closingWarnings ? "Ver bloqueios" : "Conferir fechamento",
+      detail: closingData
+        ? `${closingData.blockers.length} bloqueio(s), ${closingWarnings} ressalva(s) e ${closingData.insertionBatchRows.length} item(ns) de lote.`
+        : "Confere se a competencia pode ser congelada antes da auditoria final.",
+      done: Boolean(closingData) && !closingBlocked,
+    },
+    {
+      label: "9. Auditar competencia",
       status: movements.length ? "Com trilha" : "Sem eventos",
       className: movements.length ? "" : "warning",
       target: "audit",
