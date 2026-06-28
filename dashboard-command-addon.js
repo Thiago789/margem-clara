@@ -55,6 +55,24 @@ function dashboardQueueDecision() {
   };
 }
 
+function dashboardPayrollDecision() {
+  if (typeof getPayrollClosingData !== "function") {
+    return {
+      month: new Date().toISOString().slice(0, 7),
+      decision: "Competencia nao calculada",
+      className: "",
+      blockers: [],
+      warnings: [],
+      sent: [],
+      missingInstallmentProgress: [],
+      batchAwaitingReturn: [],
+      batchUnresolved: [],
+    };
+  }
+
+  return getPayrollClosingData();
+}
+
 function renderDashboardCommandCenter() {
   ensureDashboardCommandCenter();
   const grid = document.getElementById("dashboard-command-grid");
@@ -67,9 +85,14 @@ function renderDashboardCommandCenter() {
   const journey = dashboardJourneyDecision();
   const queue = dashboardQueueDecision();
   const readiness = dashboardReadinessDecision();
+  const payroll = dashboardPayrollDecision();
   const queueTarget = queue.next?.target || "queue";
   const queueTitle = queue.next ? `${queue.next.area}: ${queue.next.title}` : "Fila sem pendencias criticas";
   const queueDetail = queue.next ? queue.next.detail : "Nenhuma decisao operacional critica no momento.";
+  const payrollBlockers = payroll.blockers.length;
+  const payrollWarnings = payroll.warnings.length;
+  const payrollPendingReturns = payroll.sent.length + payroll.batchAwaitingReturn.length;
+  const payrollPayoffWarnings = payroll.missingInstallmentProgress.length;
 
   grid.innerHTML = `
     <article class="dashboard-command-card">
@@ -86,6 +109,12 @@ function renderDashboardCommandCenter() {
       <strong>${queueTitle}</strong>
       <p>${queueDetail}</p>
       <button class="secondary-button dashboard-command-action" data-target-view="${queueTarget}" type="button">Abrir fila</button>
+    </article>
+    <article class="dashboard-command-card">
+      <span>Competencia ${payroll.month}</span>
+      <strong>${payroll.decision}</strong>
+      <p>${payrollBlockers} bloqueio(s), ${payrollWarnings} ressalva(s), ${payrollPendingReturns} retorno(s) pendente(s), ${payrollPayoffWarnings} baixa(s) sem evidencia.</p>
+      <button class="secondary-button dashboard-command-action" data-target-view="closing" type="button">Ver fechamento</button>
     </article>
     <article class="dashboard-command-card">
       <span>${readiness.average}% de prontidao</span>
@@ -107,7 +136,7 @@ dashboardCommandStyle.textContent = `
   }
   .dashboard-command-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
   }
   .dashboard-command-card {

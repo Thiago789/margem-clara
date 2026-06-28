@@ -115,6 +115,7 @@ O MVP ja possui uma base navegavel com:
 - Fila de pendencias deve apontar contrato descontando sem parcela atual ou historico de baixa confirmado.
 - Fechamento da competencia deve tratar baixa de parcela sem evidencia como ressalva antes de congelar o ciclo.
 - Tela de competencias da folha deve evidenciar baixa de parcela, liquidacao e baixas sem evidencia antes do fechamento.
+- Painel inicial do gestor deve resumir a decisao da competencia para reduzir cliques ate bloqueios de fechamento.
 
 ## Campos Importantes Ja Mapeados
 
