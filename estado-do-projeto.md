@@ -109,6 +109,7 @@ O MVP ja possui uma base navegavel com:
 - Checagem estatica deve validar sintaxe de app.js, audit-addon.js e todos os addons carregados antes de publicar.
 - Checagem estatica deve bloquear addon duplicado e manter a jornada como ultimo addon de consolidacao.
 - Checagem estatica deve validar ordem de addons quando houver dependencia entre ciclo, fechamento, fila, painel, piloto e jornada.
+- Checagem estatica deve proteger decisoes recentes de produto, como foco recomendado, fechamento no piloto, navegacao protegida e resumo de auditoria sensivel.
 - Fluxo piloto deve evidenciar baixa de parcela e liquidacao automatica como etapa propria apos retorno e ajustes.
 - Homologacao do MVP deve cobrar evidencia de baixa de parcela e liquidacao automatica, nao apenas retorno processado.
 - Prontidao V1 deve considerar baixa de parcela e liquidacao automatica como item explicito do motor de margem.

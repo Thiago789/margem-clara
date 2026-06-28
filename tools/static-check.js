@@ -207,6 +207,57 @@ function checkJourneyViewsExist() {
   });
 }
 
+function checkRecentDecisionCoverage() {
+  const requiredSnippets = [
+    {
+      file: "navigation-guard-addon.js",
+      snippet: "navigation-guard-notice",
+      message: "Aviso visual de navegacao protegida deve continuar ativo.",
+    },
+    {
+      file: "audit-enhancements-addon.js",
+      snippet: "getAuditSummaryCards",
+      message: "Auditoria deve manter resumo de eventos sensiveis.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "Navegacao protegida e auditoria sensivel",
+      message: "Homologacao deve validar controles de seguranca recentes.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "Navegacao protegida por perfil",
+      message: "Prontidao V1 deve medir navegacao protegida.",
+    },
+    {
+      file: "roadmap-addon.js",
+      snippet: "getRoadmapCurrentFocus",
+      message: "Roadmap deve manter foco recomendado calculado pela prontidao.",
+    },
+    {
+      file: "dashboard-command-addon.js",
+      snippet: "dashboardRoadmapFocus",
+      message: "Painel inicial deve expor foco recomendado do roadmap.",
+    },
+    {
+      file: "pilot-flow-addon.js",
+      snippet: "8. Fechar competencia",
+      message: "Fluxo piloto deve manter fechamento antes da auditoria.",
+    },
+  ];
+
+  requiredSnippets.forEach(({ file, snippet, message }) => {
+    if (!exists(file)) {
+      fail(`${file}: arquivo esperado para decisao recente nao existe.`);
+      return;
+    }
+
+    if (!read(file).includes(snippet)) {
+      fail(`${file}: ${message}`);
+    }
+  });
+}
+
 checkCacheVersion();
 checkAddonFiles();
 checkAddonListIntegrity();
@@ -215,6 +266,7 @@ checkJavaScriptSyntax();
 checkDuplicatedStatusRules();
 checkJourneyViewAliases();
 checkJourneyViewsExist();
+checkRecentDecisionCoverage();
 
 if (failures.length) {
   console.error("Static check failed:");
