@@ -111,6 +111,7 @@ O MVP ja possui uma base navegavel com:
 - Checagem estatica deve validar ordem de addons quando houver dependencia entre ciclo, fechamento, fila, painel, piloto e jornada.
 - Fluxo piloto deve evidenciar baixa de parcela e liquidacao automatica como etapa propria apos retorno e ajustes.
 - Homologacao do MVP deve cobrar evidencia de baixa de parcela e liquidacao automatica, nao apenas retorno processado.
+- Prontidao V1 deve considerar baixa de parcela e liquidacao automatica como item explicito do motor de margem.
 
 ## Campos Importantes Ja Mapeados
 

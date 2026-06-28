@@ -22,6 +22,7 @@ function getReadinessGroups() {
   const hasInsertionGuard = Boolean(insertionValidation);
   const hasMarginGuard = Boolean(marginValidation);
   const hasContracts = state.contracts.length > 0;
+  const hasInstallmentProgress = state.contracts.some((contract) => Number(contract.currentInstallment || 0) > 0 || contract.status === "Liquidado");
   const hasAudit = state.movements.length > 0;
   const hasApiPlan = profileConfig.manager.views.includes("api") || profileConfig.manager.views.includes("integrations");
 
@@ -56,6 +57,7 @@ function getReadinessGroups() {
         ["Calculo por matricula", status(hasEnrollments)],
         ["Reserva reduzindo saldo", status(hasContracts, "Demo")],
         ["Contrato consumindo margem", status(hasContracts, "Demo")],
+        ["Baixa de parcela e liquidacao", status(hasInstallmentProgress, "Demo", "Pendente")],
         ["Bloqueios e margem negativa", status(hasFileGuards, "Parcial")],
       ],
     },
