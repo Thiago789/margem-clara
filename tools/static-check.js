@@ -226,8 +226,18 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "readiness-addon.js",
+      snippet: "Convenio piloto definido",
+      message: "Prontidao V1 deve medir convenio piloto configurado.",
+    },
+    {
+      file: "readiness-addon.js",
       snippet: "Navegacao protegida por perfil",
       message: "Prontidao V1 deve medir navegacao protegida.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "Convenio piloto configurado",
+      message: "Homologacao deve validar convenio piloto antes da operacao.",
     },
     {
       file: "roadmap-addon.js",

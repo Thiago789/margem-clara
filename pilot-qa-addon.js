@@ -33,8 +33,19 @@ function getPilotQaScenarios() {
   const hasAuditSources = movements.some((movement) => movement.source || movement.profile);
   const hasSensitiveAuditSummary = typeof getAuditSummaryCards === "function";
   const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
+  const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
 
   return [
+    {
+      area: "Convenio",
+      title: "Convenio piloto configurado",
+      expected: "Piloto deve ter convenio, codigo interno, politica de margem, data de corte e layouts de arquivos definidos.",
+      evidence: hasPilotConvention
+        ? `${state.conventionSettings.name} (${state.conventionSettings.code}), corte dia ${policy.insertionCutoffDay || 20}.`
+        : "Convenio piloto ainda nao configurado.",
+      target: "settings",
+      ok: hasPilotConvention && Boolean(policy.insertionCutoffDay),
+    },
     {
       area: "Base de margem",
       title: "Importacao ou carga inicial valida",

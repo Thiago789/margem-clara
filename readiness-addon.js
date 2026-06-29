@@ -30,6 +30,7 @@ function getReadinessGroups() {
   const hasSensitiveAuditSummary = typeof getAuditSummaryCards === "function";
   const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
   const hasApiPlan = profileConfig.manager.views.includes("api") || profileConfig.manager.views.includes("integrations");
+  const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
 
   const status = (condition, mapped = "Mapeado", pending = "Pendente") => (condition ? mapped : pending);
   const scoreFromItems = (items) => {
@@ -72,7 +73,7 @@ function getReadinessGroups() {
     {
       title: "Operacao piloto",
       items: [
-        ["Convenio piloto definido", "Pendente"],
+        ["Convenio piloto definido", status(hasPilotConvention, "Demo")],
         ["Massa homologada", qaScore >= 80 ? "Parcial" : "Pendente"],
         ["Roteiro de teste de ponta a ponta", status(qaScenarios.length, "Parcial")],
         ["Aceite do gestor/RH", qaScore >= 100 ? "Mapeado" : "Pendente"],
