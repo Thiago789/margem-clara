@@ -244,13 +244,13 @@ function renderJourneyShell() {
   const focusItem = getJourneyFocusItem();
   const roadmapFocus = typeof getRoadmapCurrentFocus === "function" ? getRoadmapCurrentFocus() : null;
   const focusSummary = getJourneyFocusSummary(focusItem);
-  const focusDetail = compactJourneyText(focusItem?.detail || focusItem?.description || focusItem?.title || "", 140);
-  const nextTarget = focusItem?.target || journey?.current?.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
+  const focusDetail = compactJourneyText(focusItem?.detail || focusItem?.description || roadmapFocus?.detail || focusItem?.title || "", 140);
+  const nextTarget = focusItem?.target || roadmapFocus?.target || journey?.current?.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
   const nextLabel = pageTitles[nextTarget] || nextTarget;
-  const focusLabel = focusItem ? `Prioridade: ${focusSummary}` : roadmapFocus ? `Foco recomendado: ${roadmapFocus.title}` : `Proximo atalho: ${nextLabel}`;
+  const focusLabel = focusItem ? `Prioridade: ${focusSummary}` : roadmapFocus ? `Foco recomendado: ${roadmapFocus.title} - ${roadmapFocus.detail}` : `Proximo atalho: ${nextLabel}`;
 
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
-  action.textContent = focusItem ? "Abrir prioridade" : journey?.current?.action || "Abrir etapa";
+  action.textContent = focusItem ? "Abrir prioridade" : roadmapFocus?.action || journey?.current?.action || "Abrir etapa";
   action.dataset.targetView = nextTarget;
   health.innerHTML = journey
     ? `
@@ -261,7 +261,7 @@ function renderJourneyShell() {
       <div class="journey-health-meter" aria-label="${journey.percent}% do ciclo validado">
         <span style="width: ${journey.percent}%"></span>
       </div>
-      <small title="${escapeJourneyText(focusDetail)}">${focusItem ? escapeJourneyText(focusSummary) : `${journey.warnings + journey.critical} alerta(s) no ciclo`}</small>
+      <small title="${escapeJourneyText(focusDetail)}">${focusItem ? escapeJourneyText(focusSummary) : roadmapFocus ? escapeJourneyText(compactJourneyText(roadmapFocus.detail, 76)) : `${journey.warnings + journey.critical} alerta(s) no ciclo`}</small>
     `
     : `
       <div class="journey-health-row">

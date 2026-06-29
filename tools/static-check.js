@@ -260,6 +260,11 @@ function checkRecentDecisionCoverage() {
       message: "Roadmap deve direcionar o foco para o modulo acionavel do criterio.",
     },
     {
+      file: "journey-shell-addon.js",
+      snippet: "roadmapFocus?.target",
+      message: "Jornada superior deve abrir o foco acionavel do roadmap quando nao houver prioridade.",
+    },
+    {
       file: "dashboard-command-addon.js",
       snippet: "dashboardRoadmapFocus",
       message: "Painel inicial deve expor foco recomendado do roadmap.",
