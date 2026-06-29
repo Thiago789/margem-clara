@@ -86,6 +86,12 @@ function dashboardRoadmapFocus() {
   return getRoadmapCurrentFocus();
 }
 
+function dashboardQaApprovalLabel() {
+  const approval = state.pilotQaApproval;
+  if (!approval) return "aceite nao registrado";
+  return `${approval.score || 0}% em ${approval.date || "data nao informada"}`;
+}
+
 function renderDashboardCommandCenter() {
   ensureDashboardCommandCenter();
   const grid = document.getElementById("dashboard-command-grid");
@@ -100,6 +106,7 @@ function renderDashboardCommandCenter() {
   const readiness = dashboardReadinessDecision();
   const payroll = dashboardPayrollDecision();
   const focus = dashboardRoadmapFocus();
+  const qaApproval = dashboardQaApprovalLabel();
   const queueTarget = queue.next?.target || "queue";
   const queueTitle = queue.next ? `${queue.next.area}: ${queue.next.title}` : "Fila sem pendencias criticas";
   const queueDetail = queue.next ? queue.next.detail : "Nenhuma decisao operacional critica no momento.";
@@ -133,7 +140,7 @@ function renderDashboardCommandCenter() {
     <article class="dashboard-command-card">
       <span>${readiness.average}% de prontidao</span>
       <strong>${readiness.nextGroup.title}</strong>
-      <p>${readiness.nextGroup.score}% de maturidade. Proximo criterio: ${readiness.nextItem[0]} (${readiness.nextItem[1]}).</p>
+      <p>${readiness.nextGroup.score}% de maturidade. Proximo criterio: ${readiness.nextItem[0]} (${readiness.nextItem[1]}). Ultimo aceite: ${qaApproval}.</p>
       <button class="secondary-button dashboard-command-action" data-target-view="readiness" type="button">Ver prontidao</button>
     </article>
     <article class="dashboard-command-card">

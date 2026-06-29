@@ -260,6 +260,11 @@ function checkRecentDecisionCoverage() {
       message: "Painel inicial deve expor foco recomendado do roadmap.",
     },
     {
+      file: "dashboard-command-addon.js",
+      snippet: "dashboardQaApprovalLabel",
+      message: "Painel inicial deve expor ultimo aceite de homologacao.",
+    },
+    {
       file: "pilot-flow-addon.js",
       snippet: "8. Fechar competencia",
       message: "Fluxo piloto deve manter fechamento antes da auditoria.",
