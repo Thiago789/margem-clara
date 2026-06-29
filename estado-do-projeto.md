@@ -126,6 +126,7 @@ O MVP ja possui uma base navegavel com:
 - Painel inicial e prontidao devem mostrar o proximo criterio pendente da frente mais fraca.
 - Roadmap deve mostrar o proximo criterio pendente da prontidao, nao apenas a frente geral.
 - Prontidao e homologacao devem reconhecer convenio piloto configurado, sem manter essa pendencia fixa.
+- Homologacao deve registrar checkpoint de aceite com score para alimentar a prontidao operacional.
 - Jornada superior deve mostrar prioridade da fila ou foco recomendado sem exigir abrir o roadmap.
 - Navegacao bloqueada por perfil deve redirecionar com aviso visivel e registro de auditoria.
 - Tela de permissoes deve evidenciar que a navegacao protegida esta ativa no MVP.

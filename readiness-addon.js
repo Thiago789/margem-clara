@@ -14,6 +14,8 @@ function getReadinessGroups() {
   const qaScenarios = typeof getPilotQaScenarios === "function" ? getPilotQaScenarios() : [];
   const qaApproved = qaScenarios.filter((scenario) => scenario.ok).length;
   const qaScore = qaScenarios.length ? Math.round((qaApproved / qaScenarios.length) * 100) : 0;
+  const qaApprovalScore = Number(state.pilotQaApproval?.score || 0);
+  const homologationScore = Math.max(qaScore, qaApprovalScore);
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
   const hasClosingDecision = Boolean(closingData);
   const hasClosingBlocker = Boolean(closingData?.blockers?.length);
@@ -74,9 +76,9 @@ function getReadinessGroups() {
       title: "Operacao piloto",
       items: [
         ["Convenio piloto definido", status(hasPilotConvention, "Demo")],
-        ["Massa homologada", qaScore >= 80 ? "Parcial" : "Pendente"],
+        ["Massa homologada", homologationScore >= 100 ? "Mapeado" : homologationScore >= 80 ? "Parcial" : "Pendente"],
         ["Roteiro de teste de ponta a ponta", status(qaScenarios.length, "Parcial")],
-        ["Aceite do gestor/RH", qaScore >= 100 ? "Mapeado" : "Pendente"],
+        ["Aceite do gestor/RH", qaApprovalScore >= 100 ? "Mapeado" : qaApprovalScore >= 80 ? "Parcial" : "Pendente"],
       ],
     },
     {

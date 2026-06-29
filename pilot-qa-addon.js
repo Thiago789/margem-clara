@@ -179,6 +179,16 @@ function getPilotQaDecision(scenarios) {
   };
 }
 
+function recordPilotQaApproval(decision) {
+  state.pilotQaApproval = {
+    date: today(),
+    approved: decision.approved,
+    total: decision.approved + decision.pending,
+    score: decision.score,
+    status: decision.pending ? "Checkpoint parcial" : "Aceite completo",
+  };
+}
+
 function ensurePilotQaView() {
   if (document.getElementById("qa-view")) return;
 
@@ -237,8 +247,9 @@ function ensurePilotQaView() {
 
   document.getElementById("qa-audit-button")?.addEventListener("click", () => {
     const scenarios = getPilotQaScenarios();
-    const approved = scenarios.filter((scenario) => scenario.ok).length;
-    auditEvent(`Homologacao do MVP registrada: ${approved}/${scenarios.length} criterios atendidos.`, "Homologacao");
+    const decision = getPilotQaDecision(scenarios);
+    recordPilotQaApproval(decision);
+    auditEvent(`Homologacao do MVP registrada: ${decision.approved}/${scenarios.length} criterios atendidos (${decision.score}%).`, "Homologacao");
     saveState();
     render();
     openView("qa");
@@ -257,6 +268,8 @@ function renderPilotQa() {
 
   const scenarios = getPilotQaScenarios();
   const decision = getPilotQaDecision(scenarios);
+  const approval = state.pilotQaApproval;
+  const approvalLabel = approval ? `${approval.score || 0}% em ${approval.date || "data nao informada"}` : "Nao registrado";
 
   command.innerHTML = `
     <div>
@@ -278,6 +291,7 @@ function renderPilotQa() {
     ["Atendidos", decision.approved],
     ["Pendentes", decision.pending],
     ["Maturidade", `${decision.score}%`],
+    ["Ultimo aceite", approvalLabel],
   ];
 
   summary.innerHTML = cards
@@ -351,7 +365,7 @@ const qaStyle = document.createElement("style");
 qaStyle.textContent = `
   .qa-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(5, minmax(140px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }

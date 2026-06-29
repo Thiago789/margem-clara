@@ -240,6 +240,16 @@ function checkRecentDecisionCoverage() {
       message: "Homologacao deve validar convenio piloto antes da operacao.",
     },
     {
+      file: "pilot-qa-addon.js",
+      snippet: "recordPilotQaApproval",
+      message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "qaApprovalScore",
+      message: "Prontidao deve considerar aceite registrado na homologacao.",
+    },
+    {
       file: "roadmap-addon.js",
       snippet: "Proximo criterio",
       message: "Roadmap deve manter foco recomendado com criterio pendente da prontidao.",
