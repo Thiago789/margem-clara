@@ -311,6 +311,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "lender-product-accreditation-addon.js",
+      snippet: "accreditationOperationalStatus",
+      message: "Credenciamento deve consolidar status operacional para a tela e regras.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "Status operacional",
+      message: "Tela de credenciamento deve exibir status operacional consolidado.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
       snippet: "Vigencia inicia em",
       message: "Motivo de exclusao deve informar credenciamento ainda nao iniciado.",
     },

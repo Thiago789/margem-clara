@@ -72,6 +72,14 @@ function accreditationIsWithinValidity(accreditation) {
   return !accreditationIsNotStarted(accreditation) && !accreditationIsExpired(accreditation);
 }
 
+function accreditationOperationalStatus(accreditation) {
+  if (!accreditation) return { label: "Sem credenciamento", className: "warning", group: "blocked" };
+  if (accreditation.status !== "Ativo") return { label: accreditation.status, className: "warning", group: "blocked" };
+  if (accreditationIsNotStarted(accreditation)) return { label: "Nao iniciado", className: "warning", group: "future" };
+  if (accreditationIsExpired(accreditation)) return { label: "Vencido", className: "warning", group: "expired" };
+  return { label: "Apto", className: "", group: "ready" };
+}
+
 function lenderHasAgreementAccess(lenderId) {
   return lenderProductEligibility(lenderId, "Emprestimo consignado").ok || lenderAllowedProducts(lenderId).length > 0;
 }
@@ -201,15 +209,21 @@ function renderAccreditationView() {
   const rows = state.currentProfile === "lender"
     ? getLenderProductAccreditations().filter((item) => item.lenderId === "lender-1")
     : getLenderProductAccreditations();
-  const active = rows.filter((item) => item.status === "Ativo" && accreditationIsWithinValidity(item)).length;
+  const operationalGroups = rows.reduce(
+    (groups, item) => {
+      groups[accreditationOperationalStatus(item).group] += 1;
+      return groups;
+    },
+    { ready: 0, future: 0, expired: 0, blocked: 0 }
+  );
   const products = new Set(rows.flatMap((item) => item.products)).size;
-  const pending = rows.filter((item) => item.status !== "Ativo" || !accreditationIsWithinValidity(item)).length;
 
   summary.innerHTML = [
     ["Instituicoes", rows.length],
-    ["Ativas", active],
+    ["Aptas", operationalGroups.ready],
+    ["Futuras", operationalGroups.future],
+    ["Vencidas", operationalGroups.expired],
     ["Produtos liberados", products],
-    ["Pendentes", pending],
   ]
     .map(
       ([label, value]) => `
@@ -224,17 +238,14 @@ function renderAccreditationView() {
   list.innerHTML = rows
     .map((row) => {
       const lender = lenders.find((item) => item.id === row.lenderId);
-      const expired = accreditationIsExpired(row);
-      const notStarted = accreditationIsNotStarted(row);
-      const statusClass = row.status === "Ativo" && !expired && !notStarted ? "" : "warning";
-      const statusLabel = expired ? "Vencido" : notStarted ? "Nao iniciado" : row.status;
+      const operationalStatus = accreditationOperationalStatus(row);
       return `
         <article class="accreditation-row">
           <div>
             <strong>${lender?.name || "Consignataria"}</strong>
             <span>${row.agreement} - vigencia ${row.validFrom} ate ${row.validUntil}</span>
           </div>
-          <div><span>Status</span><strong class="status ${statusClass}">${statusLabel}</strong></div>
+          <div><span>Status operacional</span><strong class="status ${operationalStatus.className}">${operationalStatus.label}</strong></div>
           <div><span>Integracao</span><strong>${row.integration}</strong></div>
           <p>Produtos: ${row.products.join(", ")}. Acesso: ${row.accessMode}.</p>
         </article>
@@ -310,7 +321,7 @@ const accreditationStyle = document.createElement("style");
 accreditationStyle.textContent = `
   .accreditation-summary {
     display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }

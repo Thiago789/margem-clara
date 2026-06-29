@@ -52,6 +52,7 @@ O MVP ja possui uma base navegavel com:
 - Ranking de simulacao deve explicar consignatarias excluidas por credenciamento, produto ou status.
 - Credenciamento vencido deve bloquear consulta, simulacao e reserva mesmo com status ativo.
 - Credenciamento ainda nao iniciado deve bloquear operacao ate o inicio da vigencia.
+- Tela de credenciamento deve separar consignatarias aptas, futuras, vencidas e bloqueadas.
 - Taxa, CET e primeira competencia sao obrigatorios iniciais no MVP.
 - Valor contratado e primeiro vencimento podem ser configuraveis por convenio.
 - Refinanciamento exige contrato origem.
@@ -153,6 +154,7 @@ O MVP ja possui uma base navegavel com:
 - Experiencia de simulacao deve mostrar motivo de exclusao de consignataria para evitar duvida operacional.
 - Vigencia do credenciamento deve ser aplicada como regra operacional, nao apenas informativa.
 - Vigencia de credenciamento deve ter inicio e fim para diferenciar operacao futura de operacao vencida.
+- Status operacional de credenciamento deve consolidar status cadastral, inicio/fim de vigencia e aptidao para operar.
 
 ## Campos Importantes Ja Mapeados
 
