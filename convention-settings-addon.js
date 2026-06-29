@@ -12,6 +12,9 @@ state.conventionSettings = {
 
 state.conventionPolicy = {
   insertionCutoffDay: 20,
+  requireAuthorizationForMarginConsult: true,
+  requireAuthorizationForReservation: true,
+  authorizationValidityHours: 24,
   ...(state.conventionPolicy || {}),
 };
 
@@ -113,6 +116,10 @@ function ensureConventionSettingsView() {
             </div>
             <div class="policy-grid">
               <label class="toggle-row">
+                <input id="settings-require-margin-consult-code" type="checkbox" />
+                <span>Exigir autorizacao para consulta de margem</span>
+              </label>
+              <label class="toggle-row">
                 <input id="settings-require-reservation-code" type="checkbox" />
                 <span>Exigir codigo para reserva</span>
               </label>
@@ -208,6 +215,7 @@ function renderConventionSettings() {
     reservationExpiration: document.getElementById("settings-reservation-expiration"),
     payrollCompetency: document.getElementById("settings-payroll-competency"),
     insertionCutoff: document.getElementById("settings-insertion-cutoff"),
+    requireMarginConsultCode: document.getElementById("settings-require-margin-consult-code"),
     requireReservationCode: document.getElementById("settings-require-reservation-code"),
     codeValidity: document.getElementById("settings-code-validity"),
     marginLayout: document.getElementById("settings-margin-layout"),
@@ -222,6 +230,7 @@ function renderConventionSettings() {
   values.reservationExpiration.value = settings.reservationExpirationDays;
   values.payrollCompetency.value = settings.payrollCompetency || today().slice(0, 7);
   values.insertionCutoff.value = policy.insertionCutoffDay || 20;
+  values.requireMarginConsultCode.checked = Boolean(policy.requireAuthorizationForMarginConsult);
   values.requireReservationCode.checked = Boolean(policy.requireAuthorizationForReservation);
   values.codeValidity.value = policy.authorizationValidityHours || 24;
   values.marginLayout.value = settings.marginFileLayout;
@@ -235,8 +244,8 @@ function renderConventionSettings() {
       <article><span>Margem</span><strong>${settings.marginPercentage}%</strong></article>
       <article><span>Competencia</span><strong>${settings.payrollCompetency || today().slice(0, 7)}</strong></article>
       <article><span>Corte</span><strong>Dia ${policy.insertionCutoffDay || 20}</strong></article>
-      <article><span>Reserva</span><strong>${settings.reservationExpirationDays} dia(s)</strong></article>
-      <article><span>Codigo</span><strong>${policy.requireAuthorizationForReservation ? "Obrigatorio" : "Opcional"}</strong></article>
+      <article><span>Consulta margem</span><strong>${policy.requireAuthorizationForMarginConsult ? "Exige" : "Liberada"}</strong></article>
+      <article><span>Reserva</span><strong>${policy.requireAuthorizationForReservation ? "Codigo" : "Imediata"}</strong></article>
     `;
   }
 }
@@ -244,6 +253,7 @@ function renderConventionSettings() {
 function saveConventionSettings() {
   const previous = {
     ...state.conventionSettings,
+    requireAuthorizationForMarginConsult: state.conventionPolicy?.requireAuthorizationForMarginConsult,
     requireAuthorizationForReservation: state.conventionPolicy?.requireAuthorizationForReservation,
     authorizationValidityHours: state.conventionPolicy?.authorizationValidityHours,
   };
@@ -262,6 +272,7 @@ function saveConventionSettings() {
   state.conventionPolicy = {
     ...state.conventionPolicy,
     insertionCutoffDay: Number(document.getElementById("settings-insertion-cutoff").value || 20),
+    requireAuthorizationForMarginConsult: document.getElementById("settings-require-margin-consult-code").checked,
     requireAuthorizationForReservation: document.getElementById("settings-require-reservation-code").checked,
     authorizationValidityHours: Number(document.getElementById("settings-code-validity").value || 24),
   };

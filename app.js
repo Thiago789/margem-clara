@@ -108,6 +108,7 @@ const initialState = {
     },
   ],
   conventionPolicy: {
+    requireAuthorizationForMarginConsult: true,
     requireAuthorizationForReservation: true,
     authorizationValidityHours: 24,
   },
@@ -167,6 +168,7 @@ function normalizeState() {
   state.authorizationCodes = state.authorizationCodes || [];
   state.movements = state.movements || [];
   state.conventionPolicy = {
+    requireAuthorizationForMarginConsult: true,
     requireAuthorizationForReservation: true,
     authorizationValidityHours: 24,
     ...(state.conventionPolicy || {}),
@@ -243,6 +245,20 @@ function lenderName(lenderId) {
 
 function employeeById(id) {
   return state.employees.find((employee) => employee.id === id);
+}
+
+function activeAuthorizationFor(employeeId, purposes) {
+  return state.authorizationCodes.find(
+    (authorization) =>
+      authorization.employeeId === employeeId &&
+      authorization.status === "Ativo" &&
+      purposes.includes(authorization.purpose)
+  );
+}
+
+function hasMarginConsultAuthorization(employeeId) {
+  if (!state.conventionPolicy.requireAuthorizationForMarginConsult) return true;
+  return Boolean(activeAuthorizationFor(employeeId, ["Consulta de margem", "Reserva de margem", "Confirmacao de contrato"]));
 }
 
 function render() {
@@ -492,6 +508,26 @@ function renderMargin() {
   }
 
   select.value = employee.id;
+
+  if (state.currentProfile === "lender" && !hasMarginConsultAuthorization(employee.id)) {
+    document.getElementById("margin-detail").innerHTML = `
+      <section class="panel">
+        <div class="panel-heading">
+          <h3>Consulta condicionada por convenio</h3>
+          <span class="status warning">Autorizacao pendente</span>
+        </div>
+        <p class="muted">${employee.name} - ${employee.enrollment}</p>
+        <div class="alert-item">
+          Este convenio exige autorizacao do servidor para consulta de margem pela consignataria.
+        </div>
+        <p class="muted" style="margin-top:12px">
+          Gere um codigo com finalidade Consulta de margem, Reserva de margem ou Confirmacao de contrato para liberar a leitura operacional.
+        </p>
+      </section>
+    `;
+    return;
+  }
+
   const margin = calculateMargin(employee);
   const consumption = margin.total > 0 ? Math.min(((margin.used + margin.reserved + margin.blocked) / margin.total) * 100, 100) : 0;
   const marginStatusClass = margin.available < 0 ? "danger" : margin.status === "Em revisao" ? "warning" : "";
@@ -610,15 +646,21 @@ function renderAuthorizations() {
 
 function renderConventionPolicy() {
   const requireReservation = document.getElementById("policy-require-reservation-code");
+  const requireMarginConsult = document.getElementById("policy-require-margin-consult-code");
   const validityHours = document.getElementById("policy-code-validity");
   const summary = document.getElementById("policy-summary");
   if (!requireReservation || !validityHours || !summary) return;
 
+  if (requireMarginConsult) requireMarginConsult.checked = state.conventionPolicy.requireAuthorizationForMarginConsult;
   requireReservation.checked = state.conventionPolicy.requireAuthorizationForReservation;
   validityHours.value = state.conventionPolicy.authorizationValidityHours;
-  summary.textContent = state.conventionPolicy.requireAuthorizationForReservation
-    ? `Reserva exige codigo do servidor. Validade padrao: ${state.conventionPolicy.authorizationValidityHours}h.`
-    : "Reserva imediata liberada para consignataria credenciada. Codigo fica opcional.";
+  const consultText = state.conventionPolicy.requireAuthorizationForMarginConsult
+    ? "Consulta de margem exige autorizacao do servidor"
+    : "Consulta de margem liberada para consignataria credenciada";
+  const reservationText = state.conventionPolicy.requireAuthorizationForReservation
+    ? "reserva exige codigo"
+    : "reserva imediata liberada";
+  summary.textContent = `${consultText}; ${reservationText}. Validade padrao: ${state.conventionPolicy.authorizationValidityHours}h.`;
 }
 
 function renderTickets() {
@@ -936,12 +978,7 @@ function bindEvents() {
     const employee = employeeById(employeeId);
     const installment = Number(document.getElementById("contract-installment").value);
     const margin = calculateMargin(employee);
-    const activeCode = state.authorizationCodes.find(
-      (authorization) =>
-        authorization.employeeId === employeeId &&
-        authorization.status === "Ativo" &&
-        ["Reserva de margem", "Confirmacao de contrato"].includes(authorization.purpose)
-    );
+    const activeCode = activeAuthorizationFor(employeeId, ["Reserva de margem", "Confirmacao de contrato"]);
 
     if (state.conventionPolicy.requireAuthorizationForReservation && !activeCode) {
       alert("Este convenio exige codigo do servidor para criar reserva.");
@@ -1107,6 +1144,18 @@ function bindEvents() {
       event.target.checked
         ? "Politica do convenio atualizada: reserva exige codigo do servidor."
         : "Politica do convenio atualizada: reserva imediata liberada.",
+      "Configuracao"
+    );
+    saveState();
+    renderConventionPolicy();
+  });
+
+  document.getElementById("policy-require-margin-consult-code")?.addEventListener("change", (event) => {
+    state.conventionPolicy.requireAuthorizationForMarginConsult = event.target.checked;
+    auditEvent(
+      event.target.checked
+        ? "Politica do convenio atualizada: consulta de margem exige autorizacao do servidor."
+        : "Politica do convenio atualizada: consulta de margem liberada para consignataria credenciada.",
       "Configuracao"
     );
     saveState();

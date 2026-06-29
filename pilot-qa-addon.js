@@ -34,6 +34,9 @@ function getPilotQaScenarios() {
   const hasSensitiveAuditSummary = typeof getAuditSummaryCards === "function";
   const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
   const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
+  const activeCodes = codes.filter((code) => code.status === "Ativo");
+  const requiresMarginConsult = policy.requireAuthorizationForMarginConsult !== false;
+  const requiresReservationCode = policy.requireAuthorizationForReservation !== false;
 
   return [
     {
@@ -64,13 +67,11 @@ function getPilotQaScenarios() {
     },
     {
       area: "Autorizacao",
-      title: "Regra de codigo configuravel",
-      expected: "Convenio pode exigir codigo/senha ou permitir reserva imediata.",
-      evidence: policy.requireAuthorizationForReservation
-        ? `${codes.filter((code) => code.status === "Ativo").length} codigo(s) ativo(s).`
-        : "Reserva imediata configurada para o convenio.",
+      title: "Consulta e reserva configuraveis",
+      expected: "Convenio pode exigir autorizacao para consulta de margem, exigir codigo para reserva ou liberar fluxo imediato.",
+      evidence: `Consulta: ${requiresMarginConsult ? "exige autorizacao" : "liberada"}; reserva: ${requiresReservationCode ? "exige codigo" : "imediata"}; ${activeCodes.length} codigo(s) ativo(s).`,
       target: "authorizations",
-      ok: policy.requireAuthorizationForReservation ? codes.some((code) => code.status === "Ativo") : true,
+      ok: requiresMarginConsult || requiresReservationCode ? activeCodes.length > 0 : true,
     },
     {
       area: "Reserva",

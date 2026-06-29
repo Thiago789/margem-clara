@@ -1,4 +1,5 @@
 state.conventionPolicy = {
+  requireAuthorizationForMarginConsult: true,
   requireAuthorizationForReservation: true,
   authorizationValidityHours: 24,
   ...(state.conventionPolicy || {}),
@@ -6,16 +7,24 @@ state.conventionPolicy = {
 saveState();
 
 function renderConventionPolicyAddon() {
+  const requireMarginConsult = document.getElementById("policy-require-margin-consult-code");
   const requireReservation = document.getElementById("policy-require-reservation-code");
   const validityHours = document.getElementById("policy-code-validity");
   const summary = document.getElementById("policy-summary");
   if (!requireReservation || !validityHours || !summary) return;
 
+  if (requireMarginConsult) requireMarginConsult.checked = state.conventionPolicy.requireAuthorizationForMarginConsult;
   requireReservation.checked = state.conventionPolicy.requireAuthorizationForReservation;
   validityHours.value = state.conventionPolicy.authorizationValidityHours;
-  summary.textContent = state.conventionPolicy.requireAuthorizationForReservation
-    ? `Reserva exige codigo do servidor. Validade padrao: ${state.conventionPolicy.authorizationValidityHours}h.`
-    : "Reserva imediata liberada para consignataria credenciada. Codigo fica opcional.";
+  summary.textContent = `${
+    state.conventionPolicy.requireAuthorizationForMarginConsult
+      ? "Consulta de margem exige autorizacao do servidor"
+      : "Consulta de margem liberada para consignataria credenciada"
+  }; ${
+    state.conventionPolicy.requireAuthorizationForReservation
+      ? "reserva exige codigo"
+      : "reserva imediata liberada"
+  }. Validade padrao: ${state.conventionPolicy.authorizationValidityHours}h.`;
 }
 
 function ensureConventionPolicyPanel() {
@@ -32,6 +41,10 @@ function ensureConventionPolicyPanel() {
           <h3>Politica do convenio</h3>
         </div>
         <div class="policy-grid">
+          <label class="toggle-row">
+            <input id="policy-require-margin-consult-code" type="checkbox" />
+            <span>Exigir autorizacao para consulta de margem</span>
+          </label>
           <label class="toggle-row">
             <input id="policy-require-reservation-code" type="checkbox" />
             <span>Exigir codigo para reserva</span>
@@ -50,6 +63,21 @@ function ensureConventionPolicyPanel() {
       </section>
     `
   );
+
+  document.getElementById("policy-require-margin-consult-code").addEventListener("change", (event) => {
+    state.conventionPolicy.requireAuthorizationForMarginConsult = event.target.checked;
+    state.movements.unshift({
+      date: today(),
+      text: event.target.checked
+        ? "Politica do convenio atualizada: consulta de margem exige autorizacao do servidor."
+        : "Politica do convenio atualizada: consulta de margem liberada para consignataria credenciada.",
+      profile: profileConfig[state.currentProfile]?.label || "Sistema",
+      source: "Configuracao",
+    });
+    saveState();
+    renderConventionPolicyAddon();
+    if (typeof renderAudit === "function") renderAudit();
+  });
 
   document.getElementById("policy-require-reservation-code").addEventListener("change", (event) => {
     state.conventionPolicy.requireAuthorizationForReservation = event.target.checked;
@@ -115,12 +143,14 @@ document.getElementById("contract-form")?.addEventListener(
     if (event.submitter?.value === "cancel") return;
 
     const employeeId = document.getElementById("contract-employee").value;
-    const activeCode = state.authorizationCodes.find(
-      (authorization) =>
-        authorization.employeeId === employeeId &&
-        authorization.status === "Ativo" &&
-        ["Reserva de margem", "Confirmacao de contrato"].includes(authorization.purpose)
-    );
+    const activeCode = typeof activeAuthorizationFor === "function"
+      ? activeAuthorizationFor(employeeId, ["Reserva de margem", "Confirmacao de contrato"])
+      : state.authorizationCodes.find(
+          (authorization) =>
+            authorization.employeeId === employeeId &&
+            authorization.status === "Ativo" &&
+            ["Reserva de margem", "Confirmacao de contrato"].includes(authorization.purpose)
+        );
 
     if (state.conventionPolicy.requireAuthorizationForReservation && !activeCode) {
       event.preventDefault();

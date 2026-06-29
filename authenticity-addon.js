@@ -24,14 +24,16 @@ function maskCpf(cpf) {
 function getAuthenticityReading(employee) {
   const margin = calculateMargin(employee);
   const contracts = state.contracts.filter((contract) => contract.employeeId === employee.id);
-  const activeCode = state.authorizationCodes.find((authorization) => authorization.employeeId === employee.id && authorization.status === "Ativo");
+  const activeCode = typeof activeAuthorizationFor === "function"
+    ? activeAuthorizationFor(employee.id, ["Consulta de margem", "Reserva de margem", "Confirmacao de contrato"])
+    : state.authorizationCodes.find((authorization) => authorization.employeeId === employee.id && authorization.status === "Ativo");
   const openTickets = state.tickets.filter((ticket) => ticket.employeeId === employee.id && ticket.status === "Aberto");
   const returnIssue = contracts.some(contractHasReturnIssue);
   const hasCpfShape = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(employee.cpf);
   const hasEnrollment = Boolean(employee.enrollment);
   const hasPayrollBase = employee.income > 0 && employee.mandatoryDeductions >= 0;
   const isReviewed = employee.status !== "Em revisao";
-  const hasConsent = Boolean(activeCode) || !state.conventionPolicy.requireAuthorizationForReservation;
+  const hasConsent = Boolean(activeCode) || !state.conventionPolicy.requireAuthorizationForMarginConsult;
 
   const signals = [
     {
@@ -54,7 +56,11 @@ function getAuthenticityReading(employee) {
     },
     {
       label: "Consentimento/autorizacao",
-      detail: activeCode ? `Codigo ${activeCode.code} ativo` : "Sem codigo ativo",
+      detail: activeCode
+        ? `Codigo ${activeCode.code} ativo`
+        : state.conventionPolicy.requireAuthorizationForMarginConsult
+          ? "Sem codigo ativo"
+          : "Consulta liberada por convenio",
       ok: hasConsent,
       risk: hasConsent ? "Baixo" : "Alto",
     },

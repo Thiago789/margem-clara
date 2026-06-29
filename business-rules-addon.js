@@ -72,7 +72,8 @@ function ensureBusinessRulesView() {
 
 function getBusinessRuleRows() {
   const policy = state.conventionPolicy || {};
-  const requiresCode = policy.requireAuthorizationForReservation;
+  const requiresMarginConsult = policy.requireAuthorizationForMarginConsult;
+  const requiresReservationCode = policy.requireAuthorizationForReservation;
   const reserved = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length;
   const sentToPayroll = state.contracts.filter((contract) => contract.status === "Enviado para folha").length;
   const returnIssues = state.contracts.filter(contractHasReturnIssue).length;
@@ -87,8 +88,17 @@ function getBusinessRuleRows() {
       next: "Permitir percentuais por produto, rubrica e convenio.",
     },
     {
+      area: "Consulta de margem",
+      current: requiresMarginConsult
+        ? "Consignataria precisa de autorizacao ativa do servidor para consultar margem."
+        : "Consulta liberada para consignataria credenciada conforme regra do convenio.",
+      status: "Configuravel",
+      className: "",
+      next: "Definir trilha de consentimento, canal de assinatura e prazo por convenio.",
+    },
+    {
       area: "Reserva",
-      current: requiresCode ? "Reserva exige codigo ativo do servidor." : "Reserva imediata liberada para consignataria credenciada.",
+      current: requiresReservationCode ? "Reserva exige codigo ativo do servidor." : "Reserva imediata liberada para consignataria credenciada.",
       status: "Configuravel",
       className: "",
       next: "Adicionar validade da reserva, cancelamento automatico e motivo obrigatorio.",
@@ -143,9 +153,11 @@ function renderBusinessRules() {
   const rows = getBusinessRuleRows();
   const completed = rows.filter((row) => row.status === "MVP" || row.status === "Configuravel").length;
   const attention = rows.filter((row) => row.className === "warning" || row.className === "danger").length;
-  const configuredPolicy = state.conventionPolicy?.requireAuthorizationForReservation
-    ? "Codigo obrigatorio"
-    : "Reserva imediata";
+  const configuredPolicy = state.conventionPolicy?.requireAuthorizationForMarginConsult
+    ? "Consulta autorizada"
+    : state.conventionPolicy?.requireAuthorizationForReservation
+      ? "Reserva com codigo"
+      : "Fluxo imediato";
 
   scoreGrid.innerHTML = [
     ["Regras mapeadas", rows.length],
@@ -180,7 +192,8 @@ function renderBusinessRules() {
 
   const configurableItems = [
     ["Percentual de margem", "Hoje existe configuracao do convenio, mas o motor deve permitir regra por produto."],
-    ["Exigencia de codigo", "Pode ser obrigatorio ou opcional por convenio."],
+    ["Consulta de margem", "Pode exigir autorizacao do servidor ou ser liberada para consignataria credenciada."],
+    ["Exigencia de codigo", "Reserva pode ser obrigatoria ou opcional por convenio."],
     ["Validade da autorizacao", "Define por quanto tempo o codigo pode liberar consulta ou reserva."],
     ["Layouts de arquivo", "Nomes e formatos devem variar por convenio e folha."],
   ];

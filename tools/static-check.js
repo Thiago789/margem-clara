@@ -235,6 +235,31 @@ function checkRecentDecisionCoverage() {
       message: "Prontidao V1 deve medir navegacao protegida.",
     },
     {
+      file: "app.js",
+      snippet: "requireAuthorizationForMarginConsult",
+      message: "Politica de convenio deve separar consulta de margem da reserva.",
+    },
+    {
+      file: "convention-settings-addon.js",
+      snippet: "settings-require-margin-consult-code",
+      message: "Configuracao do convenio deve permitir exigir autorizacao para consulta de margem.",
+    },
+    {
+      file: "authenticity-addon.js",
+      snippet: "requireAuthorizationForMarginConsult",
+      message: "Autenticidade deve avaliar consentimento pela regra de consulta de margem.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "Consulta e reserva configuraveis",
+      message: "Homologacao deve validar consulta e reserva como politicas separadas.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "Consulta de margem condicionada por convenio",
+      message: "Prontidao V1 deve medir consulta de margem condicionada por convenio.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "Convenio piloto configurado",
       message: "Homologacao deve validar convenio piloto antes da operacao.",

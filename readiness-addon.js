@@ -31,6 +31,7 @@ function getReadinessGroups() {
   const hasAudit = state.movements.length > 0;
   const hasSensitiveAuditSummary = typeof getAuditSummaryCards === "function";
   const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
+  const hasConventionConsultPolicy = typeof hasMarginConsultAuthorization === "function" && "requireAuthorizationForMarginConsult" in (state.conventionPolicy || {});
   const hasApiPlan = profileConfig.manager.views.includes("api") || profileConfig.manager.views.includes("integrations");
   const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
 
@@ -49,6 +50,7 @@ function getReadinessGroups() {
         ["Auditoria de operacoes sensiveis", status(hasAudit, "Parcial")],
         ["Resumo de eventos sensiveis", status(hasSensitiveAuditSummary, "Demo", "Pendente")],
         ["Navegacao protegida por perfil", status(hasGuardedNavigation, "Demo", "Pendente")],
+        ["Consulta de margem condicionada por convenio", status(hasConventionConsultPolicy, "Demo", "Pendente")],
         ["Politica LGPD e minimizacao de dados", "Pendente"],
       ],
     },

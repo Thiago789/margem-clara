@@ -70,7 +70,10 @@ function getIdentityScore(employee) {
   const openTickets = state.tickets.filter((ticket) => ticket.employeeId === employee.id && ticket.status === "Aberto");
   const hasCpfShape = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(employee.cpf);
   const hasEnrollment = Boolean(employee.enrollment);
-  const hasActiveAuthorization = authorizations.some((authorization) => authorization.status === "Ativo");
+  const hasActiveAuthorization = typeof activeAuthorizationFor === "function"
+    ? Boolean(activeAuthorizationFor(employee.id, ["Consulta de margem", "Reserva de margem", "Confirmacao de contrato"]))
+    : authorizations.some((authorization) => authorization.status === "Ativo");
+  const requiresMarginConsultAuthorization = state.conventionPolicy.requireAuthorizationForMarginConsult;
   const hasPayrollIssue = employee.status === "Em revisao" || margin.available < 0;
   const hasReturnIssue = contracts.some(contractHasReturnIssue);
 
@@ -95,9 +98,13 @@ function getIdentityScore(employee) {
     },
     {
       title: "Autorizacao para operacao",
-      detail: hasActiveAuthorization ? "Codigo ativo localizado" : "Sem codigo ativo",
-      status: hasActiveAuthorization || !state.conventionPolicy.requireAuthorizationForReservation ? "OK" : "Pendente",
-      className: hasActiveAuthorization || !state.conventionPolicy.requireAuthorizationForReservation ? "" : "warning",
+      detail: hasActiveAuthorization
+        ? "Codigo ativo localizado"
+        : requiresMarginConsultAuthorization
+          ? "Sem codigo ativo"
+          : "Consulta liberada por convenio",
+      status: hasActiveAuthorization || !requiresMarginConsultAuthorization ? "OK" : "Pendente",
+      className: hasActiveAuthorization || !requiresMarginConsultAuthorization ? "" : "warning",
     },
     {
       title: "Retorno da folha",
