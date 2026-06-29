@@ -513,6 +513,11 @@ function renderMargin() {
     const accessReason = typeof lenderProductEligibility === "function"
       ? lenderProductEligibility("lender-1", "Emprestimo consignado").reason
       : "Credenciamento indisponivel";
+    auditEventOnce(
+      `margin-access-block-lender-1-${accessReason}`,
+      `Consulta de margem bloqueada para Banco Horizonte: ${accessReason}.`,
+      "Bloqueio de credenciamento"
+    );
     document.getElementById("margin-detail").innerHTML = `
       <section class="panel">
         <div class="panel-heading">
@@ -924,6 +929,13 @@ function auditEvent(text, source = "Operacao") {
     profile: profileConfig[state.currentProfile]?.label || "Sistema",
     source,
   });
+}
+
+function auditEventOnce(key, text, source = "Operacao") {
+  const marker = `audit-once:${today()}:${key}`;
+  if (sessionStorage.getItem(marker)) return;
+  sessionStorage.setItem(marker, "1");
+  auditEvent(text, source);
 }
 
 function openView(viewName) {

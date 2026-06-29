@@ -312,6 +312,8 @@ function bindAccreditationFormGuard() {
       if (blockMessage) {
         event.preventDefault();
         event.stopImmediatePropagation();
+        auditEvent(blockMessage, "Bloqueio de credenciamento");
+        saveState();
         alert(blockMessage);
       }
     },

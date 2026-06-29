@@ -325,6 +325,16 @@ function checkRecentDecisionCoverage() {
       message: "Bloqueio de reserva deve informar motivo de elegibilidade.",
     },
     {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "Bloqueio de credenciamento",
+      message: "Bloqueio de reserva por credenciamento deve entrar na auditoria.",
+    },
+    {
+      file: "app.js",
+      snippet: "auditEventOnce",
+      message: "Consulta bloqueada por credenciamento deve auditar sem duplicar a cada render.",
+    },
+    {
       file: "app.js",
       snippet: "Motivo: ${accessReason}",
       message: "Consulta de margem bloqueada deve explicar motivo de credenciamento.",
