@@ -67,7 +67,7 @@ function getRoadmapCurrentFocus() {
   const criterionTarget = getRoadmapCriterionTarget(decision.nextItem[0]);
   return {
     title: decision.nextGroup.title,
-    detail: `${decision.nextGroup.score}% de maturidade. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}).`,
+    detail: `${decision.nextGroup.score}% de maturidade. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}). Acao sugerida: ${criterionTarget.action}.`,
     target: criterionTarget.target,
     action: criterionTarget.action,
   };

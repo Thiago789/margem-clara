@@ -94,6 +94,33 @@ function getJourneyFocusSummary(item) {
   return compactJourneyText(`${item.severity}: ${item.area} - ${item.title}`);
 }
 
+function getJourneyActionSource(focusItem, roadmapFocus, journey) {
+  if (focusItem) {
+    return {
+      label: "Origem: fila operacional",
+      action: "Abrir prioridade",
+      target: focusItem.target,
+      detail: getJourneyFocusSummary(focusItem),
+    };
+  }
+
+  if (roadmapFocus) {
+    return {
+      label: "Origem: prontidao/roadmap",
+      action: roadmapFocus.action,
+      target: roadmapFocus.target,
+      detail: compactJourneyText(roadmapFocus.detail, 90),
+    };
+  }
+
+  return {
+    label: "Origem: fluxo piloto",
+    action: journey?.current?.action || "Abrir etapa",
+    target: journey?.current?.target || "dashboard",
+    detail: journey?.current?.detail || "Acompanhe o ciclo operacional.",
+  };
+}
+
 function getJourneyAttentionByStage() {
   const result = new Map(getJourneyStages().map((stage) => [stage.id, { high: 0, medium: 0 }]));
   if (typeof getOperationalQueueData !== "function") return result;
@@ -243,14 +270,15 @@ function renderJourneyShell() {
   const journey = typeof getPilotJourneyHealth === "function" && pilotSteps.length ? getPilotJourneyHealth(pilotSteps) : null;
   const focusItem = getJourneyFocusItem();
   const roadmapFocus = typeof getRoadmapCurrentFocus === "function" ? getRoadmapCurrentFocus() : null;
+  const actionSource = getJourneyActionSource(focusItem, roadmapFocus, journey);
   const focusSummary = getJourneyFocusSummary(focusItem);
   const focusDetail = compactJourneyText(focusItem?.detail || focusItem?.description || roadmapFocus?.detail || focusItem?.title || "", 140);
-  const nextTarget = focusItem?.target || roadmapFocus?.target || journey?.current?.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
+  const nextTarget = actionSource.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
   const nextLabel = pageTitles[nextTarget] || nextTarget;
   const focusLabel = focusItem ? `Prioridade: ${focusSummary}` : roadmapFocus ? `Foco recomendado: ${roadmapFocus.title} - ${roadmapFocus.detail}` : `Proximo atalho: ${nextLabel}`;
 
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
-  action.textContent = focusItem ? "Abrir prioridade" : roadmapFocus?.action || journey?.current?.action || "Abrir etapa";
+  action.textContent = actionSource.action;
   action.dataset.targetView = nextTarget;
   health.innerHTML = journey
     ? `
@@ -261,7 +289,7 @@ function renderJourneyShell() {
       <div class="journey-health-meter" aria-label="${journey.percent}% do ciclo validado">
         <span style="width: ${journey.percent}%"></span>
       </div>
-      <small title="${escapeJourneyText(focusDetail)}">${focusItem ? escapeJourneyText(focusSummary) : roadmapFocus ? escapeJourneyText(compactJourneyText(roadmapFocus.detail, 76)) : `${journey.warnings + journey.critical} alerta(s) no ciclo`}</small>
+      <small title="${escapeJourneyText(focusDetail)}">${escapeJourneyText(actionSource.label)} - ${escapeJourneyText(actionSource.detail)}</small>
     `
     : `
       <div class="journey-health-row">
@@ -314,7 +342,7 @@ function renderJourneyShell() {
   stageNote.innerHTML = `
     <span>Objetivo da etapa</span>
     <strong>${escapeJourneyText(activeStage.guidance)}</strong>
-    <em>${escapeJourneyText(focusLabel)}</em>
+    <em>${escapeJourneyText(actionSource.label)}: ${escapeJourneyText(focusLabel)}</em>
   `;
 
   stageList.querySelectorAll(".journey-stage").forEach((button) => {

@@ -92,6 +92,11 @@ function dashboardQaApprovalLabel() {
   return `${approval.score || 0}% em ${approval.date || "data nao informada"}`;
 }
 
+function dashboardFocusOrigin(queue, focus) {
+  if (queue.next) return `Fila: ${queue.next.severity}`;
+  return focus?.target ? `Roadmap: ${pageTitles[focus.target] || focus.target}` : "Roadmap";
+}
+
 function renderDashboardCommandCenter() {
   ensureDashboardCommandCenter();
   const grid = document.getElementById("dashboard-command-grid");
@@ -110,6 +115,7 @@ function renderDashboardCommandCenter() {
   const queueTarget = queue.next?.target || "queue";
   const queueTitle = queue.next ? `${queue.next.area}: ${queue.next.title}` : "Fila sem pendencias criticas";
   const queueDetail = queue.next ? queue.next.detail : "Nenhuma decisao operacional critica no momento.";
+  const focusOrigin = dashboardFocusOrigin(queue, focus);
   const payrollBlockers = payroll.blockers.length;
   const payrollWarnings = payroll.warnings.length;
   const payrollPendingReturns = payroll.sent.length + payroll.batchAwaitingReturn.length;
@@ -144,7 +150,7 @@ function renderDashboardCommandCenter() {
       <button class="secondary-button dashboard-command-action" data-target-view="readiness" type="button">Ver prontidao</button>
     </article>
     <article class="dashboard-command-card">
-      <span>Foco recomendado</span>
+      <span>Foco recomendado - ${focusOrigin}</span>
       <strong>${focus.title}</strong>
       <p>${focus.detail}</p>
       <button class="secondary-button dashboard-command-action" data-target-view="${focus.target}" type="button">${focus.action}</button>

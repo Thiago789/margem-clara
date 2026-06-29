@@ -261,8 +261,13 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "journey-shell-addon.js",
-      snippet: "roadmapFocus?.target",
+      snippet: "actionSource.target",
       message: "Jornada superior deve abrir o foco acionavel do roadmap quando nao houver prioridade.",
+    },
+    {
+      file: "journey-shell-addon.js",
+      snippet: "getJourneyActionSource",
+      message: "Jornada superior deve explicar a origem da proxima acao.",
     },
     {
       file: "dashboard-command-addon.js",
@@ -273,6 +278,11 @@ function checkRecentDecisionCoverage() {
       file: "dashboard-command-addon.js",
       snippet: "dashboardQaApprovalLabel",
       message: "Painel inicial deve expor ultimo aceite de homologacao.",
+    },
+    {
+      file: "dashboard-command-addon.js",
+      snippet: "dashboardFocusOrigin",
+      message: "Painel inicial deve explicar a origem do foco recomendado.",
     },
     {
       file: "pilot-flow-addon.js",
