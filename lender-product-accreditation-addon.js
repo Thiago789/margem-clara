@@ -115,6 +115,13 @@ function lenderCanOperateProduct(lenderId, product) {
   return lenderProductEligibility(lenderId, product).ok;
 }
 
+function lenderOperationBlockMessage(lenderId, product) {
+  const lender = lenders.find((item) => item.id === lenderId);
+  const eligibility = lenderProductEligibility(lenderId, product);
+  if (eligibility.ok) return "";
+  return `${lender?.name || "Consignataria"} nao pode operar ${product} neste convenio: ${eligibility.reason}.`;
+}
+
 function refreshContractProductOptions() {
   const lenderSelect = document.getElementById("contract-lender");
   const productSelect = document.getElementById("contract-product");
@@ -301,16 +308,11 @@ function bindAccreditationFormGuard() {
       if (event.submitter?.value === "cancel") return;
       const lenderId = document.getElementById("contract-lender")?.value;
       const product = document.getElementById("contract-product")?.value || "Emprestimo consignado";
-      if (!lenderHasAgreementAccess(lenderId)) {
+      const blockMessage = lenderOperationBlockMessage(lenderId, product);
+      if (blockMessage) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        alert("Esta consignataria nao esta habilitada para operar este convenio.");
-        return;
-      }
-      if (!lenderCanOperateProduct(lenderId, product)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        alert("Esta consignataria nao esta credenciada para operar este produto neste convenio.");
+        alert(blockMessage);
       }
     },
     true

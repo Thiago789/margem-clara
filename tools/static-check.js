@@ -321,6 +321,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "lender-product-accreditation-addon.js",
+      snippet: "lenderOperationBlockMessage",
+      message: "Bloqueio de reserva deve informar motivo de elegibilidade.",
+    },
+    {
+      file: "app.js",
+      snippet: "Motivo: ${accessReason}",
+      message: "Consulta de margem bloqueada deve explicar motivo de credenciamento.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
       snippet: "Vigencia inicia em",
       message: "Motivo de exclusao deve informar credenciamento ainda nao iniciado.",
     },

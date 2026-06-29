@@ -510,6 +510,9 @@ function renderMargin() {
   select.value = employee.id;
 
   if (state.currentProfile === "lender" && typeof lenderHasAgreementAccess === "function" && !lenderHasAgreementAccess("lender-1")) {
+    const accessReason = typeof lenderProductEligibility === "function"
+      ? lenderProductEligibility("lender-1", "Emprestimo consignado").reason
+      : "Credenciamento indisponivel";
     document.getElementById("margin-detail").innerHTML = `
       <section class="panel">
         <div class="panel-heading">
@@ -518,7 +521,7 @@ function renderMargin() {
         </div>
         <p class="muted">${employee.name} - ${employee.enrollment}</p>
         <div class="alert-item">
-          A consignataria precisa estar com credenciamento ativo neste convenio antes de consultar margem.
+          A consignataria precisa estar com credenciamento ativo neste convenio antes de consultar margem. Motivo: ${accessReason}.
         </div>
         <p class="muted" style="margin-top:12px">
           Revise a tela de Credenciamento para liberar produtos, vigencia e canal operacional.
