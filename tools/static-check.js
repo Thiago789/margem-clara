@@ -231,8 +231,8 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "roadmap-addon.js",
-      snippet: "getRoadmapCurrentFocus",
-      message: "Roadmap deve manter foco recomendado calculado pela prontidao.",
+      snippet: "Proximo criterio",
+      message: "Roadmap deve manter foco recomendado com criterio pendente da prontidao.",
     },
     {
       file: "dashboard-command-addon.js",

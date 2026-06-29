@@ -53,7 +53,7 @@ function getRoadmapCurrentFocus() {
   const decision = getReadinessCurrentDecision(getReadinessGroups());
   return {
     title: decision.nextGroup.title,
-    detail: `${decision.nextGroup.score}% de maturidade. Priorize esta frente antes de pensar em producao ou novas integracoes.`,
+    detail: `${decision.nextGroup.score}% de maturidade. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}).`,
     target: "readiness",
     action: "Ver prontidao",
   };
@@ -182,7 +182,7 @@ function renderRoadmap() {
   now.innerHTML = `
     <div class="roadmap-note">
       <strong>Priorizar o menor indicador de prontidao</strong>
-      <span>Use o foco recomendado acima para evoluir o MVP sem abrir frentes paralelas demais.</span>
+      <span>Use o foco recomendado acima e ataque o criterio pendente antes de abrir frentes paralelas demais.</span>
     </div>
     <div class="roadmap-note">
       <strong>Validar fluxo com alguem de negocio</strong>
