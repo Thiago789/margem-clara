@@ -47,6 +47,7 @@ O MVP ja possui uma base navegavel com:
 - Autorizacao para consulta de margem pela consignataria deve ser configuravel por convenio.
 - Codigo/senha para reserva deve ser configuravel por convenio.
 - Alguns convenios podem permitir reserva imediata sem codigo.
+- Consignataria deve estar habilitada no convenio antes de consultar margem ou criar reserva operacional.
 - Taxa, CET e primeira competencia sao obrigatorios iniciais no MVP.
 - Valor contratado e primeiro vencimento podem ser configuraveis por convenio.
 - Refinanciamento exige contrato origem.
@@ -143,6 +144,7 @@ O MVP ja possui uma base navegavel com:
 - Prontidao V1 deve considerar resumo de auditoria sensivel e navegacao protegida na frente de seguranca.
 - Homologacao deve validar navegacao protegida e resumo de auditoria sensivel como criterios de seguranca.
 - Consulta de margem e reserva devem ter politicas separadas por convenio, pois alguns convenios podem exigir autorizacao antes da leitura e outros apenas antes da reserva.
+- Credenciamento de consignataria deve condicionar acesso ao convenio, produtos permitidos, vigencia e canal operacional.
 
 ## Campos Importantes Ja Mapeados
 

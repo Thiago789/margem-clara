@@ -260,6 +260,26 @@ function checkRecentDecisionCoverage() {
       message: "Prontidao V1 deve medir consulta de margem condicionada por convenio.",
     },
     {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "lenderHasAgreementAccess",
+      message: "Credenciamento deve bloquear consignataria sem acesso ativo ao convenio.",
+    },
+    {
+      file: "app.js",
+      snippet: "Consignataria sem acesso ao convenio",
+      message: "Consulta de margem deve bloquear consignataria sem acesso ativo ao convenio.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "Acesso condicionado por convenio",
+      message: "Homologacao deve validar acesso condicionado da consignataria.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "Consignataria habilitada por convenio",
+      message: "Prontidao V1 deve medir consignataria habilitada por convenio.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "Convenio piloto configurado",
       message: "Homologacao deve validar convenio piloto antes da operacao.",

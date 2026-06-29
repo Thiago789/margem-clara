@@ -78,6 +78,9 @@ function getBusinessRuleRows() {
   const sentToPayroll = state.contracts.filter((contract) => contract.status === "Enviado para folha").length;
   const returnIssues = state.contracts.filter(contractHasReturnIssue).length;
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao").length;
+  const activeAccreditations = typeof getLenderProductAccreditations === "function"
+    ? getLenderProductAccreditations().filter((item) => item.status === "Ativo").length
+    : 0;
 
   return [
     {
@@ -95,6 +98,13 @@ function getBusinessRuleRows() {
       status: "Configuravel",
       className: "",
       next: "Definir trilha de consentimento, canal de assinatura e prazo por convenio.",
+    },
+    {
+      area: "Consignataria",
+      current: `${activeAccreditations} credenciamento(s) ativo(s) podem operar o convenio.`,
+      status: typeof lenderHasAgreementAccess === "function" ? "Configuravel" : "Parcial",
+      className: typeof lenderHasAgreementAccess === "function" ? "" : "warning",
+      next: "Permitir parametrizacao real de vigencia, produtos e canal por convenio.",
     },
     {
       area: "Reserva",

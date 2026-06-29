@@ -509,6 +509,25 @@ function renderMargin() {
 
   select.value = employee.id;
 
+  if (state.currentProfile === "lender" && typeof lenderHasAgreementAccess === "function" && !lenderHasAgreementAccess("lender-1")) {
+    document.getElementById("margin-detail").innerHTML = `
+      <section class="panel">
+        <div class="panel-heading">
+          <h3>Consignataria sem acesso ao convenio</h3>
+          <span class="status warning">Acesso condicionado</span>
+        </div>
+        <p class="muted">${employee.name} - ${employee.enrollment}</p>
+        <div class="alert-item">
+          A consignataria precisa estar com credenciamento ativo neste convenio antes de consultar margem.
+        </div>
+        <p class="muted" style="margin-top:12px">
+          Revise a tela de Credenciamento para liberar produtos, vigencia e canal operacional.
+        </p>
+      </section>
+    `;
+    return;
+  }
+
   if (state.currentProfile === "lender" && !hasMarginConsultAuthorization(employee.id)) {
     document.getElementById("margin-detail").innerHTML = `
       <section class="panel">

@@ -13,6 +13,7 @@ if (!pageTitles.lenders) {
 
 function getLenderManagementRows() {
   return lenders.map((lender, index) => {
+    const accreditation = typeof lenderAccreditationFor === "function" ? lenderAccreditationFor(lender.id) : null;
     const contracts = state.contracts.filter((contract) => contract.lenderId === lender.id);
     const reserved = contracts.filter((contract) => marginReservationStatuses.includes(contract.status)).length;
     const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha").length;
@@ -33,10 +34,11 @@ function getLenderManagementRows() {
       active,
       sent,
       rejected,
-      status: statuses[index] || "Ativa",
-      integration: integration[index] || "Arquivo manual",
-      products,
-      needsAttention: rejected > 0 || sent > 0 || statuses[index] !== "Ativa" && statuses[index] !== "Homologada",
+      status: accreditation?.status || statuses[index] || "Ativa",
+      accessMode: accreditation?.accessMode || "Acesso operacional completo",
+      integration: accreditation?.integration || integration[index] || "Arquivo manual",
+      products: accreditation?.products || products,
+      needsAttention: rejected > 0 || sent > 0 || !accreditation || accreditation.status !== "Ativo",
     };
   });
 }
@@ -161,6 +163,7 @@ function renderLenderManagement() {
           </div>
           <p>
             Produtos: ${row.products.join(", ")}.
+            Acesso: ${row.accessMode}.
             ${row.reserved} reserva(s), ${row.sent} aguardando retorno, ${row.active} ativo(s), ${row.rejected} com pendencia.
           </p>
         </article>

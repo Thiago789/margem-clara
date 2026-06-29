@@ -7,40 +7,62 @@ function getLenderProductAccreditations() {
     {
       lenderId: "lender-1",
       agreement: "Prefeitura Modelo",
+      agreementCode: "PM-001",
       products: ["Emprestimo consignado", "Cartao consignado"],
       status: "Ativo",
+      accessMode: "Acesso operacional completo",
       integration: "API ativa",
       validUntil: "2026-12-31",
     },
     {
       lenderId: "lender-2",
       agreement: "Prefeitura Modelo",
+      agreementCode: "PM-001",
       products: ["Emprestimo consignado"],
       status: "Ativo",
+      accessMode: "Acesso operacional completo",
       integration: "Arquivo manual",
       validUntil: "2026-10-31",
     },
     {
       lenderId: "lender-3",
       agreement: "Prefeitura Modelo",
+      agreementCode: "PM-001",
       products: ["Emprestimo consignado", "Cartao beneficio"],
       status: "Em homologacao",
+      accessMode: "Somente massa de teste",
       integration: "API em teste",
       validUntil: "2026-08-31",
     },
     {
       lenderId: "lender-4",
       agreement: "Prefeitura Modelo",
+      agreementCode: "PM-001",
       products: ["Emprestimo consignado"],
       status: "Pendente",
+      accessMode: "Acesso bloqueado",
       integration: "Sem integracao",
       validUntil: "2026-07-31",
     },
   ];
 }
 
+function getCurrentAgreementCode() {
+  return state.conventionSettings?.code || "PM-001";
+}
+
+function lenderAccreditationFor(lenderId) {
+  const agreementCode = getCurrentAgreementCode();
+  return getLenderProductAccreditations().find((item) => item.lenderId === lenderId && item.agreementCode === agreementCode);
+}
+
+function lenderHasAgreementAccess(lenderId) {
+  const accreditation = lenderAccreditationFor(lenderId);
+  return !!accreditation && accreditation.status === "Ativo";
+}
+
 function lenderCanOperateProduct(lenderId, product) {
-  const accreditation = getLenderProductAccreditations().find((item) => item.lenderId === lenderId);
+  const accreditation = lenderAccreditationFor(lenderId);
   return !!accreditation && accreditation.status === "Ativo" && accreditation.products.includes(product);
 }
 
@@ -156,7 +178,7 @@ function renderAccreditationView() {
           </div>
           <div><span>Status</span><strong class="status ${statusClass}">${row.status}</strong></div>
           <div><span>Integracao</span><strong>${row.integration}</strong></div>
-          <p>Produtos: ${row.products.join(", ")}.</p>
+          <p>Produtos: ${row.products.join(", ")}. Acesso: ${row.accessMode}.</p>
         </article>
       `;
     })
@@ -166,6 +188,10 @@ function renderAccreditationView() {
     <div class="accreditation-note">
       <strong>Filtro por produto</strong>
       <span>Reserva e simulacao devem bloquear produto nao credenciado para a instituicao.</span>
+    </div>
+    <div class="accreditation-note">
+      <strong>Acesso ao convenio</strong>
+      <span>Consignataria sem credenciamento ativo nao deve consultar margem nem criar reserva operacional.</span>
     </div>
     <div class="accreditation-note">
       <strong>Vigencia</strong>
@@ -203,6 +229,12 @@ function bindAccreditationFormGuard() {
       if (event.submitter?.value === "cancel") return;
       const lenderId = document.getElementById("contract-lender")?.value;
       const product = document.getElementById("contract-product")?.value || "Emprestimo consignado";
+      if (!lenderHasAgreementAccess(lenderId)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        alert("Esta consignataria nao esta habilitada para operar este convenio.");
+        return;
+      }
       if (!lenderCanOperateProduct(lenderId, product)) {
         event.preventDefault();
         event.stopImmediatePropagation();
