@@ -96,10 +96,12 @@ function getReadinessCurrentDecision(groups) {
   const average = Math.round(groups.reduce((total, group) => total + group.score, 0) / groups.length);
   const critical = groups.flatMap((group) => group.items).filter(([, status]) => status === "Pendente").length;
   const nextGroup = groups.slice().sort((a, b) => a.score - b.score)[0];
+  const nextItem = nextGroup.items.find(([, status]) => status === "Pendente") || nextGroup.items.find(([, status]) => !["Demo", "Mapeado"].includes(status)) || nextGroup.items[0];
   return {
     average,
     critical,
     nextGroup,
+    nextItem,
     label: average >= 75 ? "MVP forte para demonstracao" : average >= 55 ? "MVP em maturacao operacional" : "MVP ainda exige consolidacao",
   };
 }
@@ -184,7 +186,7 @@ function renderReadiness() {
     <div>
       <span class="readiness-command-label">${decision.label}</span>
       <strong>${decision.nextGroup.title}</strong>
-      <p>Frente com menor maturidade atual: ${decision.nextGroup.score}%. Use isso para priorizar o proximo bloco antes de pensar em producao.</p>
+      <p>Frente com menor maturidade atual: ${decision.nextGroup.score}%. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}).</p>
     </div>
     <div class="readiness-command-actions">
       <div class="readiness-command-meter" aria-label="${average}% de prontidao geral">

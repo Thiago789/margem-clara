@@ -133,7 +133,7 @@ function renderDashboardCommandCenter() {
     <article class="dashboard-command-card">
       <span>${readiness.average}% de prontidao</span>
       <strong>${readiness.nextGroup.title}</strong>
-      <p>Frente com menor maturidade atual: ${readiness.nextGroup.score}%.</p>
+      <p>${readiness.nextGroup.score}% de maturidade. Proximo criterio: ${readiness.nextItem[0]} (${readiness.nextItem[1]}).</p>
       <button class="secondary-button dashboard-command-action" data-target-view="readiness" type="button">Ver prontidao</button>
     </article>
     <article class="dashboard-command-card">
