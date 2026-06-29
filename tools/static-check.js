@@ -255,6 +255,11 @@ function checkRecentDecisionCoverage() {
       message: "Roadmap deve manter foco recomendado com criterio pendente da prontidao.",
     },
     {
+      file: "roadmap-addon.js",
+      snippet: "getRoadmapCriterionTarget",
+      message: "Roadmap deve direcionar o foco para o modulo acionavel do criterio.",
+    },
+    {
       file: "dashboard-command-addon.js",
       snippet: "dashboardRoadmapFocus",
       message: "Painel inicial deve expor foco recomendado do roadmap.",

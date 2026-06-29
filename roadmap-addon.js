@@ -40,6 +40,19 @@ function getRoadmapTracks() {
   ];
 }
 
+function getRoadmapCriterionTarget(label) {
+  const text = String(label || "").toLowerCase();
+  if (text.includes("convenio piloto")) return { target: "settings", action: "Configurar convenio" };
+  if (text.includes("massa") || text.includes("roteiro") || text.includes("aceite")) return { target: "qa", action: "Abrir homologacao" };
+  if (text.includes("login") || text.includes("permissoes") || text.includes("lgpd") || text.includes("navegacao")) return { target: "access", action: "Ver acessos" };
+  if (text.includes("auditoria")) return { target: "audit", action: "Ver auditoria" };
+  if (text.includes("fechamento")) return { target: "closing", action: "Ver fechamento" };
+  if (text.includes("arquivo") || text.includes("layout") || text.includes("protocolos")) return { target: "import", action: "Ver arquivos" };
+  if (text.includes("calculo") || text.includes("reserva") || text.includes("contrato") || text.includes("baixa") || text.includes("bloqueios")) return { target: "pilot", action: "Abrir fluxo" };
+  if (text.includes("api") || text.includes("webhooks") || text.includes("conector") || text.includes("fonte publica")) return { target: "integrations", action: "Ver integracoes" };
+  return { target: "readiness", action: "Ver prontidao" };
+}
+
 function getRoadmapCurrentFocus() {
   if (typeof getReadinessGroups !== "function" || typeof getReadinessCurrentDecision !== "function") {
     return {
@@ -51,11 +64,12 @@ function getRoadmapCurrentFocus() {
   }
 
   const decision = getReadinessCurrentDecision(getReadinessGroups());
+  const criterionTarget = getRoadmapCriterionTarget(decision.nextItem[0]);
   return {
     title: decision.nextGroup.title,
     detail: `${decision.nextGroup.score}% de maturidade. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}).`,
-    target: "readiness",
-    action: "Ver prontidao",
+    target: criterionTarget.target,
+    action: criterionTarget.action,
   };
 }
 
