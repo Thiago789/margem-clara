@@ -20,6 +20,7 @@ function getLenderManagementRows() {
     const sent = contracts.filter((contract) => contract.status === "Enviado para folha").length;
     const rejected = contracts.filter(contractHasReturnIssue).length;
     const accreditationExpired = typeof accreditationIsExpired === "function" ? accreditationIsExpired(accreditation) : false;
+    const accreditationNotStarted = typeof accreditationIsNotStarted === "function" ? accreditationIsNotStarted(accreditation) : false;
     const statuses = ["Homologada", "Em homologacao", "Ativa", "Pendente de contrato"];
     const integration = ["API ativa", "Arquivo manual", "API em teste", "Sem integracao"];
     const products = index === 0
@@ -37,10 +38,11 @@ function getLenderManagementRows() {
       rejected,
       status: accreditation?.status || statuses[index] || "Ativa",
       accreditationExpired,
+      accreditationNotStarted,
       accessMode: accreditation?.accessMode || "Acesso operacional completo",
       integration: accreditation?.integration || integration[index] || "Arquivo manual",
       products: accreditation?.products || products,
-      needsAttention: rejected > 0 || sent > 0 || !accreditation || accreditation.status !== "Ativo" || accreditationExpired,
+      needsAttention: rejected > 0 || sent > 0 || !accreditation || accreditation.status !== "Ativo" || accreditationExpired || accreditationNotStarted,
     };
   });
 }
@@ -119,7 +121,7 @@ function renderLenderManagement() {
   const rows = state.currentProfile === "lender"
     ? getLenderManagementRows().filter((row) => row.id === "lender-1")
     : getLenderManagementRows();
-  const activeLenders = rows.filter((row) => ["Ativa", "Homologada"].includes(row.status) && !row.accreditationExpired).length;
+  const activeLenders = rows.filter((row) => ["Ativa", "Homologada"].includes(row.status) && !row.accreditationExpired && !row.accreditationNotStarted).length;
   const withApi = rows.filter((row) => row.integration.includes("API")).length;
   const attention = rows.filter((row) => row.needsAttention).length;
   const totalContracts = rows.reduce((sum, row) => sum + row.contracts.length, 0);
@@ -145,7 +147,7 @@ function renderLenderManagement() {
   list.innerHTML = rows
     .map((row) => {
       const statusClass = row.needsAttention ? "warning" : "";
-      const statusLabel = row.accreditationExpired ? "Vencida" : row.status;
+      const statusLabel = row.accreditationExpired ? "Vencida" : row.accreditationNotStarted ? "Nao iniciada" : row.status;
       return `
         <article class="lender-row">
           <div>

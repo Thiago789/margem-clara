@@ -79,7 +79,7 @@ function getBusinessRuleRows() {
   const returnIssues = state.contracts.filter(contractHasReturnIssue).length;
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao").length;
   const activeAccreditations = typeof getLenderProductAccreditations === "function"
-    ? getLenderProductAccreditations().filter((item) => item.status === "Ativo" && (typeof accreditationIsExpired !== "function" || !accreditationIsExpired(item))).length
+    ? getLenderProductAccreditations().filter((item) => item.status === "Ativo" && (typeof accreditationIsWithinValidity !== "function" || accreditationIsWithinValidity(item))).length
     : 0;
 
   return [

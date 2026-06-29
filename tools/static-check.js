@@ -301,6 +301,21 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "lender-product-accreditation-addon.js",
+      snippet: "accreditationIsNotStarted",
+      message: "Credenciamento deve bloquear operacao antes do inicio da vigencia.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "accreditationIsWithinValidity",
+      message: "Credenciamento deve centralizar periodo valido de operacao.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "Vigencia inicia em",
+      message: "Motivo de exclusao deve informar credenciamento ainda nao iniciado.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
       snippet: "Vigencia encerrada em",
       message: "Motivo de exclusao deve informar credenciamento vencido.",
     },

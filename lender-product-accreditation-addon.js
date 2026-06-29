@@ -12,6 +12,7 @@ function getLenderProductAccreditations() {
       status: "Ativo",
       accessMode: "Acesso operacional completo",
       integration: "API ativa",
+      validFrom: "2026-01-01",
       validUntil: "2026-12-31",
     },
     {
@@ -22,6 +23,7 @@ function getLenderProductAccreditations() {
       status: "Ativo",
       accessMode: "Acesso operacional completo",
       integration: "Arquivo manual",
+      validFrom: "2026-01-01",
       validUntil: "2026-06-15",
     },
     {
@@ -32,6 +34,7 @@ function getLenderProductAccreditations() {
       status: "Em homologacao",
       accessMode: "Somente massa de teste",
       integration: "API em teste",
+      validFrom: "2026-07-01",
       validUntil: "2026-08-31",
     },
     {
@@ -39,9 +42,10 @@ function getLenderProductAccreditations() {
       agreement: "Prefeitura Modelo",
       agreementCode: "PM-001",
       products: ["Emprestimo consignado"],
-      status: "Pendente",
-      accessMode: "Acesso bloqueado",
+      status: "Ativo",
+      accessMode: "Aguardando inicio de vigencia",
       integration: "Sem integracao",
+      validFrom: "2026-07-15",
       validUntil: "2026-07-31",
     },
   ];
@@ -60,6 +64,14 @@ function accreditationIsExpired(accreditation) {
   return Boolean(accreditation?.validUntil && accreditation.validUntil < today());
 }
 
+function accreditationIsNotStarted(accreditation) {
+  return Boolean(accreditation?.validFrom && accreditation.validFrom > today());
+}
+
+function accreditationIsWithinValidity(accreditation) {
+  return !accreditationIsNotStarted(accreditation) && !accreditationIsExpired(accreditation);
+}
+
 function lenderHasAgreementAccess(lenderId) {
   return lenderProductEligibility(lenderId, "Emprestimo consignado").ok || lenderAllowedProducts(lenderId).length > 0;
 }
@@ -67,7 +79,7 @@ function lenderHasAgreementAccess(lenderId) {
 function lenderAllowedProducts(lenderId) {
   const accreditation = lenderAccreditationFor(lenderId);
   if (!accreditation || accreditation.status !== "Ativo") return [];
-  if (accreditationIsExpired(accreditation)) return [];
+  if (!accreditationIsWithinValidity(accreditation)) return [];
   return accreditation.products;
 }
 
@@ -78,6 +90,9 @@ function lenderProductEligibility(lenderId, product) {
   }
   if (accreditation.status !== "Ativo") {
     return { ok: false, reason: `Credenciamento ${accreditation.status.toLowerCase()}` };
+  }
+  if (accreditationIsNotStarted(accreditation)) {
+    return { ok: false, reason: `Vigencia inicia em ${accreditation.validFrom}` };
   }
   if (accreditationIsExpired(accreditation)) {
     return { ok: false, reason: `Vigencia encerrada em ${accreditation.validUntil}` };
@@ -186,9 +201,9 @@ function renderAccreditationView() {
   const rows = state.currentProfile === "lender"
     ? getLenderProductAccreditations().filter((item) => item.lenderId === "lender-1")
     : getLenderProductAccreditations();
-  const active = rows.filter((item) => item.status === "Ativo" && !accreditationIsExpired(item)).length;
+  const active = rows.filter((item) => item.status === "Ativo" && accreditationIsWithinValidity(item)).length;
   const products = new Set(rows.flatMap((item) => item.products)).size;
-  const pending = rows.filter((item) => item.status !== "Ativo" || accreditationIsExpired(item)).length;
+  const pending = rows.filter((item) => item.status !== "Ativo" || !accreditationIsWithinValidity(item)).length;
 
   summary.innerHTML = [
     ["Instituicoes", rows.length],
@@ -210,13 +225,14 @@ function renderAccreditationView() {
     .map((row) => {
       const lender = lenders.find((item) => item.id === row.lenderId);
       const expired = accreditationIsExpired(row);
-      const statusClass = row.status === "Ativo" && !expired ? "" : "warning";
-      const statusLabel = expired ? "Vencido" : row.status;
+      const notStarted = accreditationIsNotStarted(row);
+      const statusClass = row.status === "Ativo" && !expired && !notStarted ? "" : "warning";
+      const statusLabel = expired ? "Vencido" : notStarted ? "Nao iniciado" : row.status;
       return `
         <article class="accreditation-row">
           <div>
             <strong>${lender?.name || "Consignataria"}</strong>
-            <span>${row.agreement} - vigencia ate ${row.validUntil}</span>
+            <span>${row.agreement} - vigencia ${row.validFrom} ate ${row.validUntil}</span>
           </div>
           <div><span>Status</span><strong class="status ${statusClass}">${statusLabel}</strong></div>
           <div><span>Integracao</span><strong>${row.integration}</strong></div>
