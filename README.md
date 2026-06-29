@@ -20,7 +20,7 @@ C:\Users\Thiago Moreira\Documents\Codex\2026-05-18\boa-noite-preciso-desenvolver
 
 ## O que ja funciona
 
-- Painel operacional com fila de pendencias, foco recomendado e decisao da competencia.
+- Painel operacional com foco recomendado em destaque, fila de pendencias e decisao da competencia.
 - Jornada operacional guiada por etapas: base, operacao, folha e gestao.
 - Servidores, matriculas/vinculos e margem controlada por matricula.
 - Contratos, reservas, produtos, tipos de operacao e campos financeiros essenciais.

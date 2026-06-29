@@ -97,6 +97,12 @@ function dashboardFocusOrigin(queue, focus) {
   return focus?.target ? `Roadmap: ${pageTitles[focus.target] || focus.target}` : "Roadmap";
 }
 
+function dashboardCompactText(value, limit = 118) {
+  const text = String(value || "").trim();
+  if (text.length <= limit) return text;
+  return `${text.slice(0, Math.max(0, limit - 3)).trim()}...`;
+}
+
 function renderDashboardCommandCenter() {
   ensureDashboardCommandCenter();
   const grid = document.getElementById("dashboard-command-grid");
@@ -122,38 +128,38 @@ function renderDashboardCommandCenter() {
   const payrollPayoffWarnings = payroll.missingInstallmentProgress.length;
 
   grid.innerHTML = `
-    <article class="dashboard-command-card">
+    <article class="dashboard-command-card dashboard-command-primary">
+      <span>Foco recomendado - ${focusOrigin}</span>
+      <strong>${focus.title}</strong>
+      <p>${dashboardCompactText(focus.detail, 150)}</p>
+      <button class="primary-button dashboard-command-action" data-target-view="${focus.target}" type="button">${focus.action}</button>
+    </article>
+    <article class="dashboard-command-card dashboard-command-support">
       <span>${journey.label}</span>
       <strong>${journey.current.label}</strong>
-      <p>${journey.current.detail}</p>
+      <p>${dashboardCompactText(journey.current.detail)}</p>
       <div class="dashboard-command-meter" aria-label="${journey.percent}% do fluxo piloto">
         <span style="width: ${journey.percent}%"></span>
       </div>
-      <button class="primary-button dashboard-command-action" data-target-view="${journey.current.target}" type="button">${journey.current.action}</button>
+      <button class="secondary-button dashboard-command-action" data-target-view="${journey.current.target}" type="button">${journey.current.action}</button>
     </article>
-    <article class="dashboard-command-card">
+    <article class="dashboard-command-card dashboard-command-support">
       <span>${queue.high} alta(s), ${queue.total} total</span>
       <strong>${queueTitle}</strong>
-      <p>${queueDetail}</p>
+      <p>${dashboardCompactText(queueDetail)}</p>
       <button class="secondary-button dashboard-command-action" data-target-view="${queueTarget}" type="button">Abrir fila</button>
     </article>
-    <article class="dashboard-command-card">
+    <article class="dashboard-command-card dashboard-command-support">
       <span>Competencia ${payroll.month}</span>
       <strong>${payroll.decision}</strong>
-      <p>${payrollBlockers} bloqueio(s), ${payrollWarnings} ressalva(s), ${payrollPendingReturns} retorno(s) pendente(s), ${payrollPayoffWarnings} baixa(s) sem evidencia.</p>
+      <p>${payrollBlockers} bloqueio(s), ${payrollWarnings} ressalva(s), ${payrollPendingReturns} retorno(s), ${payrollPayoffWarnings} baixa(s).</p>
       <button class="secondary-button dashboard-command-action" data-target-view="closing" type="button">Ver fechamento</button>
     </article>
-    <article class="dashboard-command-card">
+    <article class="dashboard-command-card dashboard-command-support">
       <span>${readiness.average}% de prontidao</span>
       <strong>${readiness.nextGroup.title}</strong>
-      <p>${readiness.nextGroup.score}% de maturidade. Proximo criterio: ${readiness.nextItem[0]} (${readiness.nextItem[1]}). Ultimo aceite: ${qaApproval}.</p>
+      <p>${readiness.nextGroup.score}% maturidade. Criterio: ${readiness.nextItem[0]} (${readiness.nextItem[1]}). Aceite: ${qaApproval}.</p>
       <button class="secondary-button dashboard-command-action" data-target-view="readiness" type="button">Ver prontidao</button>
-    </article>
-    <article class="dashboard-command-card">
-      <span>Foco recomendado - ${focusOrigin}</span>
-      <strong>${focus.title}</strong>
-      <p>${focus.detail}</p>
-      <button class="secondary-button dashboard-command-action" data-target-view="${focus.target}" type="button">${focus.action}</button>
     </article>
   `;
 
@@ -169,7 +175,7 @@ dashboardCommandStyle.textContent = `
   }
   .dashboard-command-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: minmax(260px, 1.4fr) repeat(4, minmax(0, 1fr));
     gap: 14px;
   }
   .dashboard-command-card {
@@ -181,6 +187,16 @@ dashboardCommandStyle.textContent = `
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--surface-2);
+  }
+  .dashboard-command-primary {
+    background: #f8faf8;
+    border-color: rgba(15, 118, 110, 0.24);
+  }
+  .dashboard-command-primary strong {
+    font-size: 20px;
+  }
+  .dashboard-command-support {
+    min-height: 170px;
   }
   .dashboard-command-card span,
   .dashboard-command-card p {

@@ -285,6 +285,16 @@ function checkRecentDecisionCoverage() {
       message: "Painel inicial deve explicar a origem do foco recomendado.",
     },
     {
+      file: "dashboard-command-addon.js",
+      snippet: "dashboard-command-primary",
+      message: "Painel inicial deve destacar o foco recomendado como acao principal.",
+    },
+    {
+      file: "dashboard-command-addon.js",
+      snippet: "dashboardCompactText",
+      message: "Painel inicial deve compactar textos longos no cockpit operacional.",
+    },
+    {
       file: "pilot-flow-addon.js",
       snippet: "8. Fechar competencia",
       message: "Fluxo piloto deve manter fechamento antes da auditoria.",
