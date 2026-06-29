@@ -295,6 +295,16 @@ function checkRecentDecisionCoverage() {
       message: "Credenciamento deve explicar elegibilidade da consignataria por produto.",
     },
     {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "accreditationIsExpired",
+      message: "Credenciamento deve aplicar vigencia como regra operacional.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "Vigencia encerrada em",
+      message: "Motivo de exclusao deve informar credenciamento vencido.",
+    },
+    {
       file: "app.js",
       snippet: "consignataria(s) fora do ranking",
       message: "Simulacao deve explicar consignatarias excluidas do ranking.",

@@ -50,6 +50,7 @@ O MVP ja possui uma base navegavel com:
 - Consignataria deve estar habilitada no convenio antes de consultar margem ou criar reserva operacional.
 - Simulacao e reserva devem considerar apenas produtos habilitados para a consignataria no convenio.
 - Ranking de simulacao deve explicar consignatarias excluidas por credenciamento, produto ou status.
+- Credenciamento vencido deve bloquear consulta, simulacao e reserva mesmo com status ativo.
 - Taxa, CET e primeira competencia sao obrigatorios iniciais no MVP.
 - Valor contratado e primeiro vencimento podem ser configuraveis por convenio.
 - Refinanciamento exige contrato origem.
@@ -149,6 +150,7 @@ O MVP ja possui uma base navegavel com:
 - Credenciamento de consignataria deve condicionar acesso ao convenio, produtos permitidos, vigencia e canal operacional.
 - Ranking de simulacao e formulario de reserva devem filtrar produtos conforme credenciamento ativo da consignataria.
 - Experiencia de simulacao deve mostrar motivo de exclusao de consignataria para evitar duvida operacional.
+- Vigencia do credenciamento deve ser aplicada como regra operacional, nao apenas informativa.
 
 ## Campos Importantes Ja Mapeados
 

@@ -22,7 +22,7 @@ function getLenderProductAccreditations() {
       status: "Ativo",
       accessMode: "Acesso operacional completo",
       integration: "Arquivo manual",
-      validUntil: "2026-10-31",
+      validUntil: "2026-06-15",
     },
     {
       lenderId: "lender-3",
@@ -56,14 +56,18 @@ function lenderAccreditationFor(lenderId) {
   return getLenderProductAccreditations().find((item) => item.lenderId === lenderId && item.agreementCode === agreementCode);
 }
 
+function accreditationIsExpired(accreditation) {
+  return Boolean(accreditation?.validUntil && accreditation.validUntil < today());
+}
+
 function lenderHasAgreementAccess(lenderId) {
-  const accreditation = lenderAccreditationFor(lenderId);
-  return !!accreditation && accreditation.status === "Ativo";
+  return lenderProductEligibility(lenderId, "Emprestimo consignado").ok || lenderAllowedProducts(lenderId).length > 0;
 }
 
 function lenderAllowedProducts(lenderId) {
   const accreditation = lenderAccreditationFor(lenderId);
   if (!accreditation || accreditation.status !== "Ativo") return [];
+  if (accreditationIsExpired(accreditation)) return [];
   return accreditation.products;
 }
 
@@ -74,6 +78,9 @@ function lenderProductEligibility(lenderId, product) {
   }
   if (accreditation.status !== "Ativo") {
     return { ok: false, reason: `Credenciamento ${accreditation.status.toLowerCase()}` };
+  }
+  if (accreditationIsExpired(accreditation)) {
+    return { ok: false, reason: `Vigencia encerrada em ${accreditation.validUntil}` };
   }
   if (!accreditation.products.includes(product)) {
     return { ok: false, reason: "Produto nao habilitado" };
@@ -179,9 +186,9 @@ function renderAccreditationView() {
   const rows = state.currentProfile === "lender"
     ? getLenderProductAccreditations().filter((item) => item.lenderId === "lender-1")
     : getLenderProductAccreditations();
-  const active = rows.filter((item) => item.status === "Ativo").length;
+  const active = rows.filter((item) => item.status === "Ativo" && !accreditationIsExpired(item)).length;
   const products = new Set(rows.flatMap((item) => item.products)).size;
-  const pending = rows.filter((item) => item.status !== "Ativo").length;
+  const pending = rows.filter((item) => item.status !== "Ativo" || accreditationIsExpired(item)).length;
 
   summary.innerHTML = [
     ["Instituicoes", rows.length],
@@ -202,14 +209,16 @@ function renderAccreditationView() {
   list.innerHTML = rows
     .map((row) => {
       const lender = lenders.find((item) => item.id === row.lenderId);
-      const statusClass = row.status === "Ativo" ? "" : "warning";
+      const expired = accreditationIsExpired(row);
+      const statusClass = row.status === "Ativo" && !expired ? "" : "warning";
+      const statusLabel = expired ? "Vencido" : row.status;
       return `
         <article class="accreditation-row">
           <div>
             <strong>${lender?.name || "Consignataria"}</strong>
             <span>${row.agreement} - vigencia ate ${row.validUntil}</span>
           </div>
-          <div><span>Status</span><strong class="status ${statusClass}">${row.status}</strong></div>
+          <div><span>Status</span><strong class="status ${statusClass}">${statusLabel}</strong></div>
           <div><span>Integracao</span><strong>${row.integration}</strong></div>
           <p>Produtos: ${row.products.join(", ")}. Acesso: ${row.accessMode}.</p>
         </article>

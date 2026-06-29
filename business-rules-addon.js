@@ -79,7 +79,7 @@ function getBusinessRuleRows() {
   const returnIssues = state.contracts.filter(contractHasReturnIssue).length;
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao").length;
   const activeAccreditations = typeof getLenderProductAccreditations === "function"
-    ? getLenderProductAccreditations().filter((item) => item.status === "Ativo").length
+    ? getLenderProductAccreditations().filter((item) => item.status === "Ativo" && (typeof accreditationIsExpired !== "function" || !accreditationIsExpired(item))).length
     : 0;
 
   return [
@@ -101,7 +101,7 @@ function getBusinessRuleRows() {
     },
     {
       area: "Consignataria",
-      current: `${activeAccreditations} credenciamento(s) ativo(s) podem operar o convenio.`,
+      current: `${activeAccreditations} credenciamento(s) ativo(s) e vigentes podem operar o convenio.`,
       status: typeof lenderHasAgreementAccess === "function" ? "Configuravel" : "Parcial",
       className: typeof lenderHasAgreementAccess === "function" ? "" : "warning",
       next: "Permitir parametrizacao real de vigencia, produtos e canal por convenio.",

@@ -38,7 +38,7 @@ function getPilotQaScenarios() {
   const requiresMarginConsult = policy.requireAuthorizationForMarginConsult !== false;
   const requiresReservationCode = policy.requireAuthorizationForReservation !== false;
   const accreditations = typeof getLenderProductAccreditations === "function" ? getLenderProductAccreditations() : [];
-  const activeAccreditations = accreditations.filter((item) => item.status === "Ativo");
+  const activeAccreditations = accreditations.filter((item) => item.status === "Ativo" && (typeof accreditationIsExpired !== "function" || !accreditationIsExpired(item)));
 
   return [
     {
@@ -78,7 +78,7 @@ function getPilotQaScenarios() {
     {
       area: "Consignataria",
       title: "Acesso condicionado por convenio",
-      expected: "Consignataria precisa estar ativa no convenio antes de consultar margem ou criar reserva operacional.",
+      expected: "Consignataria precisa estar ativa e dentro da vigencia do convenio antes de consultar margem ou criar reserva operacional.",
       evidence: `${activeAccreditations.length} consignataria(s) ativa(s) de ${accreditations.length} credenciamento(s).`,
       target: "accreditation",
       ok: activeAccreditations.length > 0 && typeof lenderHasAgreementAccess === "function",
