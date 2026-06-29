@@ -133,6 +133,7 @@ O MVP ja possui uma base navegavel com:
 - Jornada superior e painel inicial devem explicar a origem da proxima acao: fila, roadmap ou fluxo piloto.
 - Painel inicial deve destacar a acao principal e compactar indicadores de apoio para reduzir carga visual.
 - Prontidao deve abrir o modulo acionavel do proximo criterio e exibir o aceite registrado.
+- Homologacao deve diferenciar demo guiada, piloto controlado e limite antes de operacao real.
 - Jornada superior deve mostrar prioridade da fila ou foco recomendado sem exigir abrir o roadmap.
 - Navegacao bloqueada por perfil deve redirecionar com aviso visivel e registro de auditoria.
 - Tela de permissoes deve evidenciar que a navegacao protegida esta ativa no MVP.

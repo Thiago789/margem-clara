@@ -179,6 +179,30 @@ function getPilotQaDecision(scenarios) {
   };
 }
 
+function getPilotQaStage(decision) {
+  if (decision.score >= 100) {
+    return {
+      label: "Pronto para demo guiada",
+      detail: "Todos os criterios do MVP estatico estao atendidos para apresentacao controlada.",
+      realOperation: "Operacao real ainda exige backend, login seguro, banco, LGPD e homologacao externa.",
+    };
+  }
+
+  if (decision.score >= 80) {
+    return {
+      label: "Quase pronto para piloto controlado",
+      detail: "A massa ja sustenta conversa de negocio, mas ainda ha criterios pendentes antes do aceite.",
+      realOperation: "Nao usar como ambiente real; fechar pendencias e registrar aceite antes do piloto.",
+    };
+  }
+
+  return {
+    label: "Demo em maturacao",
+    detail: "Use a fila de criterios para completar o fluxo minimo antes de tratar como demonstracao forte.",
+    realOperation: "Ainda distante de operacao real; priorize criterio pendente e evidencias de homologacao.",
+  };
+}
+
 function recordPilotQaApproval(decision) {
   state.pilotQaApproval = {
     date: today(),
@@ -268,15 +292,16 @@ function renderPilotQa() {
 
   const scenarios = getPilotQaScenarios();
   const decision = getPilotQaDecision(scenarios);
+  const stage = getPilotQaStage(decision);
   const approval = state.pilotQaApproval;
   const approvalLabel = approval ? `${approval.score || 0}% em ${approval.date || "data nao informada"}` : "Nao registrado";
 
   command.innerHTML = `
     <div>
-      <span class="qa-command-label">${decision.status}</span>
+      <span class="qa-command-label">${decision.status} - ${stage.label}</span>
       <strong>${decision.next.title}</strong>
       <p>${decision.next.expected}</p>
-      <small>${decision.next.evidence}</small>
+      <small>${decision.next.evidence} ${stage.detail}</small>
     </div>
     <div class="qa-command-actions">
       <div class="qa-progress" aria-label="${decision.score}% de homologacao">
@@ -292,6 +317,7 @@ function renderPilotQa() {
     ["Pendentes", decision.pending],
     ["Maturidade", `${decision.score}%`],
     ["Ultimo aceite", approvalLabel],
+    ["Estagio", stage.label],
   ];
 
   summary.innerHTML = cards
@@ -343,6 +369,10 @@ function renderPilotQa() {
       <strong>Teste guiado</strong>
       <span>O gestor consegue navegar pelos modulos principais sem depender de memoria do fluxo.</span>
     </div>
+    <div class="qa-note">
+      <strong>Estagio atual</strong>
+      <span>${stage.detail}</span>
+    </div>
   `;
 
   real.innerHTML = `
@@ -358,6 +388,10 @@ function renderPilotQa() {
       <strong>Homologacao externa</strong>
       <span>Cada folha e cada consignataria devem passar por massa de teste antes de qualquer processamento real.</span>
     </div>
+    <div class="qa-note">
+      <strong>Limite de uso</strong>
+      <span>${stage.realOperation}</span>
+    </div>
   `;
 }
 
@@ -365,7 +399,7 @@ const qaStyle = document.createElement("style");
 qaStyle.textContent = `
   .qa-summary-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(140px, 1fr));
+    grid-template-columns: repeat(6, minmax(130px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }

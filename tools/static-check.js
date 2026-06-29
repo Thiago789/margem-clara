@@ -245,6 +245,16 @@ function checkRecentDecisionCoverage() {
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
     },
     {
+      file: "pilot-qa-addon.js",
+      snippet: "getPilotQaStage",
+      message: "Homologacao deve diferenciar demo, piloto controlado e operacao real.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "Limite de uso",
+      message: "Homologacao deve evidenciar limite antes de operacao real.",
+    },
+    {
       file: "readiness-addon.js",
       snippet: "qaApprovalScore",
       message: "Prontidao deve considerar aceite registrado na homologacao.",
