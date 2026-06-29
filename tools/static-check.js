@@ -280,6 +280,26 @@ function checkRecentDecisionCoverage() {
       message: "Prontidao V1 deve medir consignataria habilitada por convenio.",
     },
     {
+      file: "app.js",
+      snippet: "simulation-product",
+      message: "Simulacao deve considerar produto ao ranquear consignatarias.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "lenderAllowedProducts",
+      message: "Credenciamento deve expor produtos habilitados por consignataria.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
+      snippet: "refreshContractProductOptions",
+      message: "Formulario de reserva deve filtrar produtos pelo credenciamento.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "Operacao respeita produto credenciado",
+      message: "Homologacao deve validar filtro por produto credenciado.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "Convenio piloto configurado",
       message: "Homologacao deve validar convenio piloto antes da operacao.",

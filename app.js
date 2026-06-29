@@ -1097,10 +1097,12 @@ function bindEvents() {
   document.getElementById("simulation-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const employee = employeeById(document.getElementById("simulation-employee").value);
+    const product = document.getElementById("simulation-product")?.value || "Emprestimo consignado";
     const amount = Number(document.getElementById("simulation-amount").value);
     const installments = Number(document.getElementById("simulation-installments").value);
     const margin = calculateMargin(employee);
     const ranking = lenders
+      .filter((lender) => (typeof lenderCanOperateProduct === "function" ? lenderCanOperateProduct(lender.id, product) : true))
       .map((lender) => {
         const monthlyRate = lender.rate / 100;
         const installment = (amount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -installments));
@@ -1108,13 +1110,14 @@ function bindEvents() {
       })
       .sort((a, b) => a.cet - b.cet);
 
-    document.getElementById("ranking-list").innerHTML = ranking
+    document.getElementById("ranking-list").innerHTML = ranking.length
+      ? ranking
       .map(
         (item) => `
           <article class="ranking-item">
             <div>
               <strong>${item.name}</strong>
-              <span class="muted">Taxa ${item.rate.toFixed(2)}% - CET ${item.cet.toFixed(2)}%</span>
+              <span class="muted">${product} - Taxa ${item.rate.toFixed(2)}% - CET ${item.cet.toFixed(2)}%</span>
             </div>
             <div>
               <strong>${money.format(item.installment)}</strong>
@@ -1123,7 +1126,8 @@ function bindEvents() {
           </article>
         `
       )
-      .join("");
+      .join("")
+      : `<article class="ranking-item"><div><strong>Nenhuma consignataria habilitada</strong><span class="muted">Revise o credenciamento do produto ${product} neste convenio.</span></div></article>`;
   });
 
   document.getElementById("new-ticket-open").addEventListener("click", () => {

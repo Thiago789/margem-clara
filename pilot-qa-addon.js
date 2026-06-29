@@ -84,6 +84,14 @@ function getPilotQaScenarios() {
       ok: activeAccreditations.length > 0 && typeof lenderHasAgreementAccess === "function",
     },
     {
+      area: "Produto",
+      title: "Operacao respeita produto credenciado",
+      expected: "Simulacao e reserva devem considerar apenas produtos habilitados para a consignataria no convenio.",
+      evidence: typeof lenderAllowedProducts === "function" ? `${lenderAllowedProducts("lender-1").length} produto(s) habilitado(s) para a consignataria piloto.` : "Filtro por produto pendente.",
+      target: "accreditation",
+      ok: typeof lenderAllowedProducts === "function" && lenderAllowedProducts("lender-1").length > 0,
+    },
+    {
       area: "Reserva",
       title: "Criacao e bloqueio de margem",
       expected: "Reserva deve consumir margem e guardar servidor, consignataria, valor e prazo.",

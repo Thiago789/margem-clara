@@ -61,9 +61,29 @@ function lenderHasAgreementAccess(lenderId) {
   return !!accreditation && accreditation.status === "Ativo";
 }
 
+function lenderAllowedProducts(lenderId) {
+  const accreditation = lenderAccreditationFor(lenderId);
+  if (!accreditation || accreditation.status !== "Ativo") return [];
+  return accreditation.products;
+}
+
 function lenderCanOperateProduct(lenderId, product) {
   const accreditation = lenderAccreditationFor(lenderId);
   return !!accreditation && accreditation.status === "Ativo" && accreditation.products.includes(product);
+}
+
+function refreshContractProductOptions() {
+  const lenderSelect = document.getElementById("contract-lender");
+  const productSelect = document.getElementById("contract-product");
+  if (!lenderSelect || !productSelect) return;
+
+  const allowedProducts = lenderAllowedProducts(lenderSelect.value);
+  const currentProduct = productSelect.value;
+  productSelect.innerHTML = allowedProducts.length
+    ? allowedProducts.map((product) => `<option>${product}</option>`).join("")
+    : `<option>Nenhum produto habilitado</option>`;
+  productSelect.disabled = allowedProducts.length === 0;
+  if (allowedProducts.includes(currentProduct)) productSelect.value = currentProduct;
 }
 
 function ensureAccreditationView() {
@@ -223,6 +243,9 @@ function bindAccreditationFormGuard() {
   const form = document.getElementById("contract-form");
   if (!form || form.dataset.accreditationBound) return;
   form.dataset.accreditationBound = "true";
+  document.getElementById("contract-lender")?.addEventListener("change", refreshContractProductOptions);
+  document.getElementById("new-contract-open")?.addEventListener("click", () => setTimeout(refreshContractProductOptions, 0));
+  refreshContractProductOptions();
   form.addEventListener(
     "submit",
     (event) => {
