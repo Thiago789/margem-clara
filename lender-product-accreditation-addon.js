@@ -67,9 +67,22 @@ function lenderAllowedProducts(lenderId) {
   return accreditation.products;
 }
 
-function lenderCanOperateProduct(lenderId, product) {
+function lenderProductEligibility(lenderId, product) {
   const accreditation = lenderAccreditationFor(lenderId);
-  return !!accreditation && accreditation.status === "Ativo" && accreditation.products.includes(product);
+  if (!accreditation) {
+    return { ok: false, reason: "Sem credenciamento neste convenio" };
+  }
+  if (accreditation.status !== "Ativo") {
+    return { ok: false, reason: `Credenciamento ${accreditation.status.toLowerCase()}` };
+  }
+  if (!accreditation.products.includes(product)) {
+    return { ok: false, reason: "Produto nao habilitado" };
+  }
+  return { ok: true, reason: "Habilitada" };
+}
+
+function lenderCanOperateProduct(lenderId, product) {
+  return lenderProductEligibility(lenderId, product).ok;
 }
 
 function refreshContractProductOptions() {

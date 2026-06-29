@@ -87,9 +87,9 @@ function getPilotQaScenarios() {
       area: "Produto",
       title: "Operacao respeita produto credenciado",
       expected: "Simulacao e reserva devem considerar apenas produtos habilitados para a consignataria no convenio.",
-      evidence: typeof lenderAllowedProducts === "function" ? `${lenderAllowedProducts("lender-1").length} produto(s) habilitado(s) para a consignataria piloto.` : "Filtro por produto pendente.",
+      evidence: typeof lenderProductEligibility === "function" ? `${lenderAllowedProducts("lender-1").length} produto(s) habilitado(s) e motivo de exclusao disponivel no ranking.` : "Filtro por produto pendente.",
       target: "accreditation",
-      ok: typeof lenderAllowedProducts === "function" && lenderAllowedProducts("lender-1").length > 0,
+      ok: typeof lenderProductEligibility === "function" && lenderAllowedProducts("lender-1").length > 0,
     },
     {
       area: "Reserva",

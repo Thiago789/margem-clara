@@ -561,6 +561,11 @@ tr.clickable:hover {
   align-items: center;
 }
 
+.ranking-exclusions {
+  border-style: dashed;
+  background: var(--surface-2);
+}
+
 .ranking-item strong,
 .ticket-card strong,
 .authorization-card strong {

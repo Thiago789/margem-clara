@@ -1101,14 +1101,21 @@ function bindEvents() {
     const amount = Number(document.getElementById("simulation-amount").value);
     const installments = Number(document.getElementById("simulation-installments").value);
     const margin = calculateMargin(employee);
-    const ranking = lenders
-      .filter((lender) => (typeof lenderCanOperateProduct === "function" ? lenderCanOperateProduct(lender.id, product) : true))
+    const simulatedLenders = lenders.map((lender) => {
+      const eligibility = typeof lenderProductEligibility === "function"
+        ? lenderProductEligibility(lender.id, product)
+        : { ok: true, reason: "Habilitada" };
+      return { ...lender, eligibility };
+    });
+    const ranking = simulatedLenders
+      .filter((lender) => lender.eligibility.ok)
       .map((lender) => {
         const monthlyRate = lender.rate / 100;
         const installment = (amount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -installments));
         return { ...lender, installment };
       })
       .sort((a, b) => a.cet - b.cet);
+    const blocked = simulatedLenders.filter((lender) => !lender.eligibility.ok);
 
     document.getElementById("ranking-list").innerHTML = ranking.length
       ? ranking
@@ -1128,6 +1135,20 @@ function bindEvents() {
       )
       .join("")
       : `<article class="ranking-item"><div><strong>Nenhuma consignataria habilitada</strong><span class="muted">Revise o credenciamento do produto ${product} neste convenio.</span></div></article>`;
+
+    if (blocked.length) {
+      document.getElementById("ranking-list").insertAdjacentHTML(
+        "beforeend",
+        `
+          <article class="ranking-item ranking-exclusions">
+            <div>
+              <strong>${blocked.length} consignataria(s) fora do ranking</strong>
+              <span class="muted">${blocked.map((lender) => `${lender.name}: ${lender.eligibility.reason}`).join(" | ")}</span>
+            </div>
+          </article>
+        `
+      );
+    }
   });
 
   document.getElementById("new-ticket-open").addEventListener("click", () => {

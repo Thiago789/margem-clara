@@ -291,6 +291,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "lender-product-accreditation-addon.js",
+      snippet: "lenderProductEligibility",
+      message: "Credenciamento deve explicar elegibilidade da consignataria por produto.",
+    },
+    {
+      file: "app.js",
+      snippet: "consignataria(s) fora do ranking",
+      message: "Simulacao deve explicar consignatarias excluidas do ranking.",
+    },
+    {
+      file: "lender-product-accreditation-addon.js",
       snippet: "refreshContractProductOptions",
       message: "Formulario de reserva deve filtrar produtos pelo credenciamento.",
     },
