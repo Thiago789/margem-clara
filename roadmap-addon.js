@@ -65,9 +65,11 @@ function getRoadmapCurrentFocus() {
 
   const decision = getReadinessCurrentDecision(getReadinessGroups());
   const criterionTarget = getRoadmapCriterionTarget(decision.nextItem[0]);
+  const qaStage = typeof getPilotQaStageSummary === "function" ? getPilotQaStageSummary() : null;
+  const stageDetail = qaStage ? ` Estagio: ${qaStage.labelWithScore}.` : "";
   return {
     title: decision.nextGroup.title,
-    detail: `${decision.nextGroup.score}% de maturidade. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}). Acao sugerida: ${criterionTarget.action}.`,
+    detail: `${decision.nextGroup.score}% de maturidade. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}). Acao sugerida: ${criterionTarget.action}.${stageDetail}`,
     target: criterionTarget.target,
     action: criterionTarget.action,
   };

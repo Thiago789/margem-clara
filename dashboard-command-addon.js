@@ -92,6 +92,11 @@ function dashboardQaApprovalLabel() {
   return `${approval.score || 0}% em ${approval.date || "data nao informada"}`;
 }
 
+function dashboardQaStageLabel() {
+  if (typeof getPilotQaStageSummary !== "function") return "estagio nao calculado";
+  return getPilotQaStageSummary().labelWithScore;
+}
+
 function dashboardFocusOrigin(queue, focus) {
   if (queue.next) return `Fila: ${queue.next.severity}`;
   return focus?.target ? `Roadmap: ${pageTitles[focus.target] || focus.target}` : "Roadmap";
@@ -118,6 +123,7 @@ function renderDashboardCommandCenter() {
   const payroll = dashboardPayrollDecision();
   const focus = dashboardRoadmapFocus();
   const qaApproval = dashboardQaApprovalLabel();
+  const qaStage = dashboardQaStageLabel();
   const queueTarget = queue.next?.target || "queue";
   const queueTitle = queue.next ? `${queue.next.area}: ${queue.next.title}` : "Fila sem pendencias criticas";
   const queueDetail = queue.next ? queue.next.detail : "Nenhuma decisao operacional critica no momento.";
@@ -158,7 +164,7 @@ function renderDashboardCommandCenter() {
     <article class="dashboard-command-card dashboard-command-support">
       <span>${readiness.average}% de prontidao</span>
       <strong>${readiness.nextGroup.title}</strong>
-      <p>${readiness.nextGroup.score}% maturidade. Criterio: ${readiness.nextItem[0]} (${readiness.nextItem[1]}). Aceite: ${qaApproval}.</p>
+      <p>${readiness.nextGroup.score}% maturidade. ${qaStage}. Criterio: ${readiness.nextItem[0]} (${readiness.nextItem[1]}). Aceite: ${qaApproval}.</p>
       <button class="secondary-button dashboard-command-action" data-target-view="readiness" type="button">Ver prontidao</button>
     </article>
   `;

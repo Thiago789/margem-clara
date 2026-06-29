@@ -203,6 +203,18 @@ function getPilotQaStage(decision) {
   };
 }
 
+function getPilotQaStageSummary() {
+  const scenarios = getPilotQaScenarios();
+  const decision = getPilotQaDecision(scenarios);
+  const stage = getPilotQaStage(decision);
+  return {
+    ...stage,
+    score: decision.score,
+    pending: decision.pending,
+    labelWithScore: `${stage.label} (${decision.score}%)`,
+  };
+}
+
 function recordPilotQaApproval(decision) {
   state.pilotQaApproval = {
     date: today(),

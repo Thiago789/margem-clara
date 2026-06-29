@@ -251,6 +251,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-qa-addon.js",
+      snippet: "getPilotQaStageSummary",
+      message: "Homologacao deve expor resumo reutilizavel do estagio operacional.",
+    },
+    {
+      file: "pilot-qa-addon.js",
       snippet: "Limite de uso",
       message: "Homologacao deve evidenciar limite antes de operacao real.",
     },
@@ -301,6 +306,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "dashboard-command-addon.js",
+      snippet: "dashboardQaStageLabel",
+      message: "Painel inicial deve expor estagio atual da homologacao.",
+    },
+    {
+      file: "dashboard-command-addon.js",
       snippet: "dashboardFocusOrigin",
       message: "Painel inicial deve explicar a origem do foco recomendado.",
     },
@@ -313,6 +323,11 @@ function checkRecentDecisionCoverage() {
       file: "dashboard-command-addon.js",
       snippet: "dashboardCompactText",
       message: "Painel inicial deve compactar textos longos no cockpit operacional.",
+    },
+    {
+      file: "roadmap-addon.js",
+      snippet: "labelWithScore",
+      message: "Roadmap deve mostrar o estagio de homologacao junto do foco.",
     },
     {
       file: "pilot-flow-addon.js",
