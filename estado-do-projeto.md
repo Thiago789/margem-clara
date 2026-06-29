@@ -132,6 +132,7 @@ O MVP ja possui uma base navegavel com:
 - Jornada superior deve usar o foco acionavel do roadmap quando nao houver prioridade operacional.
 - Jornada superior e painel inicial devem explicar a origem da proxima acao: fila, roadmap ou fluxo piloto.
 - Painel inicial deve destacar a acao principal e compactar indicadores de apoio para reduzir carga visual.
+- Prontidao deve abrir o modulo acionavel do proximo criterio e exibir o aceite registrado.
 - Jornada superior deve mostrar prioridade da fila ou foco recomendado sem exigir abrir o roadmap.
 - Navegacao bloqueada por perfil deve redirecionar com aviso visivel e registro de auditoria.
 - Tela de permissoes deve evidenciar que a navegacao protegida esta ativa no MVP.

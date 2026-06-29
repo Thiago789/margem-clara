@@ -115,6 +115,20 @@ function getReadinessStatusClass(status) {
   return "danger";
 }
 
+function getReadinessNextAction(decision) {
+  if (typeof getRoadmapCriterionTarget === "function") {
+    return getRoadmapCriterionTarget(decision.nextItem[0]);
+  }
+
+  return { target: "qa", action: "Abrir homologacao" };
+}
+
+function getReadinessApprovalLabel() {
+  const approval = state.pilotQaApproval;
+  if (!approval) return "Aceite ainda nao registrado";
+  return `${approval.status || "Checkpoint"}: ${approval.score || 0}% em ${approval.date || "data nao informada"}`;
+}
+
 function ensureReadinessView() {
   if (document.getElementById("readiness-view")) return;
 
@@ -181,6 +195,8 @@ function renderReadiness() {
 
   const groups = getReadinessGroups();
   const decision = getReadinessCurrentDecision(groups);
+  const nextAction = getReadinessNextAction(decision);
+  const approvalLabel = getReadinessApprovalLabel();
   const average = decision.average;
   const mappedItems = groups.flatMap((group) => group.items).filter(([, status]) => ["Demo", "Mapeado", "Parcial"].includes(status)).length;
   const pendingItems = decision.critical;
@@ -189,13 +205,13 @@ function renderReadiness() {
     <div>
       <span class="readiness-command-label">${decision.label}</span>
       <strong>${decision.nextGroup.title}</strong>
-      <p>Frente com menor maturidade atual: ${decision.nextGroup.score}%. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}).</p>
+      <p>Frente com menor maturidade atual: ${decision.nextGroup.score}%. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}). ${approvalLabel}.</p>
     </div>
     <div class="readiness-command-actions">
       <div class="readiness-command-meter" aria-label="${average}% de prontidao geral">
         <span style="width: ${average}%"></span>
       </div>
-      <button class="primary-button readiness-next-action" data-target-view="qa" type="button">Abrir homologacao</button>
+      <button class="primary-button readiness-next-action" data-target-view="${nextAction.target}" type="button">${nextAction.action}</button>
     </div>
   `;
 

@@ -250,6 +250,16 @@ function checkRecentDecisionCoverage() {
       message: "Prontidao deve considerar aceite registrado na homologacao.",
     },
     {
+      file: "readiness-addon.js",
+      snippet: "getReadinessNextAction",
+      message: "Prontidao deve abrir o modulo acionavel do proximo criterio.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "getReadinessApprovalLabel",
+      message: "Prontidao deve exibir o aceite registrado da homologacao.",
+    },
+    {
       file: "roadmap-addon.js",
       snippet: "Proximo criterio",
       message: "Roadmap deve manter foco recomendado com criterio pendente da prontidao.",
