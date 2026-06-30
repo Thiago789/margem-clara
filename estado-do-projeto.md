@@ -1,6 +1,6 @@
 # Estado do Projeto - Margem Clara
 
-Atualizado em: 2026-06-28
+Atualizado em: 2026-06-30
 
 ## Objetivo
 
@@ -163,6 +163,7 @@ O MVP ja possui uma base navegavel com:
 - Tentativas de consulta ou reserva bloqueadas por credenciamento devem entrar no resumo de eventos sensiveis.
 - Aceite do MVP deve verificar que bloqueios por credenciamento aparecem na auditoria.
 - Auditoria deve permitir localizar rapidamente bloqueios de credenciamento sem busca manual.
+- Auditoria deve permitir gerar evidencia controlada de bloqueio de credenciamento para homologacao, sem depender de erro manual no formulario.
 
 ## Campos Importantes Ja Mapeados
 

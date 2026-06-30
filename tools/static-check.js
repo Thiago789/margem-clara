@@ -226,6 +226,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "audit-enhancements-addon.js",
+      snippet: "audit-simulate-accreditation-block",
+      message: "Auditoria deve permitir gerar evidencia controlada de bloqueio de credenciamento.",
+    },
+    {
+      file: "audit-enhancements-addon.js",
+      snippet: 'lenderOperationBlockMessage("lender-2", "Emprestimo consignado")',
+      message: "Teste de auditoria deve reutilizar regra real de bloqueio por credenciamento.",
+    },
+    {
+      file: "audit-enhancements-addon.js",
       snippet: "Bloqueio de credenciamento",
       message: "Atalho de auditoria deve filtrar origem de bloqueio de credenciamento.",
     },
@@ -512,10 +522,11 @@ function checkDocumentationBasics() {
     {
       file: "estado-do-projeto.md",
       snippets: [
-        "Atualizado em: 2026-06-28",
+        "Atualizado em: 2026-06-30",
         "Navegacao bloqueada por perfil",
         "Auditoria deve resumir eventos sensiveis",
         "Homologacao deve validar navegacao protegida",
+        "Auditoria deve permitir gerar evidencia controlada de bloqueio de credenciamento",
       ],
     },
   ];

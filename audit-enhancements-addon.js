@@ -30,6 +30,7 @@ function ensureAuditControls() {
             <select id="audit-profile-filter" class="select-input"></select>
           </label>
           <button class="secondary-button" id="audit-accreditation-blocks" type="button">Bloqueios cred.</button>
+          <button class="secondary-button" id="audit-simulate-accreditation-block" type="button">Gerar teste bloqueio</button>
           <button class="secondary-button" id="audit-clear-filters" type="button">Limpar</button>
           <button class="primary-button" id="audit-export" type="button">Exportar CSV</button>
         </div>
@@ -53,6 +54,20 @@ function ensureAuditControls() {
   });
 
   document.getElementById("audit-accreditation-blocks").addEventListener("click", () => {
+    auditFilters.query = "";
+    auditFilters.source = "Bloqueio de credenciamento";
+    auditFilters.profile = "all";
+    document.getElementById("audit-search").value = "";
+    renderAudit();
+  });
+
+  document.getElementById("audit-simulate-accreditation-block").addEventListener("click", () => {
+    const fallbackMessage = "tentativa bloqueada por credenciamento da consignataria no convenio.";
+    const blockMessage = typeof lenderOperationBlockMessage === "function"
+      ? lenderOperationBlockMessage("lender-2", "Emprestimo consignado")
+      : fallbackMessage;
+    auditEvent(`Teste controlado: ${blockMessage || fallbackMessage}`, "Bloqueio de credenciamento");
+    saveState();
     auditFilters.query = "";
     auditFilters.source = "Bloqueio de credenciamento";
     auditFilters.profile = "all";
@@ -181,7 +196,7 @@ auditEnhancementStyle.textContent = `
   }
   .audit-toolbar {
     display: grid;
-    grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 1fr) minmax(160px, 1fr) auto auto auto;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(150px, 1fr) minmax(150px, 1fr) repeat(4, auto);
     gap: 12px;
     align-items: end;
   }
