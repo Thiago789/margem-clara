@@ -280,6 +280,16 @@ function checkRecentDecisionCoverage() {
       message: "Validacao do servidor deve exibir fonte publica configurada.",
     },
     {
+      file: "identity-validation-addon.js",
+      snippet: "identity-public-evidence-button",
+      message: "Validacao do servidor deve registrar evidencia de fonte publica na auditoria.",
+    },
+    {
+      file: "identity-validation-addon.js",
+      snippet: "recordPublicValidationEvidence",
+      message: "Validacao do servidor deve centralizar registro auditavel da evidencia publica.",
+    },
+    {
       file: "authenticity-addon.js",
       snippet: "requireAuthorizationForMarginConsult",
       message: "Autenticidade deve avaliar consentimento pela regra de consulta de margem.",

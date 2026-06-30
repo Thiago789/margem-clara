@@ -32,7 +32,10 @@ function ensureIdentityValidationView() {
             <h2 id="identity-title">Validacao do servidor</h2>
             <p>Conferencia operacional antes de consulta, reserva ou integracao externa.</p>
           </div>
-          <select id="identity-employee-select" class="select-input"></select>
+          <div class="identity-actions">
+            <select id="identity-employee-select" class="select-input"></select>
+            <button class="secondary-button" id="identity-public-evidence-button" type="button">Registrar evidencia</button>
+          </div>
         </div>
 
         <div class="identity-grid" id="identity-grid"></div>
@@ -62,6 +65,7 @@ function ensureIdentityValidationView() {
   );
 
   document.getElementById("identity-employee-select")?.addEventListener("change", renderIdentityValidation);
+  document.getElementById("identity-public-evidence-button")?.addEventListener("click", recordPublicValidationEvidence);
 }
 
 function getIdentityScore(employee) {
@@ -136,6 +140,24 @@ function getIdentityScore(employee) {
   return { checks, label, className, margin, contracts, authorizations, openTickets };
 }
 
+function recordPublicValidationEvidence() {
+  const select = document.getElementById("identity-employee-select");
+  const employee = employeeById(select?.value) || state.employees[0];
+  if (!employee) return;
+
+  const evidence = typeof getPublicValidationEvidence === "function" ? getPublicValidationEvidence(employee) : null;
+  const status = evidence?.status || "Pendente";
+  const sourceName = evidence?.sourceName || "Fonte publica";
+  const reference = evidence?.reference ? ` Referencia: ${evidence.reference}.` : "";
+  auditEvent(
+    `Validacao por fonte publica registrada para ${employee.name}: ${status} em ${sourceName}.${reference}`,
+    "Validacao do servidor"
+  );
+  saveState();
+  render();
+  openView("identity");
+}
+
 function renderIdentityValidation() {
   ensureIdentityValidationView();
 
@@ -205,6 +227,16 @@ identityStyle.textContent = `
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
   }
+  .identity-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .identity-actions .select-input {
+    min-width: 260px;
+  }
   .identity-card {
     min-height: 132px;
   }
@@ -258,6 +290,11 @@ identityStyle.textContent = `
   @media (max-width: 720px) {
     .identity-grid {
       grid-template-columns: 1fr;
+    }
+    .identity-actions,
+    .identity-actions .select-input,
+    .identity-actions button {
+      width: 100%;
     }
     .validation-item {
       align-items: flex-start;
