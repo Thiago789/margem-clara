@@ -7,6 +7,10 @@ state.conventionSettings = {
   marginFileLayout: "CSV margem padrao",
   insertionFileLayout: "CSV insercao padrao",
   returnFileLayout: "CSV retorno padrao",
+  publicValidationSourceEnabled: true,
+  publicValidationSourceName: "Portal da Transparencia Municipal",
+  publicValidationSourceUrl: "",
+  publicValidationSourceMode: "Consulta assistida",
   ...(state.conventionSettings || {}),
 };
 
@@ -154,6 +158,34 @@ function ensureConventionSettingsView() {
               </label>
             </div>
           </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Fonte publica</h3>
+            </div>
+            <div class="policy-grid">
+              <label class="toggle-row">
+                <input id="settings-public-validation-enabled" type="checkbox" />
+                <span>Usar fonte publica para validar servidor</span>
+              </label>
+              <label>
+                Fonte configurada
+                <input id="settings-public-validation-source" class="text-input" />
+              </label>
+              <label>
+                Modo de consulta
+                <select id="settings-public-validation-mode" class="select-input">
+                  <option value="Consulta assistida">Consulta assistida</option>
+                  <option value="API futura">API futura</option>
+                  <option value="Arquivo oficial">Arquivo oficial</option>
+                </select>
+              </label>
+              <label>
+                URL ou referencia
+                <input id="settings-public-validation-url" class="text-input" placeholder="Opcional no MVP" />
+              </label>
+            </div>
+          </section>
         </div>
 
         <section class="panel settings-summary-panel">
@@ -221,6 +253,10 @@ function renderConventionSettings() {
     marginLayout: document.getElementById("settings-margin-layout"),
     insertionLayout: document.getElementById("settings-insertion-layout"),
     returnLayout: document.getElementById("settings-return-layout"),
+    publicValidationEnabled: document.getElementById("settings-public-validation-enabled"),
+    publicValidationSource: document.getElementById("settings-public-validation-source"),
+    publicValidationMode: document.getElementById("settings-public-validation-mode"),
+    publicValidationUrl: document.getElementById("settings-public-validation-url"),
   };
 
   if (!values.name) return;
@@ -236,6 +272,10 @@ function renderConventionSettings() {
   values.marginLayout.value = settings.marginFileLayout;
   values.insertionLayout.value = settings.insertionFileLayout;
   values.returnLayout.value = settings.returnFileLayout;
+  values.publicValidationEnabled.checked = Boolean(settings.publicValidationSourceEnabled);
+  values.publicValidationSource.value = settings.publicValidationSourceName || "Portal da Transparencia Municipal";
+  values.publicValidationMode.value = settings.publicValidationSourceMode || "Consulta assistida";
+  values.publicValidationUrl.value = settings.publicValidationSourceUrl || "";
 
   const summary = document.getElementById("settings-summary");
   if (summary) {
@@ -246,8 +286,38 @@ function renderConventionSettings() {
       <article><span>Corte</span><strong>Dia ${policy.insertionCutoffDay || 20}</strong></article>
       <article><span>Consulta margem</span><strong>${policy.requireAuthorizationForMarginConsult ? "Exige" : "Liberada"}</strong></article>
       <article><span>Reserva</span><strong>${policy.requireAuthorizationForReservation ? "Codigo" : "Imediata"}</strong></article>
+      <article><span>Fonte publica</span><strong>${settings.publicValidationSourceEnabled ? settings.publicValidationSourceMode : "Desativada"}</strong></article>
     `;
   }
+}
+
+function getPublicValidationEvidence(employee) {
+  const settings = state.conventionSettings || {};
+  if (!settings.publicValidationSourceEnabled) {
+    return {
+      configured: false,
+      sourceName: settings.publicValidationSourceName || "Fonte publica",
+      mode: "Desativada",
+      status: "Nao configurada",
+      className: "warning",
+      detail: "Convenio nao exige consulta a fonte publica no MVP.",
+      reference: "",
+    };
+  }
+
+  const sourceName = settings.publicValidationSourceName || "Portal da Transparencia Municipal";
+  const found = employee.status === "Ativo";
+  return {
+    configured: true,
+    sourceName,
+    mode: settings.publicValidationSourceMode || "Consulta assistida",
+    status: found ? "Encontrado" : "Conferir",
+    className: found ? "" : "warning",
+    detail: found
+      ? `Vinculo localizado em ${sourceName} (evidencia simulada no MVP).`
+      : `Servidor exige conferencia manual em ${sourceName} antes de liberar operacao.`,
+    reference: settings.publicValidationSourceUrl || "Referencia configuravel por convenio",
+  };
 }
 
 function saveConventionSettings() {
@@ -267,6 +337,10 @@ function saveConventionSettings() {
     marginFileLayout: document.getElementById("settings-margin-layout").value.trim() || "CSV margem padrao",
     insertionFileLayout: document.getElementById("settings-insertion-layout").value.trim() || "CSV insercao padrao",
     returnFileLayout: document.getElementById("settings-return-layout").value.trim() || "CSV retorno padrao",
+    publicValidationSourceEnabled: document.getElementById("settings-public-validation-enabled").checked,
+    publicValidationSourceName: document.getElementById("settings-public-validation-source").value.trim() || "Portal da Transparencia Municipal",
+    publicValidationSourceMode: document.getElementById("settings-public-validation-mode").value || "Consulta assistida",
+    publicValidationSourceUrl: document.getElementById("settings-public-validation-url").value.trim(),
   };
 
   state.conventionPolicy = {

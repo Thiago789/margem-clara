@@ -52,6 +52,7 @@ function ensureIdentityValidationView() {
             <div class="flow-list">
               <div><strong>Documento oficial</strong><span>Conferencia assistida no cadastro ou portal do servidor.</span></div>
               <div><strong>Base da folha</strong><span>Confirmacao de vinculo ativo pela ultima competencia importada.</span></div>
+              <div><strong>Fonte publica</strong><span>Portal da transparencia, API municipal ou arquivo oficial configuravel por convenio.</span></div>
               <div><strong>Consentimento</strong><span>Codigo temporario ou politica de reserva imediata por convenio.</span></div>
             </div>
           </section>
@@ -76,6 +77,8 @@ function getIdentityScore(employee) {
   const requiresMarginConsultAuthorization = state.conventionPolicy.requireAuthorizationForMarginConsult;
   const hasPayrollIssue = employee.status === "Em revisao" || margin.available < 0;
   const hasReturnIssue = contracts.some(contractHasReturnIssue);
+  const publicEvidence = typeof getPublicValidationEvidence === "function" ? getPublicValidationEvidence(employee) : null;
+  const hasPublicEvidence = !publicEvidence || !publicEvidence.configured || publicEvidence.status === "Encontrado";
 
   const checks = [
     {
@@ -111,6 +114,12 @@ function getIdentityScore(employee) {
       detail: hasReturnIssue ? "Existe desconto rejeitado ou nao descontado" : "Sem pendencia critica",
       status: hasReturnIssue ? "Atencao" : "OK",
       className: hasReturnIssue ? "danger" : "",
+    },
+    {
+      title: "Fonte publica",
+      detail: publicEvidence ? publicEvidence.detail : "Fonte publica ainda nao configurada",
+      status: publicEvidence ? publicEvidence.status : "Pendente",
+      className: hasPublicEvidence ? "" : "warning",
     },
     {
       title: "Contestacoes abertas",

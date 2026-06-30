@@ -34,6 +34,8 @@ function getAuthenticityReading(employee) {
   const hasPayrollBase = employee.income > 0 && employee.mandatoryDeductions >= 0;
   const isReviewed = employee.status !== "Em revisao";
   const hasConsent = Boolean(activeCode) || !state.conventionPolicy.requireAuthorizationForMarginConsult;
+  const publicEvidence = typeof getPublicValidationEvidence === "function" ? getPublicValidationEvidence(employee) : null;
+  const hasPublicEvidence = !publicEvidence || !publicEvidence.configured || publicEvidence.status === "Encontrado";
 
   const signals = [
     {
@@ -65,6 +67,12 @@ function getAuthenticityReading(employee) {
       risk: hasConsent ? "Baixo" : "Alto",
     },
     {
+      label: "Fonte publica",
+      detail: publicEvidence ? `${publicEvidence.sourceName}: ${publicEvidence.status}` : "Sem fonte publica configurada",
+      ok: hasPublicEvidence,
+      risk: hasPublicEvidence ? "Baixo" : "Medio",
+    },
+    {
       label: "Retorno da folha",
       detail: returnIssue ? "Existe rejeicao ou nao desconto" : "Sem pendencia critica",
       ok: !returnIssue,
@@ -85,6 +93,7 @@ function getAuthenticityReading(employee) {
   const evidence = [
     ["Folha importada", hasPayrollBase ? "Encontrada" : "Pendente"],
     ["Documento", hasCpfShape ? "Formato valido" : "Formato inconsistente"],
+    ["Fonte publica", publicEvidence ? `${publicEvidence.mode}: ${publicEvidence.status}` : "Nao configurada"],
     ["Consentimento", hasConsent ? "Atendido" : "Pendente"],
     ["Margem", margin.available < 0 ? "Critica" : "Calculada"],
   ];
@@ -236,7 +245,7 @@ function renderAuthenticity() {
     </div>
     <div class="authenticity-note">
       <strong>Em producao</strong>
-      <span>Integrar com login forte, base oficial, prova documental e auditoria imutavel de cada validacao.</span>
+      <span>Integrar com login forte, fonte publica oficial, prova documental e auditoria imutavel de cada validacao.</span>
     </div>
   `;
 }

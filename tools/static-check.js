@@ -265,9 +265,34 @@ function checkRecentDecisionCoverage() {
       message: "Configuracao do convenio deve permitir exigir autorizacao para consulta de margem.",
     },
     {
+      file: "convention-settings-addon.js",
+      snippet: "settings-public-validation-enabled",
+      message: "Configuracao do convenio deve permitir fonte publica de validacao do servidor.",
+    },
+    {
+      file: "convention-settings-addon.js",
+      snippet: "getPublicValidationEvidence",
+      message: "Fonte publica deve ter helper reutilizavel por validacao, autenticidade e prontidao.",
+    },
+    {
+      file: "identity-validation-addon.js",
+      snippet: "Fonte publica",
+      message: "Validacao do servidor deve exibir fonte publica configurada.",
+    },
+    {
       file: "authenticity-addon.js",
       snippet: "requireAuthorizationForMarginConsult",
       message: "Autenticidade deve avaliar consentimento pela regra de consulta de margem.",
+    },
+    {
+      file: "authenticity-addon.js",
+      snippet: "getPublicValidationEvidence",
+      message: "Autenticidade deve considerar fonte publica configurada.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "hasPublicValidationSource",
+      message: "Prontidao deve reconhecer consulta de fonte publica configuravel.",
     },
     {
       file: "pilot-qa-addon.js",

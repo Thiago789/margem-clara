@@ -47,6 +47,8 @@ O MVP ja possui uma base navegavel com:
 - Autorizacao para consulta de margem pela consignataria deve ser configuravel por convenio.
 - Codigo/senha para reserva deve ser configuravel por convenio.
 - Alguns convenios podem permitir reserva imediata sem codigo.
+- Fonte publica para validacao do servidor deve ser configuravel por convenio, podendo representar portal da transparencia, API municipal ou arquivo oficial.
+- No MVP estatico, consulta de fonte publica e evidencia simulada/controlada; integracao real deve ficar para backend/API.
 - Consignataria deve estar habilitada no convenio antes de consultar margem ou criar reserva operacional.
 - Simulacao e reserva devem considerar apenas produtos habilitados para a consignataria no convenio.
 - Ranking de simulacao deve explicar consignatarias excluidas por credenciamento, produto ou status.

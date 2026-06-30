@@ -36,6 +36,7 @@ function getReadinessGroups() {
   const hasAccreditationBlockAudit = typeof lenderOperationBlockMessage === "function" && typeof auditEventOnce === "function";
   const hasApiPlan = profileConfig.manager.views.includes("api") || profileConfig.manager.views.includes("integrations");
   const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
+  const hasPublicValidationSource = Boolean(state.conventionSettings?.publicValidationSourceEnabled && typeof getPublicValidationEvidence === "function");
 
   const status = (condition, mapped = "Mapeado", pending = "Pendente") => (condition ? mapped : pending);
   const scoreFromItems = (items) => {
@@ -93,7 +94,7 @@ function getReadinessGroups() {
         ["API interna desenhada", status(hasApiPlan)],
         ["Webhooks de eventos", "Pesquisa"],
         ["Conector de folha", "Futuro"],
-        ["Consulta de fonte publica", "Pesquisa"],
+        ["Consulta de fonte publica", status(hasPublicValidationSource, "Demo", "Pesquisa")],
       ],
     },
   ];
