@@ -29,6 +29,7 @@ function ensureAuditControls() {
             Perfil
             <select id="audit-profile-filter" class="select-input"></select>
           </label>
+          <button class="secondary-button" id="audit-accreditation-blocks" type="button">Bloqueios cred.</button>
           <button class="secondary-button" id="audit-clear-filters" type="button">Limpar</button>
           <button class="primary-button" id="audit-export" type="button">Exportar CSV</button>
         </div>
@@ -48,6 +49,14 @@ function ensureAuditControls() {
 
   document.getElementById("audit-profile-filter").addEventListener("change", (event) => {
     auditFilters.profile = event.target.value;
+    renderAudit();
+  });
+
+  document.getElementById("audit-accreditation-blocks").addEventListener("click", () => {
+    auditFilters.query = "";
+    auditFilters.source = "Bloqueio de credenciamento";
+    auditFilters.profile = "all";
+    document.getElementById("audit-search").value = "";
     renderAudit();
   });
 
@@ -172,7 +181,7 @@ auditEnhancementStyle.textContent = `
   }
   .audit-toolbar {
     display: grid;
-    grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 1fr) minmax(160px, 1fr) auto auto;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 1fr) minmax(160px, 1fr) auto auto auto;
     gap: 12px;
     align-items: end;
   }

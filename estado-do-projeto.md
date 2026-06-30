@@ -56,6 +56,7 @@ O MVP ja possui uma base navegavel com:
 - Bloqueios de operacao por credenciamento devem informar o motivo operacional ao usuario.
 - Bloqueios por credenciamento devem gerar auditoria com motivo, perfil e origem.
 - Homologacao e prontidao V1 devem cobrar bloqueio de credenciamento auditavel.
+- Tela de auditoria deve ter filtro rapido para bloqueios de credenciamento.
 - Taxa, CET e primeira competencia sao obrigatorios iniciais no MVP.
 - Valor contratado e primeiro vencimento podem ser configuraveis por convenio.
 - Refinanciamento exige contrato origem.
@@ -161,6 +162,7 @@ O MVP ja possui uma base navegavel com:
 - Mensagens de bloqueio devem reutilizar a mesma elegibilidade usada no ranking e na reserva.
 - Tentativas de consulta ou reserva bloqueadas por credenciamento devem entrar no resumo de eventos sensiveis.
 - Aceite do MVP deve verificar que bloqueios por credenciamento aparecem na auditoria.
+- Auditoria deve permitir localizar rapidamente bloqueios de credenciamento sem busca manual.
 
 ## Campos Importantes Ja Mapeados
 

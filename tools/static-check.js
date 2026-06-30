@@ -220,6 +220,16 @@ function checkRecentDecisionCoverage() {
       message: "Auditoria deve manter resumo de eventos sensiveis.",
     },
     {
+      file: "audit-enhancements-addon.js",
+      snippet: "audit-accreditation-blocks",
+      message: "Auditoria deve manter atalho para bloqueios de credenciamento.",
+    },
+    {
+      file: "audit-enhancements-addon.js",
+      snippet: "Bloqueio de credenciamento",
+      message: "Atalho de auditoria deve filtrar origem de bloqueio de credenciamento.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "Navegacao protegida e auditoria sensivel",
       message: "Homologacao deve validar controles de seguranca recentes.",
