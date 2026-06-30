@@ -33,6 +33,7 @@ function getReadinessGroups() {
   const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
   const hasConventionConsultPolicy = typeof hasMarginConsultAuthorization === "function" && "requireAuthorizationForMarginConsult" in (state.conventionPolicy || {});
   const hasLenderAgreementAccess = typeof lenderHasAgreementAccess === "function";
+  const hasAccreditationBlockAudit = typeof lenderOperationBlockMessage === "function" && typeof auditEventOnce === "function";
   const hasApiPlan = profileConfig.manager.views.includes("api") || profileConfig.manager.views.includes("integrations");
   const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
 
@@ -53,6 +54,7 @@ function getReadinessGroups() {
         ["Navegacao protegida por perfil", status(hasGuardedNavigation, "Demo", "Pendente")],
         ["Consulta de margem condicionada por convenio", status(hasConventionConsultPolicy, "Demo", "Pendente")],
         ["Consignataria habilitada por convenio", status(hasLenderAgreementAccess, "Demo", "Pendente")],
+        ["Bloqueio de credenciamento auditavel", status(hasAccreditationBlockAudit, "Demo", "Pendente")],
         ["Politica LGPD e minimizacao de dados", "Pendente"],
       ],
     },

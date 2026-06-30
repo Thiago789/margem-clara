@@ -55,6 +55,7 @@ O MVP ja possui uma base navegavel com:
 - Tela de credenciamento deve separar consignatarias aptas, futuras, vencidas e bloqueadas.
 - Bloqueios de operacao por credenciamento devem informar o motivo operacional ao usuario.
 - Bloqueios por credenciamento devem gerar auditoria com motivo, perfil e origem.
+- Homologacao e prontidao V1 devem cobrar bloqueio de credenciamento auditavel.
 - Taxa, CET e primeira competencia sao obrigatorios iniciais no MVP.
 - Valor contratado e primeiro vencimento podem ser configuraveis por convenio.
 - Refinanciamento exige contrato origem.
@@ -159,6 +160,7 @@ O MVP ja possui uma base navegavel com:
 - Status operacional de credenciamento deve consolidar status cadastral, inicio/fim de vigencia e aptidao para operar.
 - Mensagens de bloqueio devem reutilizar a mesma elegibilidade usada no ranking e na reserva.
 - Tentativas de consulta ou reserva bloqueadas por credenciamento devem entrar no resumo de eventos sensiveis.
+- Aceite do MVP deve verificar que bloqueios por credenciamento aparecem na auditoria.
 
 ## Campos Importantes Ja Mapeados
 

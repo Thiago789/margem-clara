@@ -330,6 +330,16 @@ function checkRecentDecisionCoverage() {
       message: "Bloqueio de reserva por credenciamento deve entrar na auditoria.",
     },
     {
+      file: "pilot-qa-addon.js",
+      snippet: "Bloqueio de credenciamento auditavel",
+      message: "Homologacao deve cobrar auditoria de bloqueio por credenciamento.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "Bloqueio de credenciamento auditavel",
+      message: "Prontidao V1 deve medir auditoria de bloqueio por credenciamento.",
+    },
+    {
       file: "app.js",
       snippet: "auditEventOnce",
       message: "Consulta bloqueada por credenciamento deve auditar sem duplicar a cada render.",

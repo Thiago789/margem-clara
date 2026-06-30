@@ -39,6 +39,7 @@ function getPilotQaScenarios() {
   const requiresReservationCode = policy.requireAuthorizationForReservation !== false;
   const accreditations = typeof getLenderProductAccreditations === "function" ? getLenderProductAccreditations() : [];
   const activeAccreditations = accreditations.filter((item) => item.status === "Ativo" && (typeof accreditationIsWithinValidity !== "function" || accreditationIsWithinValidity(item)));
+  const hasAccreditationBlockAudit = movements.some((movement) => movement.source === "Bloqueio de credenciamento");
 
   return [
     {
@@ -90,6 +91,16 @@ function getPilotQaScenarios() {
       evidence: typeof lenderProductEligibility === "function" ? `${lenderAllowedProducts("lender-1").length} produto(s) habilitado(s) e motivo de exclusao disponivel no ranking.` : "Filtro por produto pendente.",
       target: "accreditation",
       ok: typeof lenderProductEligibility === "function" && lenderAllowedProducts("lender-1").length > 0,
+    },
+    {
+      area: "Auditoria",
+      title: "Bloqueio de credenciamento auditavel",
+      expected: "Tentativas de consulta ou reserva bloqueadas por credenciamento devem registrar motivo e origem na auditoria.",
+      evidence: hasAccreditationBlockAudit
+        ? "Existe evento de bloqueio de credenciamento registrado."
+        : "Mecanismo implementado; gere uma tentativa bloqueada para evidenciar na auditoria.",
+      target: "audit",
+      ok: typeof lenderOperationBlockMessage === "function" && typeof auditEventOnce === "function",
     },
     {
       area: "Reserva",
