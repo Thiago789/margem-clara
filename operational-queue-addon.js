@@ -70,6 +70,10 @@ function getOperationalQueueData() {
   const openTickets = state.tickets.filter((ticket) => ticket.status === "Aberto");
   const marginValidationPending = Boolean(state.employees.length && !state.lastMarginValidation);
   const insertionValidationPending = Boolean(reserved.length && !state.lastInsertionValidation);
+  const protocolRegistrationPending = Boolean(
+    !state.lastFileProtocol &&
+      (state.lastMarginValidation || state.lastInsertionValidation || state.lastReturnReconciliation)
+  );
   const publicValidationPending = Boolean(
     state.conventionSettings?.publicValidationSourceEnabled &&
       typeof getPublicValidationEvidence === "function" &&
@@ -138,6 +142,18 @@ function getOperationalQueueData() {
             title: "Validacao pendente",
             detail: "Existem reservas prontas, mas a validacao final da insercao ainda nao foi registrada.",
             target: "validation",
+          },
+        ]
+      : []),
+    ...(protocolRegistrationPending
+      ? [
+          {
+            severity: "Media",
+            className: "warning",
+            area: "Protocolos",
+            title: "Protocolo pendente",
+            detail: "Existem evidencias de arquivos da competencia, mas o protocolo operacional ainda nao foi registrado.",
+            target: "protocols",
           },
         ]
       : []),

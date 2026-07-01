@@ -605,6 +605,16 @@ function checkRecentDecisionCoverage() {
       message: "Homologacao deve ter criterio explicito para rastreabilidade de protocolos.",
     },
     {
+      file: "operational-queue-addon.js",
+      snippet: "protocolRegistrationPending",
+      message: "Fila operacional deve cobrar protocolo pendente quando houver evidencia de arquivo.",
+    },
+    {
+      file: "operational-queue-addon.js",
+      snippet: "Protocolo pendente",
+      message: "Fila operacional deve abrir pendencia acionavel para protocolos.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
