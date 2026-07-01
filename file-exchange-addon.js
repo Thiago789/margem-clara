@@ -118,7 +118,24 @@ if (typeof generateInsertionFile !== "function") {
     .exchange-status-card strong {
       display: block;
       margin-top: 4px;
-      font-size: 22px;
+      font-size: 20px;
+    }
+    .exchange-status-card strong.warning {
+      color: var(--accent);
+    }
+    .exchange-status-card strong.danger {
+      color: var(--danger);
+    }
+    .exchange-status-card p,
+    .exchange-status-card small {
+      display: block;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .exchange-status-card small {
+      font-weight: 700;
     }
     @media (max-width: 1040px) {
       .file-flow,
@@ -160,18 +177,61 @@ if (typeof generateInsertionFile !== "function") {
     const sent = state.contracts.filter((contract) => contract.status === "Enviado para folha").length;
     const discounted = state.contracts.filter((contract) => contract.status === "Descontando").length;
     const rejected = state.contracts.filter((contract) => ["Rejeitado", "Nao descontado"].includes(contract.status)).length;
+    const marginValidation = state.lastMarginValidation;
+    const insertionValidation = state.lastInsertionValidation;
+    const returnReconciliation = state.lastReturnReconciliation;
+    const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
+    const competency = state.conventionSettings?.payrollCompetency || today().slice(0, 7);
 
-    summary.innerHTML = [
-      ["Reservas prontas", reserved],
-      ["Enviadas a folha", sent],
-      ["Descontando", discounted],
-      ["Com pendencia", rejected],
-    ]
+    const statusClass = (status) => {
+      if (/bloquead|pendenc|aguard|alerta|revis/i.test(status)) return "warning";
+      if (/critico|erro/i.test(status)) return "danger";
+      return "";
+    };
+
+    const stages = [
+      {
+        label: "Margem",
+        status: marginValidation?.blocked ? "Bloqueada" : marginValidation?.totalRows ? "Validada" : state.employees.length ? "Base carregada" : "Aguardando arquivo",
+        detail: marginValidation
+          ? `${marginValidation.totalRows} linha(s), ${marginValidation.critical} erro(s), ${marginValidation.warnings} alerta(s).`
+          : `${state.employees.length} servidor(es) disponiveis na base atual.`,
+        action: "Validar arquivo",
+      },
+      {
+        label: "Insercao",
+        status: insertionValidation?.blocked ? "Bloqueada" : sent ? "Enviada" : reserved ? "Pronta para gerar" : "Sem reserva",
+        detail: insertionValidation
+          ? `${insertionValidation.totalRows} linha(s), ${insertionValidation.critical} erro(s), ${insertionValidation.warnings} alerta(s).`
+          : `${reserved} reserva(s) pronta(s), ${sent} enviada(s) para folha.`,
+        action: reserved ? "Gerar remessa" : "Criar reserva",
+      },
+      {
+        label: "Retorno",
+        status: returnReconciliation?.blocked ? "Bloqueado" : returnReconciliation?.totalRows ? "Conciliado" : sent ? "Aguardando retorno" : "Pendente",
+        detail: returnReconciliation
+          ? `${returnReconciliation.totalRows} linha(s), ${returnReconciliation.ok || 0} ok, ${returnReconciliation.pending || 0} pendente(s).`
+          : `${discounted} contrato(s) descontando, ${rejected} com pendencia.`,
+        action: "Processar retorno",
+      },
+      {
+        label: "Fechamento",
+        status: closingData ? closingData.decision : "Aguardando calculo",
+        detail: closingData
+          ? `${closingData.blockers.length} bloqueio(s), ${closingData.warnings.length} ressalva(s).`
+          : `Competencia ${competency} ainda sem decisao consolidada.`,
+        action: "Ver fechamento",
+      },
+    ];
+
+    summary.innerHTML = stages
       .map(
-        ([label, value]) => `
+        (stage) => `
           <article class="exchange-status-card">
-            <span>${label}</span>
-            <strong>${value}</strong>
+            <span>${stage.label}</span>
+            <strong class="${statusClass(stage.status)}">${stage.status}</strong>
+            <p>${stage.detail}</p>
+            <small>${stage.action}</small>
           </article>
         `
       )

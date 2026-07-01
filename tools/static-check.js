@@ -270,6 +270,16 @@ function checkRecentDecisionCoverage() {
       message: "Prontidao deve medir checklist de seguranca do MVP.",
     },
     {
+      file: "file-exchange-addon.js",
+      snippet: "const stages = [",
+      message: "Troca de arquivos deve mostrar situacao por etapa da competencia.",
+    },
+    {
+      file: "file-exchange-addon.js",
+      snippet: "Ver fechamento",
+      message: "Troca de arquivos deve indicar proxima acao ate fechamento.",
+    },
+    {
       file: "app.js",
       snippet: "requireAuthorizationForMarginConsult",
       message: "Politica de convenio deve separar consulta de margem da reserva.",
