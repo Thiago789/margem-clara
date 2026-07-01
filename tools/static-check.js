@@ -516,6 +516,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-qa-addon.js",
+      snippet: "hasMarginValidation",
+      message: "Homologacao deve exigir validacao de margem registrada.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "registre a validacao da margem",
+      message: "Homologacao deve orientar evidencia pendente de validacao de margem.",
+    },
+    {
+      file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
     },

@@ -27,6 +27,7 @@ function getPilotQaScenarios() {
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
   const closingBlockers = closingData?.blockers?.length || 0;
   const closingWarnings = closingData?.warnings?.length || 0;
+  const hasMarginValidation = Boolean(state.lastMarginValidation && !state.lastMarginValidation.blocked);
   const hasReturnReconciliation = Boolean(state.lastReturnReconciliation);
   const hasContractTimeline = contracts.some((contract) => contract.adjustmentHistory?.length || contract.returnHistory?.length || contract.statusHistory?.length);
   const reviewEmployees = employees.filter((employee) => employee.status === "Em revisao");
@@ -57,10 +58,12 @@ function getPilotQaScenarios() {
     {
       area: "Base de margem",
       title: "Importacao ou carga inicial valida",
-      expected: "Servidor com CPF, matricula, renda base, desconto obrigatorio e status funcional.",
-      evidence: `${employees.length} servidor(es) carregado(s), ${reviewEmployees.length} em revisao.`,
-      target: "employees",
-      ok: employees.length >= 3 && employees.every((employee) => employee.cpf && employee.enrollment && employee.income > 0),
+      expected: "Servidor com CPF, matricula, renda base, desconto obrigatorio e status funcional, com validacao de margem registrada.",
+      evidence: hasMarginValidation
+        ? `Validacao de margem registrada: ${state.lastMarginValidation.totalRows} linha(s), ${state.lastMarginValidation.critical} erro(s), ${state.lastMarginValidation.warnings} alerta(s).`
+        : `${employees.length} servidor(es) carregado(s), ${reviewEmployees.length} em revisao; registre a validacao da margem.`,
+      target: "validation",
+      ok: hasMarginValidation && employees.length >= 3 && employees.every((employee) => employee.cpf && employee.enrollment && employee.income > 0),
     },
     {
       area: "Matricula/vinculo",

@@ -86,6 +86,7 @@ O MVP ja possui uma base navegavel com:
 - Cards da troca de arquivos devem abrir diretamente o modulo responsavel pela proxima acao da etapa.
 - Clique em etapa da troca de arquivos deve registrar auditoria, preservando rastro da navegacao operacional durante testes.
 - Fila operacional deve cobrar validacao de margem e insercao quando houver base ou reservas sem evidencia registrada.
+- Homologacao deve exigir evidencia de validacao de margem registrada, nao apenas base carregada.
 - Layouts de margem, insercao e retorno devem ter versao por competencia e status de homologacao, para evitar misturar arquivos de convenios ou layouts diferentes.
 - Protocolos de remessa devem refletir as validacoes reais de margem, insercao e retorno, incluindo linhas, erros criticos, alertas, layout, competencia e status operacional.
 - Prontidao V1 deve ser calculada a partir do estado real do MVP, usando validacoes, homologacao, protocolos, permissoes, contratos, auditoria e integracoes mapeadas.
