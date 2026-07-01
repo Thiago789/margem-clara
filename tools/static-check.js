@@ -596,6 +596,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-qa-addon.js",
+      snippet: "fileProtocol",
+      message: "Homologacao deve cobrar protocolo da competencia registrado.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "Protocolos da competencia registrados",
+      message: "Homologacao deve ter criterio explicito para rastreabilidade de protocolos.",
+    },
+    {
+      file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
     },

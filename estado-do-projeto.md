@@ -92,6 +92,7 @@ O MVP ja possui uma base navegavel com:
 - Layouts de margem, insercao e retorno devem ter versao por competencia e status de homologacao, para evitar misturar arquivos de convenios ou layouts diferentes.
 - Protocolos de remessa devem refletir as validacoes reais de margem, insercao e retorno, incluindo linhas, erros criticos, alertas, layout, competencia e status operacional.
 - Tela de protocolos deve registrar e exibir o snapshot da competencia, congelando lotes, registros, pendencias e divergencias para auditoria e prontidao.
+- Homologacao deve cobrar protocolo da competencia registrado, ligando validacao, remessa, retorno e fechamento em uma cadeia de evidencia.
 - Prontidao V1 deve ser calculada a partir do estado real do MVP, usando validacoes, homologacao, protocolos, permissoes, contratos, auditoria e integracoes mapeadas.
 - Painel inicial do gestor deve exibir um cockpit operacional com proxima acao do fluxo piloto, fila de pendencias e prontidao V1.
 - Atalhos para modulos inexistentes ou indisponiveis por perfil devem ser redirecionados com registro de auditoria, evitando queda silenciosa no painel.

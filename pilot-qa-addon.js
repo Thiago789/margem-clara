@@ -26,6 +26,7 @@ function getPilotQaScenarios() {
   const liquidated = contracts.filter((contract) => contract.status === "Liquidado");
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
   const closingDecision = state.lastPayrollClosingDecision;
+  const fileProtocol = state.lastFileProtocol;
   const closingBlockers = closingData?.blockers?.length || 0;
   const closingWarnings = closingData?.warnings?.length || 0;
   const hasMarginValidation = Boolean(state.lastMarginValidation && !state.lastMarginValidation.blocked);
@@ -157,6 +158,16 @@ function getPilotQaScenarios() {
         : `${active.length} ativo(s), ${rejected.length} rejeitado(s) ou nao descontado(s).`,
       target: "import",
       ok: hasReturnReconciliation || active.length > 0 || rejected.length > 0,
+    },
+    {
+      area: "Protocolos",
+      title: "Protocolos da competencia registrados",
+      expected: "Margem, insercao e retorno devem ter rastreabilidade por competencia, layout, totais e status operacional.",
+      evidence: fileProtocol
+        ? `Protocolo registrado: ${fileProtocol.totalBatches} lote(s), ${fileProtocol.records} registro(s), ${fileProtocol.pending} pendencia(s), ${fileProtocol.issues} divergencia(s).`
+        : "Protocolo da competencia ainda nao registrado.",
+      target: "protocols",
+      ok: Boolean(fileProtocol),
     },
     {
       area: "Baixa de parcela",
