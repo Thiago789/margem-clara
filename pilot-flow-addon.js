@@ -23,6 +23,7 @@ function getPilotFlowSteps() {
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
   const closingBlocked = Boolean(closingData?.blockers?.length);
   const closingWarnings = closingData?.warnings?.length || 0;
+  const fileProtocol = state.lastFileProtocol;
   const hasMarginImport = movements.some((movement) => /margem|folha/i.test(`${movement.text} ${movement.source || ""}`));
   const hasInsertion = movements.some((movement) => /insercao/i.test(`${movement.text} ${movement.source || ""}`));
   const hasReturn = movements.some((movement) => /retorno/i.test(`${movement.text} ${movement.source || ""}`)) || rejected.length > 0 || active.length > 0;
@@ -87,7 +88,18 @@ function getPilotFlowSteps() {
       done: pendingAdjustments.length === 0,
     },
     {
-      label: "7. Baixar parcela/liquidar",
+      label: "7. Protocolar competencia",
+      status: fileProtocol ? fileProtocol.status : "Pendente",
+      className: fileProtocol ? "" : "warning",
+      target: "protocols",
+      action: fileProtocol ? "Conferir protocolo" : "Registrar protocolo",
+      detail: fileProtocol
+        ? `${fileProtocol.totalBatches} lote(s), ${fileProtocol.records} registro(s), ${fileProtocol.pending} pendencia(s).`
+        : "Congele o snapshot de margem, insercao e retorno antes do fechamento.",
+      done: Boolean(fileProtocol),
+    },
+    {
+      label: "8. Baixar parcela/liquidar",
       status: liquidated.length ? "Com liquidacao" : progressed.length ? "Parcela atualizada" : hasReturn ? "Conferir baixa" : "Aguardando retorno",
       className: progressed.length || liquidated.length ? "" : "warning",
       target: "competencies",
@@ -96,7 +108,7 @@ function getPilotFlowSteps() {
       done: progressed.length > 0 || liquidated.length > 0,
     },
     {
-      label: "8. Fechar competencia",
+      label: "9. Fechar competencia",
       status: closingData ? closingData.decision : "Aguardando calculo",
       className: closingBlocked ? "danger" : closingWarnings ? "warning" : closingData ? "" : "warning",
       target: "closing",
@@ -107,7 +119,7 @@ function getPilotFlowSteps() {
       done: Boolean(closingData) && !closingBlocked,
     },
     {
-      label: "9. Auditar competencia",
+      label: "10. Auditar competencia",
       status: movements.length ? "Com trilha" : "Sem eventos",
       className: movements.length ? "" : "warning",
       target: "audit",

@@ -620,6 +620,16 @@ function checkRecentDecisionCoverage() {
       message: "Roadmap deve abrir a tela de protocolos quando o criterio for rastreabilidade de protocolo.",
     },
     {
+      file: "pilot-flow-addon.js",
+      snippet: "Protocolar competencia",
+      message: "Fluxo piloto deve incluir protocolo da competencia antes do fechamento.",
+    },
+    {
+      file: "pilot-flow-addon.js",
+      snippet: "state.lastFileProtocol",
+      message: "Fluxo piloto deve reconhecer protocolo registrado como etapa concluida.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
@@ -731,8 +741,8 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-flow-addon.js",
-      snippet: "8. Fechar competencia",
-      message: "Fluxo piloto deve manter fechamento antes da auditoria.",
+      snippet: "9. Fechar competencia",
+      message: "Fluxo piloto deve manter fechamento antes da auditoria, apos protocolo e baixa.",
     },
   ];
 
