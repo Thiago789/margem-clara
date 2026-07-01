@@ -68,6 +68,8 @@ function getOperationalQueueData() {
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
   const negativeEmployees = state.employees.filter((employee) => calculateMargin(employee).available < 0);
   const openTickets = state.tickets.filter((ticket) => ticket.status === "Aberto");
+  const marginValidationPending = Boolean(state.employees.length && !state.lastMarginValidation);
+  const insertionValidationPending = Boolean(reserved.length && !state.lastInsertionValidation);
   const publicValidationPending = Boolean(
     state.conventionSettings?.publicValidationSourceEnabled &&
       typeof getPublicValidationEvidence === "function" &&
@@ -115,6 +117,30 @@ function getOperationalQueueData() {
       detail: "Conferir vinculo, situacao funcional e base de calculo antes de liberar operacoes.",
       target: "identity",
     })),
+    ...(marginValidationPending
+      ? [
+          {
+            severity: "Media",
+            className: "warning",
+            area: "Arquivo de margem",
+            title: "Validacao pendente",
+            detail: "Base de servidores carregada, mas ainda sem validacao registrada para a competencia.",
+            target: "validation",
+          },
+        ]
+      : []),
+    ...(insertionValidationPending
+      ? [
+          {
+            severity: "Media",
+            className: "warning",
+            area: "Arquivo de insercao",
+            title: "Validacao pendente",
+            detail: "Existem reservas prontas, mas a validacao final da insercao ainda nao foi registrada.",
+            target: "validation",
+          },
+        ]
+      : []),
     ...(publicValidationPending
       ? [
           {

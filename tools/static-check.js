@@ -290,6 +290,16 @@ function checkRecentDecisionCoverage() {
       message: "Clique em etapa da troca de arquivos deve gerar auditoria.",
     },
     {
+      file: "operational-queue-addon.js",
+      snippet: "marginValidationPending",
+      message: "Fila operacional deve cobrar validacao de margem pendente.",
+    },
+    {
+      file: "operational-queue-addon.js",
+      snippet: "insertionValidationPending",
+      message: "Fila operacional deve cobrar validacao de insercao antes da remessa.",
+    },
+    {
       file: "app.js",
       snippet: "requireAuthorizationForMarginConsult",
       message: "Politica de convenio deve separar consulta de margem da reserva.",
