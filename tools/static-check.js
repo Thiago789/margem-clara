@@ -285,6 +285,11 @@ function checkRecentDecisionCoverage() {
       message: "Cards da troca de arquivos devem abrir o modulo correspondente.",
     },
     {
+      file: "file-exchange-addon.js",
+      snippet: "Etapa de arquivo aberta",
+      message: "Clique em etapa da troca de arquivos deve gerar auditoria.",
+    },
+    {
       file: "app.js",
       snippet: "requireAuthorizationForMarginConsult",
       message: "Politica de convenio deve separar consulta de margem da reserva.",

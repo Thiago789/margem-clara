@@ -253,7 +253,12 @@ if (typeof generateInsertionFile !== "function") {
       .join("");
 
     summary.querySelectorAll(".exchange-status-card").forEach((button) => {
-      button.addEventListener("click", () => openView(button.dataset.targetView));
+      button.addEventListener("click", () => {
+        const stage = stages.find((item) => item.target === button.dataset.targetView && item.label === button.querySelector("span")?.textContent);
+        auditEvent(`Etapa de arquivo aberta: ${stage?.label || "Competencia"} (${stage?.status || "status nao informado"}).`, "Troca de arquivos");
+        saveState();
+        openView(button.dataset.targetView);
+      });
     });
   }
 
