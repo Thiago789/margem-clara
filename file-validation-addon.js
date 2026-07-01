@@ -94,6 +94,64 @@ function getValidationStatusClass(status) {
   return "";
 }
 
+function recordFileValidationSnapshot() {
+  const metrics = getFileValidationMetrics();
+  const competency = state.conventionSettings?.payrollCompetency || today().slice(0, 7);
+  const reservedContracts = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
+
+  state.lastMarginValidation = {
+    processedAt: today(),
+    competency,
+    totalRows: metrics.margin.rows,
+    critical: metrics.margin.critical,
+    warnings: metrics.margin.warnings,
+    blocked: metrics.margin.status === "Bloquear",
+    status: metrics.margin.status,
+    details: state.employees.map((employee, index) => {
+      const income = Number(employee.income || 0);
+      const critical = income <= 0 ? ["Renda invalida"] : [];
+      const warnings = employee.status === "Em revisao" ? ["Servidor em revisao"] : [];
+
+      return {
+        line: index + 2,
+        cpf: employee.cpf,
+        enrollment: employee.enrollment,
+        name: employee.name,
+        status: critical.length ? "Bloquear" : warnings.length ? "Revisar" : "Apto",
+        critical,
+        warnings,
+      };
+    }),
+  };
+
+  state.lastInsertionValidation = {
+    processedAt: today(),
+    competency,
+    totalRows: metrics.insertion.rows,
+    critical: metrics.insertion.critical,
+    warnings: metrics.insertion.warnings,
+    blocked: metrics.insertion.status === "Bloquear",
+    status: metrics.insertion.status,
+    details: reservedContracts.map((contract) => ({
+      contractId: contract.id,
+      employeeId: contract.employeeId,
+      enrollment: contract.enrollment,
+      installmentValue: contract.installmentValue,
+      status: "Apto com alerta",
+      critical: [],
+      warnings: ["Reserva aguardando geracao do arquivo de insercao"],
+    })),
+  };
+
+  auditEvent(
+    `Validacao dos arquivos registrada: margem ${metrics.margin.rows} linha(s), ${metrics.margin.critical} erro(s), ${metrics.margin.warnings} alerta(s); insercao ${metrics.insertion.rows} item(ns), ${metrics.insertion.warnings} alerta(s).`,
+    "Validacao de arquivos"
+  );
+  saveState();
+  render();
+  openView("validation");
+}
+
 function ensureFileValidationView() {
   if (document.getElementById("validation-view")) return;
 
@@ -150,12 +208,7 @@ function ensureFileValidationView() {
     `
   );
 
-  document.getElementById("validation-audit-button")?.addEventListener("click", () => {
-    auditEvent("Validacao dos arquivos da competencia registrada.", "Validacao de arquivos");
-    saveState();
-    render();
-    openView("validation");
-  });
+  document.getElementById("validation-audit-button")?.addEventListener("click", recordFileValidationSnapshot);
 }
 
 function renderFileValidation() {

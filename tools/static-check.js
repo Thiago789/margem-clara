@@ -525,6 +525,21 @@ function checkRecentDecisionCoverage() {
       message: "Homologacao deve orientar evidencia pendente de validacao de margem.",
     },
     {
+      file: "file-validation-addon.js",
+      snippet: "recordFileValidationSnapshot",
+      message: "Tela de validacao deve registrar evidencia reutilizavel pela homologacao e fila.",
+    },
+    {
+      file: "file-validation-addon.js",
+      snippet: "state.lastMarginValidation =",
+      message: "Validacao de arquivos deve gravar evidencia da margem processada.",
+    },
+    {
+      file: "file-validation-addon.js",
+      snippet: "state.lastInsertionValidation =",
+      message: "Validacao de arquivos deve gravar evidencia da insercao processada.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
