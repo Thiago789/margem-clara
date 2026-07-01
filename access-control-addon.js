@@ -57,6 +57,41 @@ function getAccessModuleMatrix() {
   };
 }
 
+function getMvpSecurityChecklist() {
+  return [
+    {
+      title: "Dados no navegador",
+      status: "Demo",
+      className: "warning",
+      detail: "O MVP estatico usa localStorage e massa ficticia. Nao deve receber dados reais de servidor, folha ou contrato.",
+    },
+    {
+      title: "Auditoria operacional",
+      status: "Parcial",
+      className: "warning",
+      detail: "Eventos criticos aparecem na auditoria da demo, mas producao exige trilha imutavel em backend.",
+    },
+    {
+      title: "Perfis e navegacao",
+      status: "Demo",
+      className: "",
+      detail: "Menus e redirecionamentos por perfil estao demonstrados; autorizacao real precisa RBAC no servidor.",
+    },
+    {
+      title: "Consentimento e fonte publica",
+      status: "Demo",
+      className: "",
+      detail: "Consulta de margem, reserva e fonte publica sao configuraveis por convenio e geram evidencias auditaveis.",
+    },
+    {
+      title: "Login, sessao e LGPD",
+      status: "Backend",
+      className: "danger",
+      detail: "Antes de operacao real, implementar login seguro, isolamento por convenio, minimizacao e retencao de dados.",
+    },
+  ];
+}
+
 function ensureAccessControlView() {
   if (document.getElementById("access-view")) return;
 
@@ -86,6 +121,13 @@ function ensureAccessControlView() {
         <section class="panel access-command" id="access-command"></section>
 
         <div class="access-summary-grid" id="access-summary-grid"></div>
+
+        <section class="panel access-panel">
+          <div class="panel-heading">
+            <h3>Limites do MVP</h3>
+          </div>
+          <div class="access-security-list" id="access-security-list"></div>
+        </section>
 
         <section class="panel access-panel">
           <div class="panel-heading">
@@ -137,10 +179,12 @@ function renderAccessControl() {
   const controls = document.getElementById("access-controls");
   const ux = document.getElementById("access-ux");
   const moduleGrid = document.getElementById("access-module-grid");
-  if (!command || !summary || !list || !controls || !ux || !moduleGrid) return;
+  const securityList = document.getElementById("access-security-list");
+  if (!command || !summary || !list || !controls || !ux || !moduleGrid || !securityList) return;
 
   const profiles = getAccessProfiles();
   const matrix = getAccessModuleMatrix();
+  const securityChecklist = getMvpSecurityChecklist();
   const highRisk = profiles.filter((profile) => profile.risk === "Alto").length;
   const totalActions = profiles.reduce((sum, profile) => sum + profile.canAct.length, 0);
   const totalRestrictions = profiles.reduce((sum, profile) => sum + profile.restrictions.length, 0);
@@ -169,6 +213,7 @@ function renderAccessControl() {
     ["Restricoes", totalRestrictions],
     ["Navegacao protegida", guardedNavigationEnabled ? "Sim" : "Nao"],
     ["Modulos mapeados", matrix.allViews.length],
+    ["Checklist MVP", securityChecklist.length],
   ];
 
   summary.innerHTML = cards
@@ -201,6 +246,20 @@ function renderAccessControl() {
         </article>
       `;
     })
+    .join("");
+
+  securityList.innerHTML = securityChecklist
+    .map(
+      (item) => `
+        <article class="access-security-row">
+          <div>
+            <strong>${item.title}</strong>
+            <span>${item.detail}</span>
+          </div>
+          <strong class="status ${item.className}">${item.status}</strong>
+        </article>
+      `
+    )
     .join("");
 
   moduleGrid.innerHTML = matrix.allViews
@@ -329,6 +388,7 @@ accessStyle.textContent = `
   }
   .access-list,
   .access-notes,
+  .access-security-list,
   .access-module-grid {
     display: grid;
     gap: 10px;
@@ -355,6 +415,23 @@ accessStyle.textContent = `
   }
   .access-note span {
     margin-top: 4px;
+  }
+  .access-security-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .access-security-row span {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
   }
   .access-module-row {
     display: grid;

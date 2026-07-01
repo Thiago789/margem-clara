@@ -157,6 +157,7 @@ O MVP ja possui uma base navegavel com:
 - Prontidao deve destacar a frente e o criterio pendente atual para reduzir busca manual no checklist.
 - Navegacao bloqueada por perfil deve redirecionar com aviso visivel e registro de auditoria.
 - Tela de permissoes deve evidenciar que a navegacao protegida esta ativa no MVP.
+- Tela de permissoes deve evidenciar limites do MVP estatico: dados ficticios/localStorage, auditoria parcial, RBAC/backend e LGPD antes de producao.
 - Auditoria deve resumir eventos sensiveis e redirecionamentos de navegacao protegida.
 - Prontidao V1 deve considerar resumo de auditoria sensivel e navegacao protegida na frente de seguranca.
 - Homologacao deve validar navegacao protegida e resumo de auditoria sensivel como criterios de seguranca.

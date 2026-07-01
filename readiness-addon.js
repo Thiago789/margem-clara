@@ -31,6 +31,7 @@ function getReadinessGroups() {
   const hasAudit = state.movements.length > 0;
   const hasSensitiveAuditSummary = typeof getAuditSummaryCards === "function";
   const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
+  const hasMvpSecurityChecklist = typeof getMvpSecurityChecklist === "function";
   const hasConventionConsultPolicy = typeof hasMarginConsultAuthorization === "function" && "requireAuthorizationForMarginConsult" in (state.conventionPolicy || {});
   const hasLenderAgreementAccess = typeof lenderHasAgreementAccess === "function";
   const hasAccreditationBlockAudit = typeof lenderOperationBlockMessage === "function" && typeof auditEventOnce === "function";
@@ -53,6 +54,7 @@ function getReadinessGroups() {
         ["Auditoria de operacoes sensiveis", status(hasAudit, "Parcial")],
         ["Resumo de eventos sensiveis", status(hasSensitiveAuditSummary, "Demo", "Pendente")],
         ["Navegacao protegida por perfil", status(hasGuardedNavigation, "Demo", "Pendente")],
+        ["Checklist de seguranca do MVP", status(hasMvpSecurityChecklist, "Demo", "Pendente")],
         ["Consulta de margem condicionada por convenio", status(hasConventionConsultPolicy, "Demo", "Pendente")],
         ["Consignataria habilitada por convenio", status(hasLenderAgreementAccess, "Demo", "Pendente")],
         ["Bloqueio de credenciamento auditavel", status(hasAccreditationBlockAudit, "Demo", "Pendente")],

@@ -255,6 +255,21 @@ function checkRecentDecisionCoverage() {
       message: "Prontidao V1 deve medir navegacao protegida.",
     },
     {
+      file: "access-control-addon.js",
+      snippet: "getMvpSecurityChecklist",
+      message: "Permissoes deve expor checklist de seguranca e limites do MVP.",
+    },
+    {
+      file: "access-control-addon.js",
+      snippet: "Limites do MVP",
+      message: "Tela de permissoes deve diferenciar demo estatica de operacao real.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "Checklist de seguranca do MVP",
+      message: "Prontidao deve medir checklist de seguranca do MVP.",
+    },
+    {
       file: "app.js",
       snippet: "requireAuthorizationForMarginConsult",
       message: "Politica de convenio deve separar consulta de margem da reserva.",
