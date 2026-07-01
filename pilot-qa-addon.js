@@ -218,7 +218,7 @@ function getPilotQaDecision(scenarios) {
     pending,
     next,
     score,
-    actionLabel: pending ? "Abrir pendencia" : "Abrir auditoria",
+    actionLabel: pending ? "Abrir proxima evidencia" : "Abrir auditoria",
     status: pending ? "Homologacao em andamento" : "MVP pronto para demonstracao guiada",
   };
 }
@@ -390,11 +390,11 @@ function renderPilotQa() {
   list.innerHTML = scenarios
     .map(
       (scenario) => `
-        <article class="qa-row">
+        <article class="qa-row ${scenario === decision.next && decision.pending ? "next" : ""}">
           <div class="qa-status ${scenario.ok ? "done" : ""}">${scenario.ok ? "OK" : "!"}</div>
           <div>
             <strong>${scenario.title}</strong>
-            <span>${scenario.area}</span>
+            <span>${scenario === decision.next && decision.pending ? "Proxima evidencia - " : ""}${scenario.area}</span>
           </div>
           <p><strong>Esperado:</strong> ${scenario.expected}</p>
           <p><strong>Evidencia:</strong> ${scenario.evidence}</p>
@@ -538,6 +538,10 @@ qaStyle.textContent = `
     align-items: center;
     padding: 12px;
     background: var(--surface-2);
+  }
+  .qa-row.next {
+    border-color: rgba(37, 99, 235, 0.34);
+    background: #f8fbff;
   }
   .qa-row p {
     grid-column: 2 / -1;

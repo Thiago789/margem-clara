@@ -296,6 +296,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-qa-addon.js",
+      snippet: "Abrir proxima evidencia",
+      message: "Homologacao deve nomear a acao da proxima evidencia pendente.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "Proxima evidencia",
+      message: "Homologacao deve destacar a proxima evidencia pendente na lista.",
+    },
+    {
+      file: "pilot-qa-addon.js",
       snippet: "hasPublicValidationAudit",
       message: "Homologacao deve exigir evidencia auditada de fonte publica.",
     },

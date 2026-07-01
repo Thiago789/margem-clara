@@ -51,6 +51,7 @@ O MVP ja possui uma base navegavel com:
 - No MVP estatico, consulta de fonte publica e evidencia simulada/controlada; integracao real deve ficar para backend/API.
 - Validacao por fonte publica deve poder gerar evento auditavel com servidor, status, fonte e referencia configurada.
 - Homologacao deve cobrar fonte publica configurada e evidencia registrada em auditoria antes de marcar o criterio como atendido.
+- Homologacao deve destacar a proxima evidencia pendente e abrir o modulo exato para resolver o aceite.
 - Fila operacional deve cobrar evidencia de fonte publica quando a fonte estiver configurada, mas ainda nao houver registro na auditoria.
 - Consignataria deve estar habilitada no convenio antes de consultar margem ou criar reserva operacional.
 - Simulacao e reserva devem considerar apenas produtos habilitados para a consignataria no convenio.
