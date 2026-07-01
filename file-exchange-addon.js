@@ -91,6 +91,17 @@ if (typeof generateInsertionFile !== "function") {
       background: #ffffff;
       padding: 14px;
     }
+    .exchange-status-card {
+      width: 100%;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .exchange-status-card:hover {
+      border-color: rgba(37, 99, 235, 0.38);
+      background: #f8fbff;
+    }
     .file-flow span,
     .exchange-status-card span {
       display: block;
@@ -192,6 +203,7 @@ if (typeof generateInsertionFile !== "function") {
     const stages = [
       {
         label: "Margem",
+        target: "validation",
         status: marginValidation?.blocked ? "Bloqueada" : marginValidation?.totalRows ? "Validada" : state.employees.length ? "Base carregada" : "Aguardando arquivo",
         detail: marginValidation
           ? `${marginValidation.totalRows} linha(s), ${marginValidation.critical} erro(s), ${marginValidation.warnings} alerta(s).`
@@ -200,6 +212,7 @@ if (typeof generateInsertionFile !== "function") {
       },
       {
         label: "Insercao",
+        target: reserved ? "import" : "simulation",
         status: insertionValidation?.blocked ? "Bloqueada" : sent ? "Enviada" : reserved ? "Pronta para gerar" : "Sem reserva",
         detail: insertionValidation
           ? `${insertionValidation.totalRows} linha(s), ${insertionValidation.critical} erro(s), ${insertionValidation.warnings} alerta(s).`
@@ -208,6 +221,7 @@ if (typeof generateInsertionFile !== "function") {
       },
       {
         label: "Retorno",
+        target: "import",
         status: returnReconciliation?.blocked ? "Bloqueado" : returnReconciliation?.totalRows ? "Conciliado" : sent ? "Aguardando retorno" : "Pendente",
         detail: returnReconciliation
           ? `${returnReconciliation.totalRows} linha(s), ${returnReconciliation.ok || 0} ok, ${returnReconciliation.pending || 0} pendente(s).`
@@ -216,6 +230,7 @@ if (typeof generateInsertionFile !== "function") {
       },
       {
         label: "Fechamento",
+        target: "closing",
         status: closingData ? closingData.decision : "Aguardando calculo",
         detail: closingData
           ? `${closingData.blockers.length} bloqueio(s), ${closingData.warnings.length} ressalva(s).`
@@ -227,15 +242,19 @@ if (typeof generateInsertionFile !== "function") {
     summary.innerHTML = stages
       .map(
         (stage) => `
-          <article class="exchange-status-card">
+          <button class="exchange-status-card" data-target-view="${stage.target}" type="button">
             <span>${stage.label}</span>
             <strong class="${statusClass(stage.status)}">${stage.status}</strong>
             <p>${stage.detail}</p>
             <small>${stage.action}</small>
-          </article>
+          </button>
         `
       )
       .join("");
+
+    summary.querySelectorAll(".exchange-status-card").forEach((button) => {
+      button.addEventListener("click", () => openView(button.dataset.targetView));
+    });
   }
 
   function buildInsertionRows() {

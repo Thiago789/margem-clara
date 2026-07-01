@@ -280,6 +280,11 @@ function checkRecentDecisionCoverage() {
       message: "Troca de arquivos deve indicar proxima acao ate fechamento.",
     },
     {
+      file: "file-exchange-addon.js",
+      snippet: 'data-target-view="${stage.target}"',
+      message: "Cards da troca de arquivos devem abrir o modulo correspondente.",
+    },
+    {
       file: "app.js",
       snippet: "requireAuthorizationForMarginConsult",
       message: "Politica de convenio deve separar consulta de margem da reserva.",
