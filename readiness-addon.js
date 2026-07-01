@@ -17,8 +17,8 @@ function getReadinessGroups() {
   const qaApprovalScore = Number(state.pilotQaApproval?.score || 0);
   const homologationScore = Math.max(qaScore, qaApprovalScore);
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
-  const hasClosingDecision = Boolean(closingData);
-  const hasClosingBlocker = Boolean(closingData?.blockers?.length);
+  const hasClosingDecision = Boolean(state.lastPayrollClosingDecision);
+  const hasClosingBlocker = Boolean(state.lastPayrollClosingDecision?.blockers || closingData?.blockers?.length);
   const hasProtocols = Boolean(state.lastFileProtocol || marginValidation || insertionValidation || returnReconciliation);
   const hasAccessMatrix = profileConfig.manager.views.includes("access") && !profileConfig.employee.views.includes("access");
   const hasEnrollments = Array.isArray(state.enrollments) && state.enrollments.length >= state.employees.length;

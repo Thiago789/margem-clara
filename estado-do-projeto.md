@@ -146,6 +146,7 @@ O MVP ja possui uma base navegavel com:
 - Fila de pendencias deve indicar a proxima decisao recomendada, nao apenas listar itens.
 - Fluxo piloto deve ter fechamento da competencia como etapa propria entre baixa de parcela e auditoria.
 - Homologacao do MVP deve cobrar decisao de fechamento da competencia como criterio de aceite.
+- Tela de fechamento deve registrar e exibir a decisao operacional da competencia, para que homologacao e prontidao usem evidencia congelada e nao apenas calculo momentaneo.
 - Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.
 - Roadmap deve apontar o proximo foco recomendado a partir da frente com menor prontidao.
 - Painel inicial deve expor o foco recomendado do roadmap para orientar o proximo passo.

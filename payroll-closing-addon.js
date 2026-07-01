@@ -110,6 +110,32 @@ function getPayrollClosingData() {
   };
 }
 
+function recordPayrollClosingDecision() {
+  const data = getPayrollClosingData();
+
+  state.lastPayrollClosingDecision = {
+    processedAt: today(),
+    competency: data.month,
+    decision: data.decision,
+    blockers: data.blockers.length,
+    warnings: data.warnings.length,
+    reserved: data.reserved.length,
+    sent: data.sent.length,
+    rejected: data.rejected.length,
+    protocolPending: data.protocolPending,
+    reconciliationIssues: data.reconciliationIssues,
+    actions: data.actions.map(([title, detail, target, severity]) => ({ title, detail, target, severity })),
+  };
+
+  auditEvent(
+    `Decisao de fechamento registrada: ${data.decision}, ${data.blockers.length} bloqueio(s), ${data.warnings.length} ressalva(s).`,
+    "Fechamento"
+  );
+  saveState();
+  render();
+  openView("closing");
+}
+
 function ensurePayrollClosingView() {
   if (document.getElementById("closing-view")) return;
 
@@ -173,13 +199,7 @@ function ensurePayrollClosingView() {
     `
   );
 
-  document.getElementById("closing-audit-button")?.addEventListener("click", () => {
-    const data = getPayrollClosingData();
-    auditEvent(`Decisao de fechamento registrada: ${data.decision}.`, "Fechamento");
-    saveState();
-    render();
-    openView("closing");
-  });
+  document.getElementById("closing-audit-button")?.addEventListener("click", recordPayrollClosingDecision);
 }
 
 function renderPayrollClosing() {
@@ -194,6 +214,7 @@ function renderPayrollClosing() {
   if (!decisionPanel || !summary || !blockers || !warnings || !checklist || !actionList) return;
 
   const data = getPayrollClosingData();
+  const closingDecision = state.lastPayrollClosingDecision;
 
   decisionPanel.innerHTML = `
     <div>
@@ -233,12 +254,20 @@ function renderPayrollClosing() {
     ["Baixas sem evidencia", data.missingInstallmentProgress.length],
     ["Itens em lote", data.insertionBatchRows.length],
     ["Lote retornado", data.batchReturned.length],
+    [
+      "Decisao registrada",
+      closingDecision ? closingDecision.decision : "Pendente",
+      closingDecision
+        ? `${closingDecision.processedAt} - ${closingDecision.blockers} bloqueio(s), ${closingDecision.warnings} ressalva(s).`
+        : "Clique em Registrar decisao para congelar o fechamento.",
+    ],
   ]
     .map(
-      ([label, value]) => `
+      ([label, value, detail]) => `
         <article class="closing-summary-card">
           <span>${label}</span>
           <strong>${value}</strong>
+          ${detail ? `<small>${detail}</small>` : ""}
         </article>
       `
     )
@@ -289,6 +318,7 @@ payrollClosingStyle.textContent = `
   .closing-decision-panel span,
   .closing-decision-panel p,
   .closing-summary-card span,
+  .closing-summary-card small,
   .closing-note span,
   .closing-check span {
     display: block;
@@ -317,6 +347,10 @@ payrollClosingStyle.textContent = `
     display: block;
     margin-top: 8px;
     font-size: 24px;
+  }
+  .closing-summary-card small {
+    display: block;
+    margin-top: 6px;
   }
   .closing-content,
   .closing-action-panel,

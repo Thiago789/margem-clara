@@ -25,6 +25,7 @@ function getPilotQaScenarios() {
   const progressed = contracts.filter((contract) => Number(contract.currentInstallment || 0) > 0);
   const liquidated = contracts.filter((contract) => contract.status === "Liquidado");
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
+  const closingDecision = state.lastPayrollClosingDecision;
   const closingBlockers = closingData?.blockers?.length || 0;
   const closingWarnings = closingData?.warnings?.length || 0;
   const hasMarginValidation = Boolean(state.lastMarginValidation && !state.lastMarginValidation.blocked);
@@ -169,11 +170,13 @@ function getPilotQaScenarios() {
       area: "Fechamento",
       title: "Decisao da competencia",
       expected: "Competencia deve indicar se pode fechar, fechar com ressalva ou bloquear por retorno/baixa pendente.",
-      evidence: closingData
-        ? `${closingBlockers} bloqueio(s), ${closingWarnings} ressalva(s), decisao: ${closingData.decision}.`
-        : "Fechamento ainda nao calculado.",
+      evidence: closingDecision
+        ? `Decisao registrada: ${closingDecision.decision} em ${closingDecision.processedAt}, ${closingDecision.blockers} bloqueio(s), ${closingDecision.warnings} ressalva(s).`
+        : closingData
+          ? `${closingBlockers} bloqueio(s), ${closingWarnings} ressalva(s), decisao calculada: ${closingData.decision}; registre a decisao.`
+          : "Fechamento ainda nao calculado.",
       target: "closing",
-      ok: Boolean(closingData) && closingBlockers === 0,
+      ok: Boolean(closingDecision) && closingDecision.blockers === 0,
     },
     {
       area: "Rastreabilidade",

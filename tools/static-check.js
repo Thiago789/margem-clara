@@ -570,6 +570,31 @@ function checkRecentDecisionCoverage() {
       message: "Prontidao deve reconhecer protocolo registrado da competencia.",
     },
     {
+      file: "payroll-closing-addon.js",
+      snippet: "recordPayrollClosingDecision",
+      message: "Fechamento deve registrar decisao operacional da competencia.",
+    },
+    {
+      file: "payroll-closing-addon.js",
+      snippet: "state.lastPayrollClosingDecision =",
+      message: "Fechamento deve guardar evidencia reutilizavel pela homologacao.",
+    },
+    {
+      file: "payroll-closing-addon.js",
+      snippet: "Decisao registrada",
+      message: "Tela de fechamento deve exibir a ultima decisao registrada.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "closingDecision",
+      message: "Homologacao deve cobrar decisao de fechamento registrada.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "state.lastPayrollClosingDecision",
+      message: "Prontidao deve reconhecer fechamento registrado.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
