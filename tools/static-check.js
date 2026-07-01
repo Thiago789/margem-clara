@@ -300,6 +300,16 @@ function checkRecentDecisionCoverage() {
       message: "Homologacao deve exigir evidencia auditada de fonte publica.",
     },
     {
+      file: "operational-queue-addon.js",
+      snippet: "publicValidationPending",
+      message: "Fila operacional deve cobrar evidencia publica configurada e ainda nao auditada.",
+    },
+    {
+      file: "operational-queue-addon.js",
+      snippet: "Validacao publica",
+      message: "Fila operacional deve abrir pendencia de validacao publica.",
+    },
+    {
       file: "roadmap-addon.js",
       snippet: "Validar servidor",
       message: "Roadmap deve direcionar criterio de fonte publica para validacao do servidor.",

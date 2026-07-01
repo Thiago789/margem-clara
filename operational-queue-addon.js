@@ -68,6 +68,11 @@ function getOperationalQueueData() {
   const reviewEmployees = state.employees.filter((employee) => employee.status === "Em revisao");
   const negativeEmployees = state.employees.filter((employee) => calculateMargin(employee).available < 0);
   const openTickets = state.tickets.filter((ticket) => ticket.status === "Aberto");
+  const publicValidationPending = Boolean(
+    state.conventionSettings?.publicValidationSourceEnabled &&
+      typeof getPublicValidationEvidence === "function" &&
+      !state.movements.some((movement) => movement.source === "Validacao do servidor" && /fonte publica/i.test(movement.text || ""))
+  );
   const missingInstallmentProgress = state.contracts.filter(
     (contract) =>
       contract.status === "Descontando" &&
@@ -110,6 +115,18 @@ function getOperationalQueueData() {
       detail: "Conferir vinculo, situacao funcional e base de calculo antes de liberar operacoes.",
       target: "identity",
     })),
+    ...(publicValidationPending
+      ? [
+          {
+            severity: "Media",
+            className: "warning",
+            area: "Validacao publica",
+            title: state.conventionSettings.publicValidationSourceName || "Fonte publica",
+            detail: "Fonte publica configurada, mas ainda sem evidencia registrada na auditoria da validacao do servidor.",
+            target: "identity",
+          },
+        ]
+      : []),
     ...reserved.map((contract) => ({
       severity: "Media",
       className: "warning",
