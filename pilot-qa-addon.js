@@ -34,6 +34,8 @@ function getPilotQaScenarios() {
   const hasSensitiveAuditSummary = typeof getAuditSummaryCards === "function";
   const hasGuardedNavigation = typeof renderNavigationGuardNotice === "function";
   const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
+  const hasPublicValidationSource = Boolean(state.conventionSettings?.publicValidationSourceEnabled && typeof getPublicValidationEvidence === "function");
+  const hasPublicValidationAudit = movements.some((movement) => movement.source === "Validacao do servidor" && /fonte publica/i.test(movement.text || ""));
   const activeCodes = codes.filter((code) => code.status === "Ativo");
   const requiresMarginConsult = policy.requireAuthorizationForMarginConsult !== false;
   const requiresReservationCode = policy.requireAuthorizationForReservation !== false;
@@ -75,6 +77,18 @@ function getPilotQaScenarios() {
       evidence: `Consulta: ${requiresMarginConsult ? "exige autorizacao" : "liberada"}; reserva: ${requiresReservationCode ? "exige codigo" : "imediata"}; ${activeCodes.length} codigo(s) ativo(s).`,
       target: "authorizations",
       ok: requiresMarginConsult || requiresReservationCode ? activeCodes.length > 0 : true,
+    },
+    {
+      area: "Validacao",
+      title: "Fonte publica configuravel e auditavel",
+      expected: "Convenio deve permitir fonte publica ou oficial para validar servidor e registrar evidencia auditavel.",
+      evidence: hasPublicValidationAudit
+        ? "Existe evidencia de fonte publica registrada na auditoria."
+        : hasPublicValidationSource
+          ? `${state.conventionSettings.publicValidationSourceName || "Fonte publica"} configurada; registre evidencia na tela de validacao.`
+          : "Fonte publica ainda nao configurada no convenio.",
+      target: "identity",
+      ok: hasPublicValidationSource && hasPublicValidationAudit,
     },
     {
       area: "Consignataria",

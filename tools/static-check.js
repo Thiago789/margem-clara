@@ -290,6 +290,21 @@ function checkRecentDecisionCoverage() {
       message: "Validacao do servidor deve centralizar registro auditavel da evidencia publica.",
     },
     {
+      file: "pilot-qa-addon.js",
+      snippet: "Fonte publica configuravel e auditavel",
+      message: "Homologacao deve cobrar fonte publica configuravel e auditavel.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "hasPublicValidationAudit",
+      message: "Homologacao deve exigir evidencia auditada de fonte publica.",
+    },
+    {
+      file: "roadmap-addon.js",
+      snippet: "Validar servidor",
+      message: "Roadmap deve direcionar criterio de fonte publica para validacao do servidor.",
+    },
+    {
       file: "authenticity-addon.js",
       snippet: "requireAuthorizationForMarginConsult",
       message: "Autenticidade deve avaliar consentimento pela regra de consulta de margem.",
