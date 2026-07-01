@@ -511,6 +511,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "readiness-addon.js",
+      snippet: "proximo foco",
+      message: "Prontidao deve destacar a frente do proximo criterio.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: ".readiness-item.next",
+      message: "Prontidao deve destacar o criterio pendente atual.",
+    },
+    {
+      file: "readiness-addon.js",
       snippet: "getReadinessApprovalLabel",
       message: "Prontidao deve exibir o aceite registrado da homologacao.",
     },

@@ -154,6 +154,7 @@ O MVP ja possui uma base navegavel com:
 - Homologacao deve diferenciar demo guiada, piloto controlado e limite antes de operacao real.
 - Painel inicial e roadmap devem reutilizar o estagio de homologacao para orientar decisao.
 - Jornada superior deve mostrar prioridade da fila ou foco recomendado sem exigir abrir o roadmap.
+- Prontidao deve destacar a frente e o criterio pendente atual para reduzir busca manual no checklist.
 - Navegacao bloqueada por perfil deve redirecionar com aviso visivel e registro de auditoria.
 - Tela de permissoes deve evidenciar que a navegacao protegida esta ativa no MVP.
 - Auditoria deve resumir eventos sensiveis e redirecionamentos de navegacao protegida.

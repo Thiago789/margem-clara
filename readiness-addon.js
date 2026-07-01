@@ -241,11 +241,11 @@ function renderReadiness() {
   grid.innerHTML = groups
     .map(
       (group) => `
-        <article class="readiness-card">
+        <article class="readiness-card ${group.title === decision.nextGroup.title ? "next" : ""}">
           <div class="readiness-card-heading">
             <div>
               <strong>${group.title}</strong>
-              <span>${group.score}% de maturidade</span>
+              <span>${group.score}% de maturidade${group.title === decision.nextGroup.title ? " - proximo foco" : ""}</span>
             </div>
             <div class="readiness-meter" aria-label="${group.score}%">
               <span style="width: ${group.score}%"></span>
@@ -255,7 +255,7 @@ function renderReadiness() {
             ${group.items
               .map(
                 ([label, status]) => `
-                  <div class="readiness-item">
+                  <div class="readiness-item ${group.title === decision.nextGroup.title && label === decision.nextItem[0] ? "next" : ""}">
                     <span>${label}</span>
                     <strong class="status ${getReadinessStatusClass(status)}">${status}</strong>
                   </div>
@@ -369,6 +369,10 @@ readinessStyle.textContent = `
   .readiness-card {
     padding: 14px;
   }
+  .readiness-card.next {
+    border-color: rgba(37, 99, 235, 0.34);
+    background: #f8fbff;
+  }
   .readiness-card-heading {
     display: grid;
     gap: 10px;
@@ -397,6 +401,12 @@ readinessStyle.textContent = `
     align-items: center;
     padding-top: 8px;
     border-top: 1px solid var(--line);
+  }
+  .readiness-item.next {
+    padding: 10px;
+    border: 1px solid rgba(37, 99, 235, 0.28);
+    border-radius: 8px;
+    background: #fff;
   }
   .readiness-decision {
     padding: 12px;
