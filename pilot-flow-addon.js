@@ -135,6 +135,29 @@ function getPilotJourneyHealth(steps) {
   };
 }
 
+function getPilotDemoScriptSummary() {
+  if (typeof getDemoScriptSteps !== "function") {
+    return {
+      done: 0,
+      total: 0,
+      next: null,
+      label: "Roteiro nao carregado",
+    };
+  }
+
+  const steps = getDemoScriptSteps();
+  const checked = new Set(state.demoScriptChecks || []);
+  const next = steps.find((step) => !checked.has(step.id)) || steps[steps.length - 1] || null;
+  const done = steps.filter((step) => checked.has(step.id)).length;
+
+  return {
+    done,
+    total: steps.length,
+    next,
+    label: `${done}/${steps.length} etapa(s) da demonstracao`,
+  };
+}
+
 function ensurePilotFlowView() {
   if (document.getElementById("pilot-view")) return;
 
@@ -215,18 +238,21 @@ function renderPilotFlow() {
   const pending = steps.length - done;
   const contracts = state.contracts || [];
   const rejected = contracts.filter(contractHasReturnIssue).length;
+  const demoScript = getPilotDemoScriptSummary();
 
   command.innerHTML = `
     <div>
       <span class="pilot-command-label">${journey.label}</span>
       <strong>${journey.current.label}</strong>
       <p>${journey.current.detail}</p>
+      <small class="pilot-demo-script-hint">Roteiro: ${demoScript.label}${demoScript.next ? ` - proximo: ${demoScript.next.title}` : ""}.</small>
     </div>
     <div class="pilot-command-actions">
       <div class="pilot-progress" aria-label="Progresso do fluxo piloto">
         <span style="width: ${journey.percent}%"></span>
       </div>
       <button class="primary-button pilot-next-action" data-target-view="${journey.current.target}" type="button">${journey.current.action}</button>
+      <button class="secondary-button pilot-demo-script-action" data-target-view="demo" type="button">Abrir roteiro</button>
     </div>
   `;
 
@@ -270,6 +296,10 @@ function renderPilotFlow() {
   });
 
   document.querySelector(".pilot-next-action")?.addEventListener("click", (event) => {
+    openView(event.currentTarget.dataset.targetView);
+  });
+
+  document.querySelector(".pilot-demo-script-action")?.addEventListener("click", (event) => {
     openView(event.currentTarget.dataset.targetView);
   });
 
@@ -334,6 +364,13 @@ pilotStyle.textContent = `
   .pilot-command p {
     margin: 6px 0 0;
     color: var(--muted);
+  }
+  .pilot-demo-script-hint {
+    display: block;
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
   }
   .pilot-command-actions {
     display: grid;

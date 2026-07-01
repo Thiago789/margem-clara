@@ -475,6 +475,16 @@ function checkRecentDecisionCoverage() {
       message: "Homologacao deve expor resumo reutilizavel do estagio operacional.",
     },
     {
+      file: "pilot-flow-addon.js",
+      snippet: "getPilotDemoScriptSummary",
+      message: "Fluxo piloto deve expor progresso do roteiro de apresentacao.",
+    },
+    {
+      file: "pilot-flow-addon.js",
+      snippet: "pilot-demo-script-action",
+      message: "Fluxo piloto deve abrir o roteiro de apresentacao sem depender da lateral.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "Limite de uso",
       message: "Homologacao deve evidenciar limite antes de operacao real.",
