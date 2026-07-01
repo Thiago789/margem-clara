@@ -47,7 +47,8 @@ function getRoadmapCriterionTarget(label) {
   if (text.includes("login") || text.includes("permissoes") || text.includes("lgpd") || text.includes("navegacao")) return { target: "access", action: "Ver acessos" };
   if (text.includes("auditoria")) return { target: "audit", action: "Ver auditoria" };
   if (text.includes("fechamento")) return { target: "closing", action: "Ver fechamento" };
-  if (text.includes("arquivo") || text.includes("layout") || text.includes("protocolos")) return { target: "import", action: "Ver arquivos" };
+  if (text.includes("protocolos")) return { target: "protocols", action: "Ver protocolos" };
+  if (text.includes("arquivo") || text.includes("layout")) return { target: "import", action: "Ver arquivos" };
   if (text.includes("calculo") || text.includes("reserva") || text.includes("contrato") || text.includes("baixa") || text.includes("bloqueios")) return { target: "pilot", action: "Abrir fluxo" };
   if (text.includes("fonte publica") || text.includes("validacao")) return { target: "identity", action: "Validar servidor" };
   if (text.includes("api") || text.includes("webhooks") || text.includes("conector")) return { target: "integrations", action: "Ver integracoes" };

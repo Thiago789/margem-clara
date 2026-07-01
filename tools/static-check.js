@@ -615,6 +615,11 @@ function checkRecentDecisionCoverage() {
       message: "Fila operacional deve abrir pendencia acionavel para protocolos.",
     },
     {
+      file: "roadmap-addon.js",
+      snippet: 'text.includes("protocolos")) return { target: "protocols"',
+      message: "Roadmap deve abrir a tela de protocolos quando o criterio for rastreabilidade de protocolo.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",

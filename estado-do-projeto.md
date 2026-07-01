@@ -94,6 +94,7 @@ O MVP ja possui uma base navegavel com:
 - Tela de protocolos deve registrar e exibir o snapshot da competencia, congelando lotes, registros, pendencias e divergencias para auditoria e prontidao.
 - Homologacao deve cobrar protocolo da competencia registrado, ligando validacao, remessa, retorno e fechamento em uma cadeia de evidencia.
 - Fila operacional deve cobrar protocolo pendente quando ja houver evidencia de margem, insercao ou retorno sem snapshot protocolado.
+- Roadmap e prontidao devem abrir diretamente Protocolos quando o criterio pendente for rastreabilidade de protocolo.
 - Prontidao V1 deve ser calculada a partir do estado real do MVP, usando validacoes, homologacao, protocolos, permissoes, contratos, auditoria e integracoes mapeadas.
 - Painel inicial do gestor deve exibir um cockpit operacional com proxima acao do fluxo piloto, fila de pendencias e prontidao V1.
 - Atalhos para modulos inexistentes ou indisponiveis por perfil devem ser redirecionados com registro de auditoria, evitando queda silenciosa no painel.
