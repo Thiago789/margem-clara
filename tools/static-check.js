@@ -540,6 +540,16 @@ function checkRecentDecisionCoverage() {
       message: "Validacao de arquivos deve gravar evidencia da insercao processada.",
     },
     {
+      file: "file-validation-addon.js",
+      snippet: "Evidencia margem",
+      message: "Tela de validacao deve exibir o ultimo snapshot da margem.",
+    },
+    {
+      file: "file-validation-addon.js",
+      snippet: "Evidencia insercao",
+      message: "Tela de validacao deve exibir o ultimo snapshot da insercao.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",

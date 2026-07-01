@@ -224,6 +224,8 @@ function renderFileValidation() {
   const schemas = getFileValidationSchemas();
   const metrics = getFileValidationMetrics();
   const decision = getValidationDecision(metrics);
+  const marginEvidence = state.lastMarginValidation;
+  const insertionEvidence = state.lastInsertionValidation;
   const totals = Object.values(metrics).reduce(
     (acc, item) => ({
       rows: acc.rows + item.rows,
@@ -246,16 +248,31 @@ function renderFileValidation() {
   `;
 
   summary.innerHTML = [
-    ["Tipos validados", schemas.length],
-    ["Linhas/itens avaliados", totals.rows],
-    ["Erros criticos", totals.critical],
-    ["Alertas", totals.warnings],
+    { label: "Tipos validados", value: schemas.length },
+    { label: "Linhas/itens avaliados", value: totals.rows },
+    { label: "Erros criticos", value: totals.critical },
+    { label: "Alertas", value: totals.warnings },
+    {
+      label: "Evidencia margem",
+      value: marginEvidence ? marginEvidence.status : "Pendente",
+      detail: marginEvidence
+        ? `${marginEvidence.processedAt} - ${marginEvidence.totalRows} linha(s), ${marginEvidence.critical} erro(s), ${marginEvidence.warnings} alerta(s).`
+        : "Clique em Registrar validacao para gerar o snapshot.",
+    },
+    {
+      label: "Evidencia insercao",
+      value: insertionEvidence ? insertionEvidence.status : "Pendente",
+      detail: insertionEvidence
+        ? `${insertionEvidence.processedAt} - ${insertionEvidence.totalRows} item(ns), ${insertionEvidence.critical} erro(s), ${insertionEvidence.warnings} alerta(s).`
+        : "Reservas validadas antes da geracao do arquivo.",
+    },
   ]
     .map(
-      ([label, value]) => `
+      (item) => `
         <article class="validation-summary-card">
-          <span>${label}</span>
-          <strong>${value}</strong>
+          <span>${item.label}</span>
+          <strong>${item.value}</strong>
+          ${item.detail ? `<small>${item.detail}</small>` : ""}
         </article>
       `
     )
@@ -365,6 +382,7 @@ fileValidationStyle.textContent = `
     box-shadow: var(--shadow);
   }
   .validation-summary-card span,
+  .validation-summary-card small,
   .validation-schema-card span,
   .validation-schema-card p,
   .validation-result span,
@@ -379,6 +397,9 @@ fileValidationStyle.textContent = `
     display: block;
     margin-top: 8px;
     font-size: 24px;
+  }
+  .validation-summary-card small {
+    margin-top: 6px;
   }
   .validation-panel,
   .validation-content {
