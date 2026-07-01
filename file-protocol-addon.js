@@ -90,6 +90,46 @@ function getProtocolStatusClass(status) {
   return "";
 }
 
+function recordFileProtocolSnapshot() {
+  const batches = getFileProtocolBatches();
+  const pending = batches.filter((batch) => ["Pendente", "Aguardando retorno", "Pronto para gerar"].includes(batch.status)).length;
+  const issues = batches.filter((batch) => ["Processado com pendencia", "Bloqueado"].includes(batch.status)).length;
+  const records = batches.reduce((total, batch) => total + Number(batch.records || 0), 0);
+  const amount = batches.reduce((total, batch) => total + Number(batch.amount || 0), 0);
+  const competency = state.conventionSettings?.payrollCompetency || new Date().toISOString().slice(0, 7);
+
+  state.lastFileProtocol = {
+    processedAt: today(),
+    competency,
+    totalBatches: batches.length,
+    records,
+    amount,
+    pending,
+    issues,
+    status: issues ? "Com pendencia" : pending ? "Parcial" : "Registrado",
+    batches: batches.map((batch) => ({
+      id: batch.id,
+      type: batch.type,
+      direction: batch.direction,
+      layout: batch.layout,
+      status: batch.status,
+      records: batch.records,
+      amount: batch.amount,
+      critical: batch.critical,
+      warnings: batch.warnings,
+      evidence: batch.evidence,
+    })),
+  };
+
+  auditEvent(
+    `Protocolo de remessa registrado: ${batches.length} lote(s), ${records} registro(s), ${pending} pendencia(s), ${issues} divergencia(s).`,
+    "Protocolos de arquivo"
+  );
+  saveState();
+  render();
+  openView("protocols");
+}
+
 function ensureFileProtocolView() {
   if (document.getElementById("protocols-view")) return;
 
@@ -144,12 +184,7 @@ function ensureFileProtocolView() {
     `
   );
 
-  document.getElementById("protocols-audit-button")?.addEventListener("click", () => {
-    auditEvent("Protocolo de remessa da competencia registrado.", "Protocolos de arquivo");
-    saveState();
-    render();
-    openView("protocols");
-  });
+  document.getElementById("protocols-audit-button")?.addEventListener("click", recordFileProtocolSnapshot);
 }
 
 function renderFileProtocols() {
@@ -165,18 +200,27 @@ function renderFileProtocols() {
   const pending = batches.filter((batch) => ["Pendente", "Aguardando retorno", "Pronto para gerar"].includes(batch.status)).length;
   const issues = batches.filter((batch) => batch.status === "Processado com pendencia").length;
   const records = batches.reduce((total, batch) => total + batch.records, 0);
+  const lastProtocol = state.lastFileProtocol;
 
   summary.innerHTML = [
-    ["Remessas", batches.length],
-    ["Registros", records],
-    ["Pendencias", pending],
-    ["Com divergencia", issues],
+    { label: "Remessas", value: batches.length },
+    { label: "Registros", value: records },
+    { label: "Pendencias", value: pending },
+    { label: "Com divergencia", value: issues },
+    {
+      label: "Ultimo protocolo",
+      value: lastProtocol ? lastProtocol.status : "Pendente",
+      detail: lastProtocol
+        ? `${lastProtocol.processedAt} - ${lastProtocol.totalBatches} lote(s), ${lastProtocol.records} registro(s).`
+        : "Clique em Registrar protocolo para congelar o snapshot da competencia.",
+    },
   ]
     .map(
-      ([label, value]) => `
+      (item) => `
         <article class="protocol-summary-card">
-          <span>${label}</span>
-          <strong>${value}</strong>
+          <span>${item.label}</span>
+          <strong>${item.value}</strong>
+          ${item.detail ? `<small>${item.detail}</small>` : ""}
         </article>
       `
     )
@@ -259,6 +303,7 @@ fileProtocolStyle.textContent = `
     box-shadow: var(--shadow);
   }
   .protocol-summary-card span,
+  .protocol-summary-card small,
   .protocol-row span,
   .protocol-row p,
   .protocol-note span {
@@ -271,6 +316,10 @@ fileProtocolStyle.textContent = `
     display: block;
     margin-top: 8px;
     font-size: 24px;
+  }
+  .protocol-summary-card small {
+    display: block;
+    margin-top: 6px;
   }
   .protocol-panel,
   .protocol-content {

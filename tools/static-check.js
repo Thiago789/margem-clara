@@ -550,6 +550,26 @@ function checkRecentDecisionCoverage() {
       message: "Tela de validacao deve exibir o ultimo snapshot da insercao.",
     },
     {
+      file: "file-protocol-addon.js",
+      snippet: "recordFileProtocolSnapshot",
+      message: "Tela de protocolos deve registrar snapshot operacional da competencia.",
+    },
+    {
+      file: "file-protocol-addon.js",
+      snippet: "state.lastFileProtocol =",
+      message: "Protocolos devem guardar evidencia reutilizavel pela prontidao.",
+    },
+    {
+      file: "file-protocol-addon.js",
+      snippet: "Ultimo protocolo",
+      message: "Tela de protocolos deve exibir o ultimo protocolo registrado.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "state.lastFileProtocol",
+      message: "Prontidao deve reconhecer protocolo registrado da competencia.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",

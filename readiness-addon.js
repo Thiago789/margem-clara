@@ -19,7 +19,7 @@ function getReadinessGroups() {
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
   const hasClosingDecision = Boolean(closingData);
   const hasClosingBlocker = Boolean(closingData?.blockers?.length);
-  const hasProtocols = Boolean(marginValidation || insertionValidation || returnReconciliation);
+  const hasProtocols = Boolean(state.lastFileProtocol || marginValidation || insertionValidation || returnReconciliation);
   const hasAccessMatrix = profileConfig.manager.views.includes("access") && !profileConfig.employee.views.includes("access");
   const hasEnrollments = Array.isArray(state.enrollments) && state.enrollments.length >= state.employees.length;
   const hasFileGuards = Boolean(marginValidation || insertionValidation || returnReconciliation);
