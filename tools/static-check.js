@@ -751,6 +751,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "dashboard-command-addon.js",
+      snippet: "dashboardQaApprovalEvidence",
+      message: "Painel inicial deve expor evidencias do aceite de homologacao.",
+    },
+    {
+      file: "dashboard-command-addon.js",
       snippet: "dashboardQaStageLabel",
       message: "Painel inicial deve expor estagio atual da homologacao.",
     },
