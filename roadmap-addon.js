@@ -55,6 +55,12 @@ function getRoadmapCriterionTarget(label) {
   return { target: "readiness", action: "Ver prontidao" };
 }
 
+function getRoadmapApprovalEvidence() {
+  const approval = state.pilotQaApproval;
+  if (!approval) return " Aceite de homologacao ainda nao registrado.";
+  return ` Aceite: ${approval.status || "Checkpoint"} ${approval.score || 0}% em ${approval.date || "data nao informada"}; pendencia: ${approval.nextPending || "nao informada"}.`;
+}
+
 function getRoadmapCurrentFocus() {
   if (typeof getReadinessGroups !== "function" || typeof getReadinessCurrentDecision !== "function") {
     return {
@@ -69,9 +75,10 @@ function getRoadmapCurrentFocus() {
   const criterionTarget = getRoadmapCriterionTarget(decision.nextItem[0]);
   const qaStage = typeof getPilotQaStageSummary === "function" ? getPilotQaStageSummary() : null;
   const stageDetail = qaStage ? ` Estagio: ${qaStage.labelWithScore}.` : "";
+  const approvalDetail = criterionTarget.target === "qa" ? getRoadmapApprovalEvidence() : "";
   return {
     title: decision.nextGroup.title,
-    detail: `${decision.nextGroup.score}% de maturidade. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}). Acao sugerida: ${criterionTarget.action}.${stageDetail}`,
+    detail: `${decision.nextGroup.score}% de maturidade. Proximo criterio: ${decision.nextItem[0]} (${decision.nextItem[1]}). Acao sugerida: ${criterionTarget.action}.${stageDetail}${approvalDetail}`,
     target: criterionTarget.target,
     action: criterionTarget.action,
   };

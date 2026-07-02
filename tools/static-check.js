@@ -785,6 +785,11 @@ function checkRecentDecisionCoverage() {
       message: "Roadmap deve mostrar o estagio de homologacao junto do foco.",
     },
     {
+      file: "roadmap-addon.js",
+      snippet: "getRoadmapApprovalEvidence",
+      message: "Roadmap deve explicar evidencias do aceite quando o foco for homologacao.",
+    },
+    {
       file: "pilot-flow-addon.js",
       snippet: "9. Fechar competencia",
       message: "Fluxo piloto deve manter fechamento antes da auditoria, apos protocolo e baixa.",
