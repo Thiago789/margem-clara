@@ -100,6 +100,7 @@ O MVP ja possui uma base navegavel com:
 - Homologacao deve guardar no checkpoint de aceite o protocolo, a decisao de fechamento e a proxima pendencia.
 - Prontidao V1 deve exibir as evidencias do ultimo aceite de homologacao, incluindo protocolo, fechamento e proxima pendencia.
 - Painel inicial deve resumir as evidencias do ultimo aceite de homologacao sem exigir abrir a prontidao.
+- Painel inicial deve permitir abrir a homologacao diretamente a partir do resumo de aceite.
 - Prontidao V1 deve ser calculada a partir do estado real do MVP, usando validacoes, homologacao, protocolos, permissoes, contratos, auditoria e integracoes mapeadas.
 - Painel inicial do gestor deve exibir um cockpit operacional com proxima acao do fluxo piloto, fila de pendencias e prontidao V1.
 - Atalhos para modulos inexistentes ou indisponiveis por perfil devem ser redirecionados com registro de auditoria, evitando queda silenciosa no painel.

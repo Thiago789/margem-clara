@@ -756,6 +756,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "dashboard-command-addon.js",
+      snippet: 'data-target-view="qa"',
+      message: "Painel inicial deve abrir homologacao a partir do resumo de aceite.",
+    },
+    {
+      file: "dashboard-command-addon.js",
       snippet: "dashboardQaStageLabel",
       message: "Painel inicial deve expor estagio atual da homologacao.",
     },

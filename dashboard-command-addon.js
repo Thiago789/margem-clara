@@ -172,7 +172,10 @@ function renderDashboardCommandCenter() {
       <span>${readiness.average}% de prontidao</span>
       <strong>${readiness.nextGroup.title}</strong>
       <p>${dashboardCompactText(`${readiness.nextGroup.score}% maturidade. ${qaStage}. Criterio: ${readiness.nextItem[0]} (${readiness.nextItem[1]}). Aceite: ${qaApproval}. ${qaApprovalEvidence}`, 170)}</p>
-      <button class="secondary-button dashboard-command-action" data-target-view="readiness" type="button">Ver prontidao</button>
+      <div class="dashboard-command-actions">
+        <button class="secondary-button dashboard-command-action" data-target-view="readiness" type="button">Ver prontidao</button>
+        <button class="secondary-button dashboard-command-action" data-target-view="qa" type="button">Ver homologacao</button>
+      </div>
     </article>
   `;
 
@@ -240,6 +243,12 @@ dashboardCommandStyle.textContent = `
   .dashboard-command-card .secondary-button {
     align-self: end;
     justify-self: start;
+  }
+  .dashboard-command-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-self: end;
   }
   @media (max-width: 1040px) {
     .dashboard-command-grid {
