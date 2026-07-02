@@ -136,6 +136,37 @@ function recordPayrollClosingDecision() {
   openView("closing");
 }
 
+function getPayrollClosingDecisionFreshness(data = getPayrollClosingData()) {
+  const decision = state.lastPayrollClosingDecision;
+  if (!decision) {
+    return {
+      fresh: false,
+      label: "Pendente",
+      detail: "Registre a decisao para congelar o fechamento atual.",
+    };
+  }
+
+  const changed = [
+    decision.competency !== data.month,
+    decision.decision !== data.decision,
+    decision.blockers !== data.blockers.length,
+    decision.warnings !== data.warnings.length,
+    decision.reserved !== data.reserved.length,
+    decision.sent !== data.sent.length,
+    decision.rejected !== data.rejected.length,
+    decision.protocolPending !== data.protocolPending,
+    decision.reconciliationIssues !== data.reconciliationIssues,
+  ].some(Boolean);
+
+  return {
+    fresh: !changed,
+    label: changed ? "Desatualizada" : decision.decision,
+    detail: changed
+      ? `Atual: ${data.decision}, ${data.blockers.length} bloqueio(s), ${data.warnings.length} ressalva(s). Registre novamente.`
+      : `${decision.processedAt} - ${decision.blockers} bloqueio(s), ${decision.warnings} ressalva(s).`,
+  };
+}
+
 function ensurePayrollClosingView() {
   if (document.getElementById("closing-view")) return;
 
@@ -215,6 +246,7 @@ function renderPayrollClosing() {
 
   const data = getPayrollClosingData();
   const closingDecision = state.lastPayrollClosingDecision;
+  const closingFreshness = getPayrollClosingDecisionFreshness(data);
 
   decisionPanel.innerHTML = `
     <div>
@@ -256,10 +288,8 @@ function renderPayrollClosing() {
     ["Lote retornado", data.batchReturned.length],
     [
       "Decisao registrada",
-      closingDecision ? closingDecision.decision : "Pendente",
-      closingDecision
-        ? `${closingDecision.processedAt} - ${closingDecision.blockers} bloqueio(s), ${closingDecision.warnings} ressalva(s).`
-        : "Clique em Registrar decisao para congelar o fechamento.",
+      closingFreshness.label,
+      closingFreshness.detail,
     ],
   ]
     .map(

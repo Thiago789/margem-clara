@@ -581,6 +581,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "payroll-closing-addon.js",
+      snippet: "getPayrollClosingDecisionFreshness",
+      message: "Fechamento deve detectar decisao registrada desatualizada.",
+    },
+    {
+      file: "payroll-closing-addon.js",
       snippet: "Decisao registrada",
       message: "Tela de fechamento deve exibir a ultima decisao registrada.",
     },
@@ -590,9 +595,19 @@ function checkRecentDecisionCoverage() {
       message: "Homologacao deve cobrar decisao de fechamento registrada.",
     },
     {
+      file: "pilot-qa-addon.js",
+      snippet: "closingFreshness.fresh",
+      message: "Homologacao deve rejeitar fechamento registrado desatualizado.",
+    },
+    {
       file: "readiness-addon.js",
       snippet: "state.lastPayrollClosingDecision",
       message: "Prontidao deve reconhecer fechamento registrado.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "closingFreshness.fresh",
+      message: "Prontidao deve considerar somente fechamento registrado atualizado.",
     },
     {
       file: "pilot-qa-addon.js",
