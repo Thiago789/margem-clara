@@ -630,6 +630,16 @@ function checkRecentDecisionCoverage() {
       message: "Fluxo piloto deve reconhecer protocolo registrado como etapa concluida.",
     },
     {
+      file: "demo-script-addon.js",
+      snippet: "Protocolar competencia",
+      message: "Roteiro de apresentacao deve demonstrar protocolo da competencia como etapa propria.",
+    },
+    {
+      file: "demo-script-addon.js",
+      snippet: 'target: "protocols"',
+      message: "Roteiro de apresentacao deve abrir diretamente a tela de protocolos.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",

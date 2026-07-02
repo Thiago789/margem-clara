@@ -96,6 +96,7 @@ O MVP ja possui uma base navegavel com:
 - Fila operacional deve cobrar protocolo pendente quando ja houver evidencia de margem, insercao ou retorno sem snapshot protocolado.
 - Roadmap e prontidao devem abrir diretamente Protocolos quando o criterio pendente for rastreabilidade de protocolo.
 - Fluxo piloto deve ter etapa propria para protocolar a competencia antes de baixa, fechamento e auditoria final.
+- Roteiro de apresentacao deve mostrar protocolo da competencia como etapa propria, separada de insercao e retorno.
 - Prontidao V1 deve ser calculada a partir do estado real do MVP, usando validacoes, homologacao, protocolos, permissoes, contratos, auditoria e integracoes mapeadas.
 - Painel inicial do gestor deve exibir um cockpit operacional com proxima acao do fluxo piloto, fila de pendencias e prontidao V1.
 - Atalhos para modulos inexistentes ou indisponiveis por perfil devem ser redirecionados com registro de auditoria, evitando queda silenciosa no painel.
