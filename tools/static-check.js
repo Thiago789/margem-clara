@@ -21,6 +21,7 @@ function checkCacheVersion() {
   const index = read("index.html");
   const audit = read("audit-addon.js");
   const indexVersion = index.match(/audit-addon\.js\?v=([^"]+)/)?.[1];
+  const styleVersion = index.match(/styles\.css\?v=([^"]+)/)?.[1];
   const loaderVersion = audit.match(/script\.src\s*=\s*`\$\{filename\}\?v=([^`]+)`/)?.[1];
 
   if (!indexVersion) {
@@ -33,8 +34,17 @@ function checkCacheVersion() {
     return;
   }
 
+  if (!styleVersion) {
+    fail("index.html nao informa a versao do styles.css.");
+    return;
+  }
+
   if (indexVersion !== loaderVersion) {
     fail(`Versao de cache divergente: index=${indexVersion}, audit=${loaderVersion}.`);
+  }
+
+  if (styleVersion !== indexVersion) {
+    fail(`Versao de cache divergente: styles=${styleVersion}, index=${indexVersion}.`);
   }
 }
 
@@ -872,6 +882,8 @@ function checkSmokeTestExists() {
   [
     "loadPlaywright",
     "coreViews",
+    "mobile",
+    "expectPageUsable",
     "dashboard-command-center",
     "validation-audit-button",
     "protocols-audit-button",

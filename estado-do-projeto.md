@@ -158,7 +158,7 @@ O MVP ja possui uma base navegavel com:
 - Homologacao do MVP deve cobrar decisao de fechamento da competencia como criterio de aceite.
 - Tela de fechamento deve registrar e exibir a decisao operacional da competencia, para que homologacao e prontidao usem evidencia congelada e nao apenas calculo momentaneo.
 - Decisao de fechamento registrada deve ser marcada como desatualizada quando bloqueios, ressalvas, protocolos ou conciliacao mudarem depois do registro.
-- Smoke test automatico deve percorrer a jornada principal do gestor em navegador headless, cobrindo cockpit, fila, fluxo piloto, validacao, protocolos, fechamento, homologacao, prontidao, roadmap e auditoria.
+- Smoke test automatico deve percorrer a jornada principal do gestor em navegador headless, cobrindo cockpit, fila, fluxo piloto, validacao, protocolos, fechamento, homologacao, prontidao, roadmap, auditoria, responsividade mobile, overflow horizontal e rolagem vertical.
 - Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.
 - Roadmap deve apontar o proximo foco recomendado a partir da frente com menor prontidao.
 - Painel inicial deve expor o foco recomendado do roadmap para orientar o proximo passo.

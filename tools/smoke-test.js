@@ -58,16 +58,14 @@ function findSystemChrome() {
 }
 
 async function expectVisible(page, selector, label) {
-  const locator = page.locator(selector).first();
-  const count = await locator.count();
-  if (!count) {
-    fail(`${label}: seletor nao encontrado (${selector}).`);
-    return;
-  }
-
   try {
-    await locator.waitFor({ state: "visible", timeout: 2500 });
+    await page.locator(selector).first().waitFor({ state: "visible", timeout: 5000 });
   } catch (error) {
+    const count = await page.locator(selector).count();
+    if (!count) {
+      fail(`${label}: seletor nao encontrado (${selector}).`);
+      return;
+    }
     fail(`${label}: elemento nao ficou visivel (${selector}).`);
   }
 }
@@ -80,20 +78,37 @@ async function openView(page, view) {
   await expectVisible(page, `#${view}-view.view.active`, `Modulo ${view}`);
 }
 
-async function run() {
-  const { chromium } = loadPlaywright();
-  const chromePath = findSystemChrome();
-  const browser = await chromium.launch({
-    headless: true,
-    ...(chromePath ? { executablePath: chromePath } : {}),
-  });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+async function expectPageUsable(page, label) {
+  const layout = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    scrollHeight: document.documentElement.scrollHeight,
+    innerHeight: window.innerHeight,
+  }));
+
+  if (layout.scrollWidth > layout.clientWidth + 6) {
+    fail(`${label}: pagina com overflow horizontal (${layout.scrollWidth}px > ${layout.clientWidth}px).`);
+  }
+
+  if (layout.scrollHeight <= layout.innerHeight + 24) return;
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => window.scrollTo(0, 900));
+  const scrollY = await page.evaluate(() => window.scrollY);
+  if (scrollY <= 0) {
+    fail(`${label}: conteudo maior que a tela, mas rolagem vertical nao funcionou.`);
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+}
+
+async function runScenario(browser, scenario) {
+  const page = await browser.newPage({ viewport: scenario.viewport });
 
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    if (message.type() === "error") consoleErrors.push(`${scenario.name}: ${message.text()}`);
   });
   page.on("pageerror", (error) => {
-    pageErrors.push(error.message);
+    pageErrors.push(`${scenario.name}: ${error.message}`);
   });
 
   await page.goto(fileUrl(path.join(root, "index.html")), { waitUntil: "domcontentloaded" });
@@ -101,8 +116,8 @@ async function run() {
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector("#dashboard-view", { state: "visible", timeout: 5000 });
 
-  await expectVisible(page, "#dashboard-command-center", "Cockpit inicial");
-  await expectVisible(page, "#journey-shell", "Jornada operacional");
+  await expectVisible(page, "#dashboard-command-center", `${scenario.name}: Cockpit inicial`);
+  await expectVisible(page, "#journey-shell", `${scenario.name}: Jornada operacional`);
 
   const coreViews = [
     ["dashboard", "#dashboard-command-center"],
@@ -119,7 +134,8 @@ async function run() {
 
   for (const [view, selector] of coreViews) {
     await openView(page, view);
-    await expectVisible(page, selector, `Conteudo principal de ${view}`);
+    await expectVisible(page, selector, `${scenario.name}: Conteudo principal de ${view}`);
+    await expectPageUsable(page, `${scenario.name}: ${view}`);
   }
 
   const guardedViews = await page.evaluate(() => {
@@ -128,7 +144,27 @@ async function run() {
   });
 
   if (guardedViews.length) {
-    fail(`Perfil gestor aponta para tela sem DOM: ${guardedViews.join(", ")}.`);
+    fail(`${scenario.name}: perfil gestor aponta para tela sem DOM: ${guardedViews.join(", ")}.`);
+  }
+
+  await page.close();
+}
+
+async function run() {
+  const { chromium } = loadPlaywright();
+  const chromePath = findSystemChrome();
+  const browser = await chromium.launch({
+    headless: true,
+    ...(chromePath ? { executablePath: chromePath } : {}),
+  });
+
+  const scenarios = [
+    { name: "desktop", viewport: { width: 1440, height: 1100 } },
+    { name: "mobile", viewport: { width: 390, height: 844 } },
+  ];
+
+  for (const scenario of scenarios) {
+    await runScenario(browser, scenario);
   }
 
   if (consoleErrors.length) {

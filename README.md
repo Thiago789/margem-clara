@@ -64,7 +64,7 @@ Para validar a jornada principal do gestor no navegador headless, rode:
 node tools/smoke-test.js
 ```
 
-Esse teste abre o MVP localmente, percorre Dashboard, Fila, Fluxo Piloto, Validacao, Protocolos, Fechamento, Homologacao, Prontidao, Roadmap e Auditoria, e falha se houver erro JavaScript ou tela essencial ausente.
+Esse teste abre o MVP localmente em desktop e mobile, percorre Dashboard, Fila, Fluxo Piloto, Validacao, Protocolos, Fechamento, Homologacao, Prontidao, Roadmap e Auditoria, e falha se houver erro JavaScript, tela essencial ausente, estouro horizontal ou rolagem travada.
 
 Validacoes tecnicas realizadas:
 
