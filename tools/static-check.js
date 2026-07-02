@@ -861,6 +861,29 @@ function checkDocumentationBasics() {
   });
 }
 
+function checkSmokeTestExists() {
+  const smoke = "tools/smoke-test.js";
+  if (!exists(smoke)) {
+    fail("Smoke test de jornada nao encontrado em tools/smoke-test.js.");
+    return;
+  }
+
+  const content = read(smoke);
+  [
+    "loadPlaywright",
+    "coreViews",
+    "dashboard-command-center",
+    "validation-audit-button",
+    "protocols-audit-button",
+    "closing-audit-button",
+    "qa-audit-button",
+  ].forEach((snippet) => {
+    if (!content.includes(snippet)) {
+      fail(`tools/smoke-test.js nao cobre o trecho esperado: ${snippet}.`);
+    }
+  });
+}
+
 function checkAsciiMarkdownDocs() {
   fs.readdirSync(root)
     .filter((file) => file.endsWith(".md"))
@@ -883,6 +906,7 @@ checkJourneyViewAliases();
 checkJourneyViewsExist();
 checkRecentDecisionCoverage();
 checkDocumentationBasics();
+checkSmokeTestExists();
 checkAsciiMarkdownDocs();
 
 if (failures.length) {

@@ -56,6 +56,16 @@ node tools/static-check.js
 
 Essa checagem valida cache, addons carregados, ordem de dependencias, sintaxe JavaScript, regras centrais de status, jornada e decisoes recentes de produto.
 
+## Smoke test de jornada
+
+Para validar a jornada principal do gestor no navegador headless, rode:
+
+```text
+node tools/smoke-test.js
+```
+
+Esse teste abre o MVP localmente, percorre Dashboard, Fila, Fluxo Piloto, Validacao, Protocolos, Fechamento, Homologacao, Prontidao, Roadmap e Auditoria, e falha se houver erro JavaScript ou tela essencial ausente.
+
 Validacoes tecnicas realizadas:
 
 - Arquivos principais criados: `index.html`, `styles.css`, `app.js`.
