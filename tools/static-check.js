@@ -646,6 +646,21 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-qa-addon.js",
+      snippet: "Evidencias do aceite",
+      message: "Homologacao deve exibir evidencias criticas do ultimo aceite.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "nextPending",
+      message: "Homologacao deve guardar a proxima pendencia no checkpoint.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "state.lastPayrollClosingDecision",
+      message: "Checkpoint de homologacao deve registrar decisao de fechamento.",
+    },
+    {
+      file: "pilot-qa-addon.js",
       snippet: "getPilotQaStage",
       message: "Homologacao deve diferenciar demo, piloto controlado e operacao real.",
     },

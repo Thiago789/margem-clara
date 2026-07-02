@@ -283,6 +283,13 @@ function recordPilotQaApproval(decision) {
     total: decision.approved + decision.pending,
     score: decision.score,
     status: decision.pending ? "Checkpoint parcial" : "Aceite completo",
+    protocol: state.lastFileProtocol
+      ? `${state.lastFileProtocol.totalBatches} lote(s), ${state.lastFileProtocol.records} registro(s)`
+      : "Protocolo pendente",
+    closing: state.lastPayrollClosingDecision
+      ? `${state.lastPayrollClosingDecision.decision}, ${state.lastPayrollClosingDecision.blockers} bloqueio(s)`
+      : "Fechamento pendente",
+    nextPending: decision.pending ? decision.next.title : "Sem pendencia de aceite",
   };
 }
 
@@ -368,6 +375,9 @@ function renderPilotQa() {
   const stage = getPilotQaStage(decision);
   const approval = state.pilotQaApproval;
   const approvalLabel = approval ? `${approval.score || 0}% em ${approval.date || "data nao informada"}` : "Nao registrado";
+  const approvalEvidence = approval
+    ? `${approval.protocol || "Protocolo nao informado"}; ${approval.closing || "fechamento nao informado"}.`
+    : "Registre a homologacao para congelar o checkpoint.";
 
   command.innerHTML = `
     <div>
@@ -390,15 +400,22 @@ function renderPilotQa() {
     ["Pendentes", decision.pending],
     ["Maturidade", `${decision.score}%`],
     ["Ultimo aceite", approvalLabel],
+    ["Evidencias do aceite", approval ? approval.status : "Pendente", approvalEvidence],
+    [
+      "Proxima pendencia",
+      approval?.nextPending === "Sem pendencia de aceite" ? "Nenhuma" : "Pendente",
+      approval?.nextPending || decision.next.title,
+    ],
     ["Estagio", stage.label],
   ];
 
   summary.innerHTML = cards
     .map(
-      ([label, value]) => `
+      ([label, value, detail]) => `
         <article class="qa-summary-card">
           <span>${label}</span>
           <strong>${value}</strong>
+          ${detail ? `<small>${detail}</small>` : ""}
         </article>
       `
     )
@@ -472,7 +489,7 @@ const qaStyle = document.createElement("style");
 qaStyle.textContent = `
   .qa-summary-grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }
@@ -530,6 +547,7 @@ qaStyle.textContent = `
     box-shadow: var(--shadow);
   }
   .qa-summary-card span,
+  .qa-summary-card small,
   .qa-row span,
   .qa-row p,
   .qa-note span {
@@ -542,6 +560,10 @@ qaStyle.textContent = `
     display: block;
     margin-top: 8px;
     font-size: 26px;
+  }
+  .qa-summary-card small {
+    display: block;
+    margin-top: 6px;
   }
   .qa-list,
   .qa-notes {
