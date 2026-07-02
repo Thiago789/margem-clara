@@ -710,6 +710,16 @@ function checkRecentDecisionCoverage() {
       message: "Prontidao deve exibir o aceite registrado da homologacao.",
     },
     {
+      file: "readiness-addon.js",
+      snippet: "getReadinessApprovalEvidence",
+      message: "Prontidao deve exibir evidencias do aceite de homologacao.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "Evidencias do aceite",
+      message: "Prontidao deve listar protocolo, fechamento e proxima pendencia do aceite.",
+    },
+    {
       file: "roadmap-addon.js",
       snippet: "Proximo criterio",
       message: "Roadmap deve manter foco recomendado com criterio pendente da prontidao.",

@@ -138,6 +138,12 @@ function getReadinessApprovalLabel() {
   return `${approval.status || "Checkpoint"}: ${approval.score || 0}% em ${approval.date || "data nao informada"}`;
 }
 
+function getReadinessApprovalEvidence() {
+  const approval = state.pilotQaApproval;
+  if (!approval) return "Registre a homologacao para congelar protocolo, fechamento e proxima pendencia.";
+  return `Protocolo: ${approval.protocol || "nao informado"}. Fechamento: ${approval.closing || "nao informado"}. Proxima pendencia: ${approval.nextPending || "nao informada"}.`;
+}
+
 function ensureReadinessView() {
   if (document.getElementById("readiness-view")) return;
 
@@ -206,6 +212,7 @@ function renderReadiness() {
   const decision = getReadinessCurrentDecision(groups);
   const nextAction = getReadinessNextAction(decision);
   const approvalLabel = getReadinessApprovalLabel();
+  const approvalEvidence = getReadinessApprovalEvidence();
   const average = decision.average;
   const mappedItems = groups.flatMap((group) => group.items).filter(([, status]) => ["Demo", "Mapeado", "Parcial"].includes(status)).length;
   const pendingItems = decision.critical;
@@ -271,6 +278,10 @@ function renderReadiness() {
     .join("");
 
   decisions.innerHTML = `
+    <div class="readiness-decision">
+      <strong>Evidencias do aceite</strong>
+      <span>${approvalEvidence}</span>
+    </div>
     <div class="readiness-decision">
       <strong>Manter a demo estatica ate fechar aceite operacional</strong>
       <span>A demo ja valida regras importantes; agora a decisao deve ser guiada por homologacao, protocolos e pendencias reais.</span>
