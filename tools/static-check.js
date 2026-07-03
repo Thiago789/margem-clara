@@ -944,6 +944,8 @@ function checkSmokeTestExists() {
     "coreViews",
     "mobile",
     "expectPageUsable",
+    "exercisePublicValidationBatch",
+    "identity-public-batch-button",
     "dashboard-command-center",
     "identity-public-evidence-button",
     "authenticity-signal-list",

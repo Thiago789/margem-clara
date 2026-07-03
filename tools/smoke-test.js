@@ -78,6 +78,38 @@ async function openView(page, view) {
   await expectVisible(page, `#${view}-view.view.active`, `Modulo ${view}`);
 }
 
+async function exercisePublicValidationBatch(page, scenarioName) {
+  await openView(page, "identity");
+  await expectVisible(page, "#identity-public-batch-button", `${scenarioName}: botao de validacao publica em lote`);
+  await page.locator("#identity-public-batch-button").click();
+  await expectVisible(page, "#identity-public-coverage", `${scenarioName}: cobertura de fonte publica`);
+
+  const result = await page.evaluate(() => {
+    const coverage = typeof getPublicValidationCoverage === "function" ? getPublicValidationCoverage() : null;
+    const auditFound = state.movements.some(
+      (movement) =>
+        movement.source === "Validacao do servidor" &&
+        /fonte publica em lote/i.test(movement.text || "")
+    );
+    return {
+      recorded: coverage?.recorded || 0,
+      fresh: coverage?.fresh || 0,
+      total: coverage?.total || 0,
+      auditFound,
+    };
+  });
+
+  if (result.total <= 0) {
+    fail(`${scenarioName}: cobertura de fonte publica sem servidores.`);
+  }
+  if (result.recorded <= 0 || result.fresh <= 0) {
+    fail(`${scenarioName}: registro em lote nao gerou evidencia fresca.`);
+  }
+  if (!result.auditFound) {
+    fail(`${scenarioName}: registro em lote nao gerou auditoria.`);
+  }
+}
+
 async function expectPageUsable(page, label) {
   const layout = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
@@ -139,6 +171,8 @@ async function runScenario(browser, scenario) {
     await expectVisible(page, selector, `${scenario.name}: Conteudo principal de ${view}`);
     await expectPageUsable(page, `${scenario.name}: ${view}`);
   }
+
+  await exercisePublicValidationBatch(page, scenario.name);
 
   const guardedViews = await page.evaluate(() => {
     const config = profileConfig?.manager || { views: [] };
