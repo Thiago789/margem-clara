@@ -103,6 +103,32 @@ function dashboardQaStageLabel() {
   return getPilotQaStageSummary().labelWithScore;
 }
 
+function dashboardPublicValidationDecision() {
+  if (typeof getPublicValidationCoverage !== "function") {
+    return {
+      label: "Fonte publica nao calculada",
+      detail: "Configure a fonte publica do convenio para acompanhar a cobertura.",
+      className: "warning",
+    };
+  }
+
+  const coverage = getPublicValidationCoverage();
+  if (!coverage.configured) {
+    return {
+      label: "Fonte publica desativada",
+      detail: "Convenio sem exigencia de validacao publica no MVP.",
+      className: "warning",
+    };
+  }
+
+  return {
+    ...coverage,
+    label: coverage.complete ? "Fonte publica completa" : "Fonte publica incompleta",
+    detail: `${coverage.fresh}/${coverage.total} fresco(s), ${coverage.pending} pendente(s), ${coverage.stale} desatualizado(s).`,
+    className: coverage.complete ? "" : "warning",
+  };
+}
+
 function dashboardFocusOrigin(queue, focus) {
   if (queue.next) return `Fila: ${queue.next.severity}`;
   return focus?.target ? `Roadmap: ${pageTitles[focus.target] || focus.target}` : "Roadmap";
@@ -131,6 +157,7 @@ function renderDashboardCommandCenter() {
   const qaApproval = dashboardQaApprovalLabel();
   const qaApprovalEvidence = dashboardQaApprovalEvidence();
   const qaStage = dashboardQaStageLabel();
+  const publicValidation = dashboardPublicValidationDecision();
   const queueTarget = queue.next?.target || "queue";
   const queueTitle = queue.next ? `${queue.next.area}: ${queue.next.title}` : "Fila sem pendencias criticas";
   const queueDetail = queue.next ? queue.next.detail : "Nenhuma decisao operacional critica no momento.";
@@ -177,6 +204,12 @@ function renderDashboardCommandCenter() {
         <button class="secondary-button dashboard-command-action" data-target-view="qa" type="button">Ver homologacao</button>
       </div>
     </article>
+    <article class="dashboard-command-card dashboard-command-support">
+      <span>Validacao do servidor</span>
+      <strong><span class="status ${publicValidation.className}">${publicValidation.label}</span></strong>
+      <p>${dashboardCompactText(publicValidation.detail)}</p>
+      <button class="secondary-button dashboard-command-action" data-target-view="identity" type="button">Ver validacao</button>
+    </article>
   `;
 
   document.querySelectorAll(".dashboard-command-action").forEach((button) => {
@@ -191,7 +224,7 @@ dashboardCommandStyle.textContent = `
   }
   .dashboard-command-grid {
     display: grid;
-    grid-template-columns: minmax(260px, 1.4fr) repeat(4, minmax(0, 1fr));
+    grid-template-columns: minmax(260px, 1.4fr) repeat(5, minmax(0, 1fr));
     gap: 14px;
   }
   .dashboard-command-card {

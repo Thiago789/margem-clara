@@ -164,6 +164,7 @@ O MVP ja possui uma base navegavel com:
 - Homologacao e prontidao devem aceitar fonte publica apenas quando houver cobertura estruturada e atualizada da massa piloto.
 - Tela de validacao do servidor deve permitir registro em lote e mostrar cobertura de fonte publica por total, registrados, frescos, desatualizados e pendentes.
 - Fila operacional deve cobrar fonte publica pela cobertura estruturada, nao apenas por existencia de evento antigo na auditoria.
+- Painel inicial deve mostrar a cobertura de fonte publica e abrir a validacao do servidor quando houver pendencia.
 - Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.
 - Roadmap deve apontar o proximo foco recomendado a partir da frente com menor prontidao.
 - Painel inicial deve expor o foco recomendado do roadmap para orientar o proximo passo.

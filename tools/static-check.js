@@ -420,6 +420,16 @@ function checkRecentDecisionCoverage() {
       message: "Fila operacional deve abrir pendencia de validacao publica.",
     },
     {
+      file: "dashboard-command-addon.js",
+      snippet: "dashboardPublicValidationDecision",
+      message: "Painel inicial deve mostrar cobertura de fonte publica.",
+    },
+    {
+      file: "dashboard-command-addon.js",
+      snippet: "Ver validacao",
+      message: "Painel inicial deve abrir validacao do servidor a partir da fonte publica.",
+    },
+    {
       file: "roadmap-addon.js",
       snippet: "Validar servidor",
       message: "Roadmap deve direcionar criterio de fonte publica para validacao do servidor.",
