@@ -161,6 +161,7 @@ O MVP ja possui uma base navegavel com:
 - Smoke test automatico deve percorrer a jornada principal do gestor em navegador headless, cobrindo cockpit, fila, fluxo piloto, validacao, protocolos, fechamento, homologacao, prontidao, roadmap, auditoria, responsividade mobile, overflow horizontal e rolagem vertical.
 - Repositorio publico deve ter checagem local de seguranca para bloquear `.env`, chaves privadas e tokens reais antes de publicar no GitHub Pages.
 - Evidencia de fonte publica deve ser registrada com snapshot do servidor/convenio e marcada como desatualizada quando dados ou configuracao mudarem.
+- Homologacao e prontidao devem aceitar fonte publica apenas quando houver cobertura estruturada e atualizada da massa piloto.
 - Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.
 - Roadmap deve apontar o proximo foco recomendado a partir da frente com menor prontidao.
 - Painel inicial deve expor o foco recomendado do roadmap para orientar o proximo passo.

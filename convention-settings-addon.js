@@ -382,6 +382,33 @@ function savePublicValidationEvidence(employee, evidence) {
   return record;
 }
 
+function getPublicValidationCoverage() {
+  const employees = state.employees || [];
+  const records = state.publicValidationEvidences || {};
+  const sourceEnabled = Boolean(state.conventionSettings?.publicValidationSourceEnabled);
+  const configured = sourceEnabled && typeof getPublicValidationEvidence === "function";
+  const readings = configured
+    ? employees.map((employee) => ({
+        employee,
+        evidence: getPublicValidationEvidence(employee),
+        record: records[employee.id] || null,
+      }))
+    : [];
+  const recorded = readings.filter((item) => Boolean(item.record));
+  const fresh = readings.filter((item) => item.record && item.evidence?.status === "Encontrado" && !item.evidence?.stale);
+  const stale = readings.filter((item) => item.evidence?.stale);
+
+  return {
+    configured,
+    total: employees.length,
+    recorded: recorded.length,
+    fresh: fresh.length,
+    stale: stale.length,
+    pending: Math.max(employees.length - recorded.length, 0),
+    complete: Boolean(configured && employees.length && fresh.length === employees.length && stale.length === 0),
+  };
+}
+
 function saveConventionSettings() {
   const previous = {
     ...state.conventionSettings,

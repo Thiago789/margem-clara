@@ -341,6 +341,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "convention-settings-addon.js",
+      snippet: "getPublicValidationCoverage",
+      message: "Fonte publica deve expor cobertura estruturada para homologacao e prontidao.",
+    },
+    {
+      file: "convention-settings-addon.js",
       snippet: "Desatualizada",
       message: "Fonte publica deve marcar evidencia antiga como desatualizada.",
     },
@@ -380,6 +385,11 @@ function checkRecentDecisionCoverage() {
       message: "Homologacao deve exigir evidencia auditada de fonte publica.",
     },
     {
+      file: "pilot-qa-addon.js",
+      snippet: "publicValidationCoverage.complete",
+      message: "Homologacao deve exigir cobertura fresca de fonte publica.",
+    },
+    {
       file: "operational-queue-addon.js",
       snippet: "publicValidationPending",
       message: "Fila operacional deve cobrar evidencia publica configurada e ainda nao auditada.",
@@ -413,6 +423,11 @@ function checkRecentDecisionCoverage() {
       file: "readiness-addon.js",
       snippet: "hasPublicValidationSource",
       message: "Prontidao deve reconhecer consulta de fonte publica configuravel.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "publicValidationCoverage.complete",
+      message: "Prontidao deve diferenciar fonte publica configurada de evidencia fresca.",
     },
     {
       file: "pilot-qa-addon.js",

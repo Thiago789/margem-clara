@@ -41,6 +41,9 @@ function getReadinessGroups() {
   const hasApiPlan = profileConfig.manager.views.includes("api") || profileConfig.manager.views.includes("integrations");
   const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
   const hasPublicValidationSource = Boolean(state.conventionSettings?.publicValidationSourceEnabled && typeof getPublicValidationEvidence === "function");
+  const publicValidationCoverage = typeof getPublicValidationCoverage === "function"
+    ? getPublicValidationCoverage()
+    : { complete: false, recorded: 0 };
 
   const status = (condition, mapped = "Mapeado", pending = "Pendente") => (condition ? mapped : pending);
   const scoreFromItems = (items) => {
@@ -99,7 +102,14 @@ function getReadinessGroups() {
         ["API interna desenhada", status(hasApiPlan)],
         ["Webhooks de eventos", "Pesquisa"],
         ["Conector de folha", "Futuro"],
-        ["Consulta de fonte publica", status(hasPublicValidationSource, "Demo", "Pesquisa")],
+        [
+          "Consulta de fonte publica",
+          publicValidationCoverage.complete
+            ? "Demo"
+            : publicValidationCoverage.recorded
+              ? "Parcial"
+              : status(hasPublicValidationSource, "Pesquisa", "Pendente"),
+        ],
       ],
     },
   ];

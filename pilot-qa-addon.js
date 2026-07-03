@@ -42,6 +42,9 @@ function getPilotQaScenarios() {
   const hasPilotConvention = Boolean(state.conventionSettings?.name && state.conventionSettings?.code);
   const hasPublicValidationSource = Boolean(state.conventionSettings?.publicValidationSourceEnabled && typeof getPublicValidationEvidence === "function");
   const hasPublicValidationAudit = movements.some((movement) => movement.source === "Validacao do servidor" && /fonte publica/i.test(movement.text || ""));
+  const publicValidationCoverage = typeof getPublicValidationCoverage === "function"
+    ? getPublicValidationCoverage()
+    : { configured: hasPublicValidationSource, total: employees.length, recorded: 0, fresh: 0, stale: 0, complete: false };
   const activeCodes = codes.filter((code) => code.status === "Ativo");
   const requiresMarginConsult = policy.requireAuthorizationForMarginConsult !== false;
   const requiresReservationCode = policy.requireAuthorizationForReservation !== false;
@@ -90,13 +93,17 @@ function getPilotQaScenarios() {
       area: "Validacao",
       title: "Fonte publica configuravel e auditavel",
       expected: "Convenio deve permitir fonte publica ou oficial para validar servidor e registrar evidencia auditavel.",
-      evidence: hasPublicValidationAudit
-        ? "Existe evidencia de fonte publica registrada na auditoria."
+      evidence: publicValidationCoverage.complete
+        ? `Fonte publica com evidencia fresca para ${publicValidationCoverage.fresh}/${publicValidationCoverage.total} servidor(es).`
+        : publicValidationCoverage.recorded
+          ? `Evidencias registradas: ${publicValidationCoverage.recorded}/${publicValidationCoverage.total}; frescas: ${publicValidationCoverage.fresh}; desatualizadas: ${publicValidationCoverage.stale}.`
+          : hasPublicValidationAudit
+            ? "Existe auditoria antiga de fonte publica; registre snapshot estruturado na tela de validacao."
         : hasPublicValidationSource
           ? `${state.conventionSettings.publicValidationSourceName || "Fonte publica"} configurada; registre evidencia na tela de validacao.`
           : "Fonte publica ainda nao configurada no convenio.",
       target: "identity",
-      ok: hasPublicValidationSource && hasPublicValidationAudit,
+      ok: hasPublicValidationSource && publicValidationCoverage.complete,
     },
     {
       area: "Consignataria",
