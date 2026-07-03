@@ -159,6 +159,101 @@ async function exercisePublicValidationBatch(page, scenarioName) {
   }
 }
 
+async function exerciseFileProtocolSnapshot(page, scenarioName) {
+  await openView(page, "protocols");
+  await expectVisible(page, "#protocols-audit-button", `${scenarioName}: botao de protocolo de arquivo`);
+  await page.locator("#protocols-audit-button").click();
+  await expectVisible(page, "#protocol-summary-grid", `${scenarioName}: resumo de protocolos`);
+
+  const result = await page.evaluate(() => {
+    const protocol = state.lastFileProtocol;
+    const auditFound = state.movements.some(
+      (movement) =>
+        movement.source === "Protocolos de arquivo" &&
+        /Protocolo de remessa registrado/i.test(movement.text || "")
+    );
+
+    return {
+      hasProtocol: Boolean(protocol),
+      totalBatches: protocol?.totalBatches || 0,
+      records: protocol?.records || 0,
+      status: protocol?.status || "",
+      auditFound,
+    };
+  });
+
+  if (!result.hasProtocol) {
+    fail(`${scenarioName}: protocolo de arquivo nao congelou snapshot.`);
+  }
+  if (result.totalBatches <= 0 || result.records <= 0) {
+    fail(`${scenarioName}: protocolo registrado sem lotes ou registros.`);
+  }
+  if (!["Com pendencia", "Parcial", "Registrado"].includes(result.status)) {
+    fail(`${scenarioName}: protocolo registrado com status inesperado: ${result.status}.`);
+  }
+  if (!result.auditFound) {
+    fail(`${scenarioName}: protocolo registrado nao gerou auditoria.`);
+  }
+}
+
+async function exercisePayrollClosingDecision(page, scenarioName) {
+  await openView(page, "closing");
+  await expectVisible(page, "#closing-audit-button", `${scenarioName}: botao de decisao de fechamento`);
+  await page.locator("#closing-audit-button").click();
+  await expectVisible(page, "#closing-decision-panel", `${scenarioName}: painel de decisao de fechamento`);
+
+  const result = await page.evaluate(() => {
+    const data = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
+    const freshness = typeof getPayrollClosingDecisionFreshness === "function"
+      ? getPayrollClosingDecisionFreshness(data)
+      : null;
+    const auditFound = state.movements.some(
+      (movement) =>
+        movement.source === "Fechamento" &&
+        /Decisao de fechamento registrada/i.test(movement.text || "")
+    );
+
+    return {
+      hasDecision: Boolean(state.lastPayrollClosingDecision),
+      fresh: Boolean(freshness?.fresh),
+      label: freshness?.label || "",
+      auditFound,
+    };
+  });
+
+  if (!result.hasDecision) {
+    fail(`${scenarioName}: decisao de fechamento nao foi registrada.`);
+  }
+  if (!result.fresh) {
+    fail(`${scenarioName}: decisao de fechamento registrada ja nasceu desatualizada (${result.label}).`);
+  }
+  if (!result.auditFound) {
+    fail(`${scenarioName}: decisao de fechamento nao gerou auditoria.`);
+  }
+
+  const staleResult = await page.evaluate(() => {
+    const contract = state.contracts[0];
+    if (!contract) return { hasContract: false };
+
+    contract.status = contract.status === "Enviado para folha" ? "Reservado" : "Enviado para folha";
+    saveState();
+
+    const freshness = getPayrollClosingDecisionFreshness();
+    return {
+      hasContract: true,
+      fresh: Boolean(freshness?.fresh),
+      label: freshness?.label || "",
+    };
+  });
+
+  if (!staleResult.hasContract) {
+    fail(`${scenarioName}: massa sem contrato para testar fechamento desatualizado.`);
+  }
+  if (staleResult.fresh || staleResult.label !== "Desatualizada") {
+    fail(`${scenarioName}: mudanca contratual nao invalidou decisao de fechamento.`);
+  }
+}
+
 async function expectPageUsable(page, label) {
   const layout = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
@@ -221,6 +316,8 @@ async function runScenario(browser, scenario) {
     await expectPageUsable(page, `${scenario.name}: ${view}`);
   }
 
+  await exerciseFileProtocolSnapshot(page, scenario.name);
+  await exercisePayrollClosingDecision(page, scenario.name);
   await exercisePublicValidationBatch(page, scenario.name);
 
   const guardedViews = await page.evaluate(() => {

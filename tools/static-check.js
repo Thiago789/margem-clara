@@ -945,6 +945,8 @@ function checkSmokeTestExists() {
     "mobile",
     "expectPageUsable",
     "exercisePublicValidationBatch",
+    "exerciseFileProtocolSnapshot",
+    "exercisePayrollClosingDecision",
     "identity-public-batch-button",
     "getPilotQaScenarios",
     "Consulta de fonte publica",
@@ -955,7 +957,10 @@ function checkSmokeTestExists() {
     "authenticity-signal-list",
     "validation-audit-button",
     "protocols-audit-button",
+    "Protocolo de remessa registrado",
     "closing-audit-button",
+    "Decisao de fechamento registrada",
+    "getPayrollClosingDecisionFreshness",
     "qa-audit-button",
   ].forEach((snippet) => {
     if (!content.includes(snippet)) {
