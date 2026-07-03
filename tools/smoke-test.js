@@ -124,6 +124,39 @@ async function exercisePublicValidationBatch(page, scenarioName) {
   if (result.readinessStatus !== "Demo") {
     fail(`${scenarioName}: prontidao nao marcou fonte publica como Demo apos lote.`);
   }
+
+  const staleResult = await page.evaluate(() => {
+    const employee = state.employees.find((item) => item.status === "Ativo") || state.employees[0];
+    if (!employee) return { hasEmployee: false };
+
+    employee.enrollment = `${employee.enrollment}-ALT`;
+    saveState();
+
+    const evidence = getPublicValidationEvidence(employee);
+    const queue = typeof getOperationalQueueData === "function" ? getOperationalQueueData() : null;
+    const queueFound = Boolean(
+      queue?.items.some(
+        (item) => item.area === "Validacao publica" && /desatualizada/i.test(item.detail || "")
+      )
+    );
+
+    return {
+      hasEmployee: true,
+      stale: Boolean(evidence?.stale),
+      status: evidence?.status || "",
+      queueFound,
+    };
+  });
+
+  if (!staleResult.hasEmployee) {
+    fail(`${scenarioName}: massa sem servidor para teste de evidencia desatualizada.`);
+  }
+  if (!staleResult.stale || staleResult.status !== "Desatualizada") {
+    fail(`${scenarioName}: mudanca no servidor nao marcou fonte publica como desatualizada.`);
+  }
+  if (!staleResult.queueFound) {
+    fail(`${scenarioName}: fila nao cobrou evidencia publica desatualizada.`);
+  }
 }
 
 async function expectPageUsable(page, label) {

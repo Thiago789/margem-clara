@@ -161,6 +161,7 @@ O MVP ja possui uma base navegavel com:
 - Smoke test automatico deve percorrer a jornada principal do gestor em navegador headless, cobrindo cockpit, fila, fluxo piloto, validacao, protocolos, fechamento, homologacao, prontidao, roadmap, auditoria, responsividade mobile, overflow horizontal e rolagem vertical.
 - Smoke test deve executar pelo menos uma acao operacional real e validar persistencia/auditoria, comecando pelo registro em lote da fonte publica.
 - Smoke test de fonte publica deve validar tambem reflexo em homologacao e prontidao, nao apenas gravacao local.
+- Smoke test deve validar que mudanca posterior no servidor torna a fonte publica desatualizada e abre pendencia na fila.
 - Repositorio publico deve ter checagem local de seguranca para bloquear `.env`, chaves privadas e tokens reais antes de publicar no GitHub Pages.
 - Evidencia de fonte publica deve ser registrada com snapshot do servidor/convenio e marcada como desatualizada quando dados ou configuracao mudarem.
 - Homologacao e prontidao devem aceitar fonte publica apenas quando houver cobertura estruturada e atualizada da massa piloto.

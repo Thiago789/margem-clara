@@ -948,6 +948,8 @@ function checkSmokeTestExists() {
     "identity-public-batch-button",
     "getPilotQaScenarios",
     "Consulta de fonte publica",
+    "Desatualizada",
+    "getOperationalQueueData",
     "dashboard-command-center",
     "identity-public-evidence-button",
     "authenticity-signal-list",
