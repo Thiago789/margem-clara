@@ -74,10 +74,12 @@ function getOperationalQueueData() {
     !state.lastFileProtocol &&
       (state.lastMarginValidation || state.lastInsertionValidation || state.lastReturnReconciliation)
   );
+  const publicValidationCoverage = typeof getPublicValidationCoverage === "function"
+    ? getPublicValidationCoverage()
+    : null;
   const publicValidationPending = Boolean(
-    state.conventionSettings?.publicValidationSourceEnabled &&
-      typeof getPublicValidationEvidence === "function" &&
-      !state.movements.some((movement) => movement.source === "Validacao do servidor" && /fonte publica/i.test(movement.text || ""))
+    publicValidationCoverage?.configured &&
+      publicValidationCoverage.pending > 0
   );
   const stalePublicValidations = typeof getPublicValidationEvidence === "function"
     ? state.employees.filter((employee) => getPublicValidationEvidence(employee)?.stale)
@@ -167,7 +169,7 @@ function getOperationalQueueData() {
             className: "warning",
             area: "Validacao publica",
             title: state.conventionSettings.publicValidationSourceName || "Fonte publica",
-            detail: "Fonte publica configurada, mas ainda sem evidencia registrada na auditoria da validacao do servidor.",
+            detail: `Cobertura incompleta: ${publicValidationCoverage.recorded}/${publicValidationCoverage.total} servidor(es) registrado(s), ${publicValidationCoverage.pending} pendente(s).`,
             target: "identity",
           },
         ]
@@ -214,7 +216,7 @@ function getOperationalQueueData() {
     })),
   ];
 
-  return { reserved, sent, rejected, reviewEmployees, negativeEmployees, stalePublicValidations, missingInstallmentProgress, openTickets, items };
+  return { reserved, sent, rejected, reviewEmployees, negativeEmployees, publicValidationCoverage, stalePublicValidations, missingInstallmentProgress, openTickets, items };
 }
 
 function renderOperationalQueue() {

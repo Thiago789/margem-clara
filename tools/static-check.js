@@ -406,6 +406,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "operational-queue-addon.js",
+      snippet: "publicValidationCoverage.pending",
+      message: "Fila operacional deve usar cobertura estruturada para cobrar fonte publica pendente.",
+    },
+    {
+      file: "operational-queue-addon.js",
       snippet: "stalePublicValidations",
       message: "Fila operacional deve cobrar evidencia publica desatualizada.",
     },
