@@ -731,6 +731,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-qa-addon.js",
+      snippet: "getPilotQaApprovalFreshness",
+      message: "Homologacao deve detectar aceite registrado desatualizado.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "getPilotQaApprovalSnapshot",
+      message: "Homologacao deve comparar o checkpoint com as evidencias atuais.",
+    },
+    {
+      file: "pilot-qa-addon.js",
       snippet: "Evidencias do aceite",
       message: "Homologacao deve exibir evidencias criticas do ultimo aceite.",
     },
@@ -773,6 +783,11 @@ function checkRecentDecisionCoverage() {
       file: "readiness-addon.js",
       snippet: "qaApprovalScore",
       message: "Prontidao deve considerar aceite registrado na homologacao.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "qaApprovalFreshness.fresh",
+      message: "Prontidao deve considerar somente aceite de homologacao atualizado.",
     },
     {
       file: "readiness-addon.js",
@@ -838,6 +853,11 @@ function checkRecentDecisionCoverage() {
       file: "dashboard-command-addon.js",
       snippet: "dashboardQaApprovalEvidence",
       message: "Painel inicial deve expor evidencias do aceite de homologacao.",
+    },
+    {
+      file: "dashboard-command-addon.js",
+      snippet: "getPilotQaApprovalFreshness",
+      message: "Painel inicial deve avisar quando o aceite de homologacao estiver desatualizado.",
     },
     {
       file: "dashboard-command-addon.js",
@@ -947,6 +967,7 @@ function checkSmokeTestExists() {
     "exercisePublicValidationBatch",
     "exerciseFileProtocolSnapshot",
     "exercisePayrollClosingDecision",
+    "exercisePilotQaApprovalFreshness",
     "identity-public-batch-button",
     "getPilotQaScenarios",
     "Consulta de fonte publica",
@@ -962,6 +983,7 @@ function checkSmokeTestExists() {
     "Decisao de fechamento registrada",
     "getPayrollClosingDecisionFreshness",
     "qa-audit-button",
+    "getPilotQaApprovalFreshness",
   ].forEach((snippet) => {
     if (!content.includes(snippet)) {
       fail(`tools/smoke-test.js nao cobre o trecho esperado: ${snippet}.`);

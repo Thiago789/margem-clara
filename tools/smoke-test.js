@@ -230,6 +230,39 @@ async function exercisePayrollClosingDecision(page, scenarioName) {
   if (!result.auditFound) {
     fail(`${scenarioName}: decisao de fechamento nao gerou auditoria.`);
   }
+}
+
+async function exercisePilotQaApprovalFreshness(page, scenarioName) {
+  await openView(page, "qa");
+  await expectVisible(page, "#qa-audit-button", `${scenarioName}: botao de homologacao`);
+  await page.locator("#qa-audit-button").click();
+  await expectVisible(page, "#qa-summary-grid", `${scenarioName}: resumo de homologacao`);
+
+  const result = await page.evaluate(() => {
+    const freshness = typeof getPilotQaApprovalFreshness === "function" ? getPilotQaApprovalFreshness() : null;
+    const auditFound = state.movements.some(
+      (movement) =>
+        movement.source === "Homologacao" &&
+        /Homologacao do MVP registrada/i.test(movement.text || "")
+    );
+
+    return {
+      hasApproval: Boolean(state.pilotQaApproval),
+      fresh: Boolean(freshness?.fresh),
+      label: freshness?.label || "",
+      auditFound,
+    };
+  });
+
+  if (!result.hasApproval) {
+    fail(`${scenarioName}: homologacao nao registrou checkpoint.`);
+  }
+  if (!result.fresh) {
+    fail(`${scenarioName}: homologacao registrada ja nasceu desatualizada (${result.label}).`);
+  }
+  if (!result.auditFound) {
+    fail(`${scenarioName}: homologacao registrada nao gerou auditoria.`);
+  }
 
   const staleResult = await page.evaluate(() => {
     const contract = state.contracts[0];
@@ -238,19 +271,25 @@ async function exercisePayrollClosingDecision(page, scenarioName) {
     contract.status = contract.status === "Enviado para folha" ? "Reservado" : "Enviado para folha";
     saveState();
 
-    const freshness = getPayrollClosingDecisionFreshness();
+    const closingFreshness = getPayrollClosingDecisionFreshness();
+    const approvalFreshness = getPilotQaApprovalFreshness();
     return {
       hasContract: true,
-      fresh: Boolean(freshness?.fresh),
-      label: freshness?.label || "",
+      closingFresh: Boolean(closingFreshness?.fresh),
+      closingLabel: closingFreshness?.label || "",
+      approvalFresh: Boolean(approvalFreshness?.fresh),
+      approvalLabel: approvalFreshness?.label || "",
     };
   });
 
   if (!staleResult.hasContract) {
     fail(`${scenarioName}: massa sem contrato para testar fechamento desatualizado.`);
   }
-  if (staleResult.fresh || staleResult.label !== "Desatualizada") {
+  if (staleResult.closingFresh || staleResult.closingLabel !== "Desatualizada") {
     fail(`${scenarioName}: mudanca contratual nao invalidou decisao de fechamento.`);
+  }
+  if (staleResult.approvalFresh || staleResult.approvalLabel !== "Desatualizado") {
+    fail(`${scenarioName}: mudanca contratual nao invalidou aceite de homologacao.`);
   }
 }
 
@@ -318,6 +357,7 @@ async function runScenario(browser, scenario) {
 
   await exerciseFileProtocolSnapshot(page, scenario.name);
   await exercisePayrollClosingDecision(page, scenario.name);
+  await exercisePilotQaApprovalFreshness(page, scenario.name);
   await exercisePublicValidationBatch(page, scenario.name);
 
   const guardedViews = await page.evaluate(() => {

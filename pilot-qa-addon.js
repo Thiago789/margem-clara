@@ -286,9 +286,8 @@ function getPilotQaStageSummary() {
   };
 }
 
-function recordPilotQaApproval(decision) {
-  state.pilotQaApproval = {
-    date: today(),
+function getPilotQaApprovalSnapshot(decision) {
+  return {
     approved: decision.approved,
     total: decision.approved + decision.pending,
     score: decision.score,
@@ -300,6 +299,43 @@ function recordPilotQaApproval(decision) {
       ? `${state.lastPayrollClosingDecision.decision}, ${state.lastPayrollClosingDecision.blockers} bloqueio(s)`
       : "Fechamento pendente",
     nextPending: decision.pending ? decision.next.title : "Sem pendencia de aceite",
+  };
+}
+
+function recordPilotQaApproval(decision) {
+  state.pilotQaApproval = {
+    ...getPilotQaApprovalSnapshot(decision),
+    date: today(),
+  };
+}
+
+function getPilotQaApprovalFreshness(scenarios = getPilotQaScenarios()) {
+  const approval = state.pilotQaApproval;
+  if (!approval) {
+    return {
+      fresh: false,
+      label: "Nao registrado",
+      detail: "Registre a homologacao para congelar o checkpoint.",
+    };
+  }
+
+  const current = getPilotQaApprovalSnapshot(getPilotQaDecision(scenarios));
+  const changed = [
+    approval.approved !== current.approved,
+    approval.total !== current.total,
+    approval.score !== current.score,
+    approval.status !== current.status,
+    approval.protocol !== current.protocol,
+    approval.closing !== current.closing,
+    approval.nextPending !== current.nextPending,
+  ].some(Boolean);
+
+  return {
+    fresh: !changed,
+    label: changed ? "Desatualizado" : approval.status,
+    detail: changed
+      ? `Atual: ${current.approved}/${current.total} criterio(s), protocolo ${current.protocol}, fechamento ${current.closing}. Registre novamente.`
+      : `${approval.date || "data nao informada"} - ${approval.approved}/${approval.total} criterio(s), ${approval.score}%.`,
   };
 }
 
@@ -384,9 +420,12 @@ function renderPilotQa() {
   const decision = getPilotQaDecision(scenarios);
   const stage = getPilotQaStage(decision);
   const approval = state.pilotQaApproval;
-  const approvalLabel = approval ? `${approval.score || 0}% em ${approval.date || "data nao informada"}` : "Nao registrado";
+  const approvalFreshness = getPilotQaApprovalFreshness(scenarios);
+  const approvalLabel = approval
+    ? `${approval.score || 0}% em ${approval.date || "data nao informada"} - ${approvalFreshness.label}`
+    : "Nao registrado";
   const approvalEvidence = approval
-    ? `${approval.protocol || "Protocolo nao informado"}; ${approval.closing || "fechamento nao informado"}.`
+    ? `${approval.protocol || "Protocolo nao informado"}; ${approval.closing || "fechamento nao informado"}. ${approvalFreshness.detail}`
     : "Registre a homologacao para congelar o checkpoint.";
 
   command.innerHTML = `
@@ -410,7 +449,7 @@ function renderPilotQa() {
     ["Pendentes", decision.pending],
     ["Maturidade", `${decision.score}%`],
     ["Ultimo aceite", approvalLabel],
-    ["Evidencias do aceite", approval ? approval.status : "Pendente", approvalEvidence],
+    ["Evidencias do aceite", approval ? approvalFreshness.label : "Pendente", approvalEvidence],
     [
       "Proxima pendencia",
       approval?.nextPending === "Sem pendencia de aceite" ? "Nenhuma" : "Pendente",

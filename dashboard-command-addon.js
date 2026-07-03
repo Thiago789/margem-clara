@@ -89,13 +89,15 @@ function dashboardRoadmapFocus() {
 function dashboardQaApprovalLabel() {
   const approval = state.pilotQaApproval;
   if (!approval) return "aceite nao registrado";
-  return `${approval.score || 0}% em ${approval.date || "data nao informada"}`;
+  const freshness = typeof getPilotQaApprovalFreshness === "function" ? getPilotQaApprovalFreshness() : { label: approval.status || "Checkpoint" };
+  return `${approval.score || 0}% em ${approval.date || "data nao informada"} - ${freshness.label || approval.status || "Checkpoint"}`;
 }
 
 function dashboardQaApprovalEvidence() {
   const approval = state.pilotQaApproval;
   if (!approval) return "Sem evidencias de aceite congeladas.";
-  return `${approval.status || "Checkpoint"}; ${approval.protocol || "protocolo nao informado"}; ${approval.closing || "fechamento nao informado"}; pendencia: ${approval.nextPending || "nao informada"}.`;
+  const freshness = typeof getPilotQaApprovalFreshness === "function" ? getPilotQaApprovalFreshness() : { detail: "" };
+  return `${freshness.label || approval.status || "Checkpoint"}; ${approval.protocol || "protocolo nao informado"}; ${approval.closing || "fechamento nao informado"}; pendencia: ${approval.nextPending || "nao informada"}. ${freshness.detail || ""}`;
 }
 
 function dashboardQaStageLabel() {

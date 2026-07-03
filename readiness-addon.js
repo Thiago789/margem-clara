@@ -14,7 +14,10 @@ function getReadinessGroups() {
   const qaScenarios = typeof getPilotQaScenarios === "function" ? getPilotQaScenarios() : [];
   const qaApproved = qaScenarios.filter((scenario) => scenario.ok).length;
   const qaScore = qaScenarios.length ? Math.round((qaApproved / qaScenarios.length) * 100) : 0;
-  const qaApprovalScore = Number(state.pilotQaApproval?.score || 0);
+  const qaApprovalFreshness = typeof getPilotQaApprovalFreshness === "function"
+    ? getPilotQaApprovalFreshness(qaScenarios)
+    : { fresh: Boolean(state.pilotQaApproval), label: state.pilotQaApproval ? state.pilotQaApproval.status : "Nao registrado" };
+  const qaApprovalScore = qaApprovalFreshness.fresh ? Number(state.pilotQaApproval?.score || 0) : 0;
   const homologationScore = Math.max(qaScore, qaApprovalScore);
   const closingData = typeof getPayrollClosingData === "function" ? getPayrollClosingData() : null;
   const closingFreshness = typeof getPayrollClosingDecisionFreshness === "function" && closingData
@@ -148,13 +151,15 @@ function getReadinessNextAction(decision) {
 function getReadinessApprovalLabel() {
   const approval = state.pilotQaApproval;
   if (!approval) return "Aceite ainda nao registrado";
-  return `${approval.status || "Checkpoint"}: ${approval.score || 0}% em ${approval.date || "data nao informada"}`;
+  const freshness = typeof getPilotQaApprovalFreshness === "function" ? getPilotQaApprovalFreshness() : { label: approval.status || "Checkpoint" };
+  return `${freshness.label || approval.status || "Checkpoint"}: ${approval.score || 0}% em ${approval.date || "data nao informada"}`;
 }
 
 function getReadinessApprovalEvidence() {
   const approval = state.pilotQaApproval;
   if (!approval) return "Registre a homologacao para congelar protocolo, fechamento e proxima pendencia.";
-  return `Protocolo: ${approval.protocol || "nao informado"}. Fechamento: ${approval.closing || "nao informado"}. Proxima pendencia: ${approval.nextPending || "nao informada"}.`;
+  const freshness = typeof getPilotQaApprovalFreshness === "function" ? getPilotQaApprovalFreshness() : { detail: "" };
+  return `Protocolo: ${approval.protocol || "nao informado"}. Fechamento: ${approval.closing || "nao informado"}. Proxima pendencia: ${approval.nextPending || "nao informada"}. ${freshness.detail || ""}`;
 }
 
 function ensureReadinessView() {
