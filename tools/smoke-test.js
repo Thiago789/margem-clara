@@ -86,6 +86,14 @@ async function exercisePublicValidationBatch(page, scenarioName) {
 
   const result = await page.evaluate(() => {
     const coverage = typeof getPublicValidationCoverage === "function" ? getPublicValidationCoverage() : null;
+    const qaPublicScenario = typeof getPilotQaScenarios === "function"
+      ? getPilotQaScenarios().find((scenario) => scenario.title === "Fonte publica configuravel e auditavel")
+      : null;
+    const readinessPublicItem = typeof getReadinessGroups === "function"
+      ? getReadinessGroups()
+          .flatMap((group) => group.items)
+          .find(([label]) => label === "Consulta de fonte publica")
+      : null;
     const auditFound = state.movements.some(
       (movement) =>
         movement.source === "Validacao do servidor" &&
@@ -96,6 +104,8 @@ async function exercisePublicValidationBatch(page, scenarioName) {
       fresh: coverage?.fresh || 0,
       total: coverage?.total || 0,
       auditFound,
+      qaOk: Boolean(qaPublicScenario?.ok),
+      readinessStatus: readinessPublicItem?.[1] || "",
     };
   });
 
@@ -107,6 +117,12 @@ async function exercisePublicValidationBatch(page, scenarioName) {
   }
   if (!result.auditFound) {
     fail(`${scenarioName}: registro em lote nao gerou auditoria.`);
+  }
+  if (!result.qaOk) {
+    fail(`${scenarioName}: homologacao nao reconheceu cobertura fresca de fonte publica.`);
+  }
+  if (result.readinessStatus !== "Demo") {
+    fail(`${scenarioName}: prontidao nao marcou fonte publica como Demo apos lote.`);
   }
 }
 

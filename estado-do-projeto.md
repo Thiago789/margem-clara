@@ -160,10 +160,13 @@ O MVP ja possui uma base navegavel com:
 - Decisao de fechamento registrada deve ser marcada como desatualizada quando bloqueios, ressalvas, protocolos ou conciliacao mudarem depois do registro.
 - Smoke test automatico deve percorrer a jornada principal do gestor em navegador headless, cobrindo cockpit, fila, fluxo piloto, validacao, protocolos, fechamento, homologacao, prontidao, roadmap, auditoria, responsividade mobile, overflow horizontal e rolagem vertical.
 - Smoke test deve executar pelo menos uma acao operacional real e validar persistencia/auditoria, comecando pelo registro em lote da fonte publica.
+- Smoke test de fonte publica deve validar tambem reflexo em homologacao e prontidao, nao apenas gravacao local.
 - Repositorio publico deve ter checagem local de seguranca para bloquear `.env`, chaves privadas e tokens reais antes de publicar no GitHub Pages.
 - Evidencia de fonte publica deve ser registrada com snapshot do servidor/convenio e marcada como desatualizada quando dados ou configuracao mudarem.
 - Homologacao e prontidao devem aceitar fonte publica apenas quando houver cobertura estruturada e atualizada da massa piloto.
+- Cobertura atualizada de fonte publica significa snapshot fresco para todos os servidores; o status `Conferir` continua sendo tratado como risco operacional, nao como ausencia de evidencia.
 - Tela de validacao do servidor deve permitir registro em lote e mostrar cobertura de fonte publica por total, registrados, frescos, desatualizados e pendentes.
+- Registro em lote de fonte publica deve salvar snapshot tambem para servidores com status `Conferir`, mantendo o risco visivel sem perder cobertura.
 - Fila operacional deve cobrar fonte publica pela cobertura estruturada, nao apenas por existencia de evento antigo na auditoria.
 - Painel inicial deve mostrar a cobertura de fonte publica e abrir a validacao do servidor quando houver pendencia.
 - Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.

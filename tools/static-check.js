@@ -946,6 +946,8 @@ function checkSmokeTestExists() {
     "expectPageUsable",
     "exercisePublicValidationBatch",
     "identity-public-batch-button",
+    "getPilotQaScenarios",
+    "Consulta de fonte publica",
     "dashboard-command-center",
     "identity-public-evidence-button",
     "authenticity-signal-list",

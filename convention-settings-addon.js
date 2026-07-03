@@ -395,7 +395,7 @@ function getPublicValidationCoverage() {
       }))
     : [];
   const recorded = readings.filter((item) => Boolean(item.record));
-  const fresh = readings.filter((item) => item.record && item.evidence?.status === "Encontrado" && !item.evidence?.stale);
+  const fresh = readings.filter((item) => item.record && !item.evidence?.stale);
   const stale = readings.filter((item) => item.evidence?.stale);
 
   return {
@@ -405,7 +405,7 @@ function getPublicValidationCoverage() {
     fresh: fresh.length,
     stale: stale.length,
     pending: Math.max(employees.length - recorded.length, 0),
-    complete: Boolean(configured && employees.length && fresh.length === employees.length && stale.length === 0),
+    complete: Boolean(configured && employees.length && recorded.length === employees.length && stale.length === 0),
   };
 }
 

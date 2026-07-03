@@ -169,7 +169,7 @@ function recordPublicValidationBatch() {
   const records = state.employees
     .map((employee) => {
       const evidence = getPublicValidationEvidence(employee);
-      const shouldRecord = evidence?.configured && evidence.status === "Encontrado";
+      const shouldRecord = evidence?.configured;
       return shouldRecord ? savePublicValidationEvidence(employee, evidence) : null;
     })
     .filter(Boolean);
