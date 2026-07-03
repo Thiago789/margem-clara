@@ -896,6 +896,27 @@ function checkSmokeTestExists() {
   });
 }
 
+function checkSecurityCheckExists() {
+  const security = "tools/security-check.js";
+  if (!exists(security)) {
+    fail("Security check nao encontrado em tools/security-check.js.");
+    return;
+  }
+
+  const content = read(security);
+  [
+    "secretPatterns",
+    "token OpenAI",
+    "token GitHub",
+    ".env",
+    "Security check passed",
+  ].forEach((snippet) => {
+    if (!content.includes(snippet)) {
+      fail(`tools/security-check.js nao cobre o trecho esperado: ${snippet}.`);
+    }
+  });
+}
+
 function checkAsciiMarkdownDocs() {
   fs.readdirSync(root)
     .filter((file) => file.endsWith(".md"))
@@ -919,6 +940,7 @@ checkJourneyViewsExist();
 checkRecentDecisionCoverage();
 checkDocumentationBasics();
 checkSmokeTestExists();
+checkSecurityCheckExists();
 checkAsciiMarkdownDocs();
 
 if (failures.length) {

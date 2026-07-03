@@ -66,6 +66,16 @@ node tools/smoke-test.js
 
 Esse teste abre o MVP localmente em desktop e mobile, percorre Dashboard, Fila, Fluxo Piloto, Validacao, Protocolos, Fechamento, Homologacao, Prontidao, Roadmap e Auditoria, e falha se houver erro JavaScript, tela essencial ausente, estouro horizontal ou rolagem travada.
 
+## Checagem de seguranca
+
+Antes de publicar alteracoes em repositorio publico, rode:
+
+```text
+node tools/security-check.js
+```
+
+Essa checagem procura segredos obvios, como `.env`, chaves privadas e tokens reais. O MVP publicado no GitHub Pages nao deve receber dados reais, credenciais, certificados ou chaves de API.
+
 Validacoes tecnicas realizadas:
 
 - Arquivos principais criados: `index.html`, `styles.css`, `app.js`.
