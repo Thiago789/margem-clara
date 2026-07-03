@@ -85,21 +85,19 @@ function getFileProtocolBatches() {
 }
 
 function getProtocolStatusClass(status) {
-  if (["Processado com pendencia", "Aguardando retorno", "Pronto para gerar"].includes(status)) return "warning";
+  if (["Processado com pendencia", "Aguardando retorno", "Pronto para gerar", "Desatualizado"].includes(status)) return "warning";
   if (["Pendente", "Bloqueado"].includes(status)) return "danger";
   return "";
 }
 
-function recordFileProtocolSnapshot() {
-  const batches = getFileProtocolBatches();
+function getFileProtocolSnapshot(batches = getFileProtocolBatches()) {
   const pending = batches.filter((batch) => ["Pendente", "Aguardando retorno", "Pronto para gerar"].includes(batch.status)).length;
   const issues = batches.filter((batch) => ["Processado com pendencia", "Bloqueado"].includes(batch.status)).length;
   const records = batches.reduce((total, batch) => total + Number(batch.records || 0), 0);
   const amount = batches.reduce((total, batch) => total + Number(batch.amount || 0), 0);
   const competency = state.conventionSettings?.payrollCompetency || new Date().toISOString().slice(0, 7);
 
-  state.lastFileProtocol = {
-    processedAt: today(),
+  return {
     competency,
     totalBatches: batches.length,
     records,
@@ -120,9 +118,50 @@ function recordFileProtocolSnapshot() {
       evidence: batch.evidence,
     })),
   };
+}
+
+function getFileProtocolFreshness(batches = getFileProtocolBatches()) {
+  const protocol = state.lastFileProtocol;
+  if (!protocol) {
+    return {
+      fresh: false,
+      label: "Pendente",
+      detail: "Registre o protocolo para congelar as remessas da competencia.",
+    };
+  }
+
+  const current = getFileProtocolSnapshot(batches);
+  const changed = [
+    protocol.competency !== current.competency,
+    protocol.totalBatches !== current.totalBatches,
+    protocol.records !== current.records,
+    Number(protocol.amount || 0) !== Number(current.amount || 0),
+    protocol.pending !== current.pending,
+    protocol.issues !== current.issues,
+    protocol.status !== current.status,
+    JSON.stringify(protocol.batches || []) !== JSON.stringify(current.batches),
+  ].some(Boolean);
+
+  return {
+    fresh: !changed,
+    label: changed ? "Desatualizado" : protocol.status,
+    detail: changed
+      ? `Atual: ${current.totalBatches} lote(s), ${current.records} registro(s), ${current.pending} pendencia(s), ${current.issues} divergencia(s). Registre novamente.`
+      : `${protocol.processedAt} - ${protocol.totalBatches} lote(s), ${protocol.records} registro(s).`,
+  };
+}
+
+function recordFileProtocolSnapshot() {
+  const batches = getFileProtocolBatches();
+  const snapshot = getFileProtocolSnapshot(batches);
+
+  state.lastFileProtocol = {
+    ...snapshot,
+    processedAt: today(),
+  };
 
   auditEvent(
-    `Protocolo de remessa registrado: ${batches.length} lote(s), ${records} registro(s), ${pending} pendencia(s), ${issues} divergencia(s).`,
+    `Protocolo de remessa registrado: ${snapshot.totalBatches} lote(s), ${snapshot.records} registro(s), ${snapshot.pending} pendencia(s), ${snapshot.issues} divergencia(s).`,
     "Protocolos de arquivo"
   );
   saveState();
@@ -198,9 +237,10 @@ function renderFileProtocols() {
 
   const batches = getFileProtocolBatches();
   const pending = batches.filter((batch) => ["Pendente", "Aguardando retorno", "Pronto para gerar"].includes(batch.status)).length;
-  const issues = batches.filter((batch) => batch.status === "Processado com pendencia").length;
+  const issues = batches.filter((batch) => ["Processado com pendencia", "Bloqueado"].includes(batch.status)).length;
   const records = batches.reduce((total, batch) => total + batch.records, 0);
   const lastProtocol = state.lastFileProtocol;
+  const protocolFreshness = getFileProtocolFreshness(batches);
 
   summary.innerHTML = [
     { label: "Remessas", value: batches.length },
@@ -209,9 +249,9 @@ function renderFileProtocols() {
     { label: "Com divergencia", value: issues },
     {
       label: "Ultimo protocolo",
-      value: lastProtocol ? lastProtocol.status : "Pendente",
+      value: lastProtocol ? protocolFreshness.label : "Pendente",
       detail: lastProtocol
-        ? `${lastProtocol.processedAt} - ${lastProtocol.totalBatches} lote(s), ${lastProtocol.records} registro(s).`
+        ? protocolFreshness.detail
         : "Clique em Registrar protocolo para congelar o snapshot da competencia.",
     },
   ]

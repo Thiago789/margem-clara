@@ -74,6 +74,10 @@ function getOperationalQueueData() {
     !state.lastFileProtocol &&
       (state.lastMarginValidation || state.lastInsertionValidation || state.lastReturnReconciliation)
   );
+  const protocolFreshness = typeof getFileProtocolFreshness === "function"
+    ? getFileProtocolFreshness()
+    : { fresh: Boolean(state.lastFileProtocol), label: state.lastFileProtocol ? state.lastFileProtocol.status : "Pendente", detail: "" };
+  const protocolRegistrationStale = Boolean(state.lastFileProtocol && !protocolFreshness.fresh);
   const publicValidationCoverage = typeof getPublicValidationCoverage === "function"
     ? getPublicValidationCoverage()
     : null;
@@ -158,6 +162,18 @@ function getOperationalQueueData() {
             area: "Protocolos",
             title: "Protocolo pendente",
             detail: "Existem evidencias de arquivos da competencia, mas o protocolo operacional ainda nao foi registrado.",
+            target: "protocols",
+          },
+        ]
+      : []),
+    ...(protocolRegistrationStale
+      ? [
+          {
+            severity: "Media",
+            className: "warning",
+            area: "Protocolos",
+            title: "Protocolo desatualizado",
+            detail: protocolFreshness.detail || "As evidencias da competencia mudaram depois do ultimo protocolo.",
             target: "protocols",
           },
         ]

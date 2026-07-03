@@ -25,7 +25,11 @@ function getReadinessGroups() {
     : { fresh: Boolean(state.lastPayrollClosingDecision) };
   const hasClosingDecision = Boolean(state.lastPayrollClosingDecision && closingFreshness.fresh);
   const hasClosingBlocker = Boolean(state.lastPayrollClosingDecision?.blockers || closingData?.blockers?.length || !closingFreshness.fresh);
-  const hasProtocols = Boolean(state.lastFileProtocol || marginValidation || insertionValidation || returnReconciliation);
+  const protocolFreshness = typeof getFileProtocolFreshness === "function"
+    ? getFileProtocolFreshness()
+    : { fresh: Boolean(state.lastFileProtocol) };
+  const hasProtocols = Boolean(state.lastFileProtocol && protocolFreshness.fresh);
+  const hasFileEvidence = Boolean(marginValidation || insertionValidation || returnReconciliation);
   const hasAccessMatrix = profileConfig.manager.views.includes("access") && !profileConfig.employee.views.includes("access");
   const hasEnrollments = Array.isArray(state.enrollments) && state.enrollments.length >= state.employees.length;
   const hasFileGuards = Boolean(marginValidation || insertionValidation || returnReconciliation);
@@ -76,7 +80,7 @@ function getReadinessGroups() {
         ["Layout de margem importada", status(hasMarginGuard, "Demo", "Parcial")],
         ["Arquivo de insercao para folha", status(hasInsertionGuard, "Demo", "Mapeado")],
         ["Arquivo retorno com motivos", status(hasReturnGuard, "Demo", "Mapeado")],
-        ["Protocolos por competencia", status(hasProtocols, "Parcial")],
+        ["Protocolos por competencia", hasProtocols ? "Parcial" : status(hasFileEvidence, "Pendente")],
         ["Fechamento da competencia", hasClosingDecision ? (hasClosingBlocker ? "Parcial" : "Demo") : "Pendente"],
       ],
     },

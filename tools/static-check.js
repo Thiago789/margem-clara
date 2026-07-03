@@ -631,6 +631,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "file-protocol-addon.js",
+      snippet: "getFileProtocolFreshness",
+      message: "Protocolos devem detectar snapshot registrado desatualizado.",
+    },
+    {
+      file: "file-protocol-addon.js",
+      snippet: "getFileProtocolSnapshot",
+      message: "Protocolos devem comparar o snapshot registrado com as remessas atuais.",
+    },
+    {
+      file: "file-protocol-addon.js",
       snippet: "Ultimo protocolo",
       message: "Tela de protocolos deve exibir o ultimo protocolo registrado.",
     },
@@ -638,6 +648,11 @@ function checkRecentDecisionCoverage() {
       file: "readiness-addon.js",
       snippet: "state.lastFileProtocol",
       message: "Prontidao deve reconhecer protocolo registrado da competencia.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "protocolFreshness.fresh",
+      message: "Prontidao deve considerar somente protocolo atualizado.",
     },
     {
       file: "payroll-closing-addon.js",
@@ -686,6 +701,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-qa-addon.js",
+      snippet: "fileProtocolFreshness.fresh",
+      message: "Homologacao deve aceitar somente protocolo atualizado.",
+    },
+    {
+      file: "pilot-qa-addon.js",
       snippet: "Protocolos da competencia registrados",
       message: "Homologacao deve ter criterio explicito para rastreabilidade de protocolos.",
     },
@@ -698,6 +718,11 @@ function checkRecentDecisionCoverage() {
       file: "operational-queue-addon.js",
       snippet: "Protocolo pendente",
       message: "Fila operacional deve abrir pendencia acionavel para protocolos.",
+    },
+    {
+      file: "operational-queue-addon.js",
+      snippet: "protocolRegistrationStale",
+      message: "Fila operacional deve cobrar protocolo desatualizado.",
     },
     {
       file: "roadmap-addon.js",
@@ -979,6 +1004,8 @@ function checkSmokeTestExists() {
     "validation-audit-button",
     "protocols-audit-button",
     "Protocolo de remessa registrado",
+    "getFileProtocolFreshness",
+    "Protocolo desatualizado",
     "closing-audit-button",
     "Decisao de fechamento registrada",
     "getPayrollClosingDecisionFreshness",

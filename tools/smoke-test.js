@@ -167,6 +167,7 @@ async function exerciseFileProtocolSnapshot(page, scenarioName) {
 
   const result = await page.evaluate(() => {
     const protocol = state.lastFileProtocol;
+    const freshness = typeof getFileProtocolFreshness === "function" ? getFileProtocolFreshness() : null;
     const auditFound = state.movements.some(
       (movement) =>
         movement.source === "Protocolos de arquivo" &&
@@ -178,6 +179,8 @@ async function exerciseFileProtocolSnapshot(page, scenarioName) {
       totalBatches: protocol?.totalBatches || 0,
       records: protocol?.records || 0,
       status: protocol?.status || "",
+      fresh: Boolean(freshness?.fresh),
+      freshnessLabel: freshness?.label || "",
       auditFound,
     };
   });
@@ -190,6 +193,9 @@ async function exerciseFileProtocolSnapshot(page, scenarioName) {
   }
   if (!["Com pendencia", "Parcial", "Registrado"].includes(result.status)) {
     fail(`${scenarioName}: protocolo registrado com status inesperado: ${result.status}.`);
+  }
+  if (!result.fresh) {
+    fail(`${scenarioName}: protocolo registrado ja nasceu desatualizado (${result.freshnessLabel}).`);
   }
   if (!result.auditFound) {
     fail(`${scenarioName}: protocolo registrado nao gerou auditoria.`);
@@ -271,25 +277,41 @@ async function exercisePilotQaApprovalFreshness(page, scenarioName) {
     contract.status = contract.status === "Enviado para folha" ? "Reservado" : "Enviado para folha";
     saveState();
 
+    const protocolFreshness = getFileProtocolFreshness();
     const closingFreshness = getPayrollClosingDecisionFreshness();
     const approvalFreshness = getPilotQaApprovalFreshness();
+    const queue = typeof getOperationalQueueData === "function" ? getOperationalQueueData() : null;
+    const queueFound = Boolean(
+      queue?.items.some(
+        (item) => item.area === "Protocolos" && item.title === "Protocolo desatualizado"
+      )
+    );
     return {
       hasContract: true,
+      protocolFresh: Boolean(protocolFreshness?.fresh),
+      protocolLabel: protocolFreshness?.label || "",
       closingFresh: Boolean(closingFreshness?.fresh),
       closingLabel: closingFreshness?.label || "",
       approvalFresh: Boolean(approvalFreshness?.fresh),
       approvalLabel: approvalFreshness?.label || "",
+      queueFound,
     };
   });
 
   if (!staleResult.hasContract) {
     fail(`${scenarioName}: massa sem contrato para testar fechamento desatualizado.`);
   }
+  if (staleResult.protocolFresh || staleResult.protocolLabel !== "Desatualizado") {
+    fail(`${scenarioName}: mudanca contratual nao invalidou protocolo de arquivo.`);
+  }
   if (staleResult.closingFresh || staleResult.closingLabel !== "Desatualizada") {
     fail(`${scenarioName}: mudanca contratual nao invalidou decisao de fechamento.`);
   }
   if (staleResult.approvalFresh || staleResult.approvalLabel !== "Desatualizado") {
     fail(`${scenarioName}: mudanca contratual nao invalidou aceite de homologacao.`);
+  }
+  if (!staleResult.queueFound) {
+    fail(`${scenarioName}: fila nao cobrou protocolo desatualizado.`);
   }
 }
 

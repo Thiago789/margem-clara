@@ -30,6 +30,9 @@ function getPilotQaScenarios() {
     ? getPayrollClosingDecisionFreshness(closingData)
     : { fresh: Boolean(closingDecision), label: closingDecision ? closingDecision.decision : "Pendente" };
   const fileProtocol = state.lastFileProtocol;
+  const fileProtocolFreshness = typeof getFileProtocolFreshness === "function"
+    ? getFileProtocolFreshness()
+    : { fresh: Boolean(fileProtocol), label: fileProtocol ? fileProtocol.status : "Pendente" };
   const closingBlockers = closingData?.blockers?.length || 0;
   const closingWarnings = closingData?.warnings?.length || 0;
   const hasMarginValidation = Boolean(state.lastMarginValidation && !state.lastMarginValidation.blocked);
@@ -174,10 +177,10 @@ function getPilotQaScenarios() {
       title: "Protocolos da competencia registrados",
       expected: "Margem, insercao e retorno devem ter rastreabilidade por competencia, layout, totais e status operacional.",
       evidence: fileProtocol
-        ? `Protocolo registrado: ${fileProtocol.totalBatches} lote(s), ${fileProtocol.records} registro(s), ${fileProtocol.pending} pendencia(s), ${fileProtocol.issues} divergencia(s).`
+        ? `Protocolo registrado: ${fileProtocolFreshness.label}; ${fileProtocol.totalBatches} lote(s), ${fileProtocol.records} registro(s), ${fileProtocol.pending} pendencia(s), ${fileProtocol.issues} divergencia(s).`
         : "Protocolo da competencia ainda nao registrado.",
       target: "protocols",
-      ok: Boolean(fileProtocol),
+      ok: Boolean(fileProtocol) && fileProtocolFreshness.fresh,
     },
     {
       area: "Baixa de parcela",
