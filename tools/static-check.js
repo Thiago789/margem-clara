@@ -361,8 +361,18 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "identity-validation-addon.js",
+      snippet: "identity-public-batch-button",
+      message: "Validacao do servidor deve permitir registro em lote da fonte publica.",
+    },
+    {
+      file: "identity-validation-addon.js",
       snippet: "recordPublicValidationEvidence",
       message: "Validacao do servidor deve centralizar registro auditavel da evidencia publica.",
+    },
+    {
+      file: "identity-validation-addon.js",
+      snippet: "identity-public-coverage",
+      message: "Validacao do servidor deve exibir cobertura da fonte publica.",
     },
     {
       file: "pilot-qa-addon.js",

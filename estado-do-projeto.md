@@ -162,6 +162,7 @@ O MVP ja possui uma base navegavel com:
 - Repositorio publico deve ter checagem local de seguranca para bloquear `.env`, chaves privadas e tokens reais antes de publicar no GitHub Pages.
 - Evidencia de fonte publica deve ser registrada com snapshot do servidor/convenio e marcada como desatualizada quando dados ou configuracao mudarem.
 - Homologacao e prontidao devem aceitar fonte publica apenas quando houver cobertura estruturada e atualizada da massa piloto.
+- Tela de validacao do servidor deve permitir registro em lote e mostrar cobertura de fonte publica por total, registrados, frescos, desatualizados e pendentes.
 - Prontidao V1 deve considerar fechamento da competencia como item proprio de dados e folha.
 - Roadmap deve apontar o proximo foco recomendado a partir da frente com menor prontidao.
 - Painel inicial deve expor o foco recomendado do roadmap para orientar o proximo passo.

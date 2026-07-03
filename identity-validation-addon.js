@@ -35,10 +35,12 @@ function ensureIdentityValidationView() {
           <div class="identity-actions">
             <select id="identity-employee-select" class="select-input"></select>
             <button class="secondary-button" id="identity-public-evidence-button" type="button">Registrar evidencia</button>
+            <button class="primary-button" id="identity-public-batch-button" type="button">Registrar lote</button>
           </div>
         </div>
 
         <div class="identity-grid" id="identity-grid"></div>
+        <section class="panel identity-coverage-panel" id="identity-public-coverage"></section>
 
         <div class="content-grid identity-content">
           <section class="panel">
@@ -66,6 +68,7 @@ function ensureIdentityValidationView() {
 
   document.getElementById("identity-employee-select")?.addEventListener("change", renderIdentityValidation);
   document.getElementById("identity-public-evidence-button")?.addEventListener("click", recordPublicValidationEvidence);
+  document.getElementById("identity-public-batch-button")?.addEventListener("click", recordPublicValidationBatch);
 }
 
 function getIdentityScore(employee) {
@@ -160,13 +163,34 @@ function recordPublicValidationEvidence() {
   openView("identity");
 }
 
+function recordPublicValidationBatch() {
+  if (typeof getPublicValidationEvidence !== "function" || typeof savePublicValidationEvidence !== "function") return;
+
+  const records = state.employees
+    .map((employee) => {
+      const evidence = getPublicValidationEvidence(employee);
+      const shouldRecord = evidence?.configured && evidence.status === "Encontrado";
+      return shouldRecord ? savePublicValidationEvidence(employee, evidence) : null;
+    })
+    .filter(Boolean);
+
+  auditEvent(
+    `Validacao por fonte publica em lote registrada: ${records.length}/${state.employees.length} servidor(es) com snapshot estruturado.`,
+    "Validacao do servidor"
+  );
+  saveState();
+  render();
+  openView("identity");
+}
+
 function renderIdentityValidation() {
   ensureIdentityValidationView();
 
   const select = document.getElementById("identity-employee-select");
   const grid = document.getElementById("identity-grid");
   const checksContainer = document.getElementById("identity-checks");
-  if (!select || !grid || !checksContainer) return;
+  const coveragePanel = document.getElementById("identity-public-coverage");
+  if (!select || !grid || !checksContainer || !coveragePanel) return;
 
   const previousValue = select.value;
   select.innerHTML = state.employees
@@ -220,6 +244,29 @@ function renderIdentityValidation() {
       `
     )
     .join("");
+
+  const coverage = typeof getPublicValidationCoverage === "function" ? getPublicValidationCoverage() : null;
+  coveragePanel.innerHTML = coverage
+    ? `
+      <div class="panel-heading">
+        <h3>Cobertura da fonte publica</h3>
+        <span class="status ${coverage.complete ? "" : "warning"}">${coverage.complete ? "Completa" : "Incompleta"}</span>
+      </div>
+      <div class="identity-coverage-grid">
+        <article><span>Total</span><strong>${coverage.total}</strong></article>
+        <article><span>Registrados</span><strong>${coverage.recorded}</strong></article>
+        <article><span>Frescos</span><strong>${coverage.fresh}</strong></article>
+        <article><span>Desatualizados</span><strong>${coverage.stale}</strong></article>
+        <article><span>Pendentes</span><strong>${coverage.pending}</strong></article>
+      </div>
+    `
+    : `
+      <div class="panel-heading">
+        <h3>Cobertura da fonte publica</h3>
+        <span class="status warning">Indisponivel</span>
+      </div>
+      <p class="muted">Configure a fonte publica do convenio para acompanhar cobertura.</p>
+    `;
 }
 
 const identityStyle = document.createElement("style");
@@ -262,6 +309,30 @@ identityStyle.textContent = `
   .identity-content {
     margin-top: 18px;
   }
+  .identity-coverage-panel {
+    margin-top: 18px;
+  }
+  .identity-coverage-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .identity-coverage-grid article {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .identity-coverage-grid span {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .identity-coverage-grid strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 22px;
+  }
   .validation-list {
     display: grid;
     gap: 10px;
@@ -285,12 +356,14 @@ identityStyle.textContent = `
     font-size: 13px;
   }
   @media (max-width: 1100px) {
-    .identity-grid {
+    .identity-grid,
+    .identity-coverage-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
   @media (max-width: 720px) {
-    .identity-grid {
+    .identity-grid,
+    .identity-coverage-grid {
       grid-template-columns: 1fr;
     }
     .identity-actions,
