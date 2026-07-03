@@ -293,6 +293,8 @@ function renderConventionSettings() {
 
 function getPublicValidationEvidence(employee) {
   const settings = state.conventionSettings || {};
+  const sourceName = settings.publicValidationSourceName || "Portal da Transparencia Municipal";
+  const recorded = getRecordedPublicValidationEvidence(employee);
   if (!settings.publicValidationSourceEnabled) {
     return {
       configured: false,
@@ -305,19 +307,79 @@ function getPublicValidationEvidence(employee) {
     };
   }
 
-  const sourceName = settings.publicValidationSourceName || "Portal da Transparencia Municipal";
+  const stale = recorded && recorded.signature !== getPublicValidationSignature(employee);
+  if (stale) {
+    return {
+      configured: true,
+      recorded,
+      stale: true,
+      sourceName,
+      mode: settings.publicValidationSourceMode || "Consulta assistida",
+      status: "Desatualizada",
+      className: "warning",
+      detail: `Evidencia registrada em ${recorded.recordedAt}, mas dados do servidor ou fonte publica mudaram depois disso.`,
+      reference: recorded.reference || settings.publicValidationSourceUrl || "Referencia configuravel por convenio",
+    };
+  }
+
   const found = employee.status === "Ativo";
   return {
     configured: true,
+    recorded,
+    stale: false,
     sourceName,
     mode: settings.publicValidationSourceMode || "Consulta assistida",
-    status: found ? "Encontrado" : "Conferir",
-    className: found ? "" : "warning",
+    status: recorded ? recorded.status : found ? "Encontrado" : "Conferir",
+    className: recorded ? recorded.className : found ? "" : "warning",
     detail: found
-      ? `Vinculo localizado em ${sourceName} (evidencia simulada no MVP).`
+      ? recorded
+        ? `Evidencia registrada em ${recorded.recordedAt}: vinculo localizado em ${sourceName}.`
+        : `Vinculo localizado em ${sourceName} (evidencia simulada no MVP).`
       : `Servidor exige conferencia manual em ${sourceName} antes de liberar operacao.`,
-    reference: settings.publicValidationSourceUrl || "Referencia configuravel por convenio",
+    reference: recorded?.reference || settings.publicValidationSourceUrl || "Referencia configuravel por convenio",
   };
+}
+
+function getPublicValidationSignature(employee) {
+  const settings = state.conventionSettings || {};
+  return JSON.stringify({
+    employeeId: employee?.id || "",
+    cpf: employee?.cpf || "",
+    enrollment: employee?.enrollment || "",
+    status: employee?.status || "",
+    income: Number(employee?.income || 0),
+    mandatoryDeductions: Number(employee?.mandatoryDeductions || 0),
+    sourceEnabled: Boolean(settings.publicValidationSourceEnabled),
+    sourceName: settings.publicValidationSourceName || "",
+    sourceMode: settings.publicValidationSourceMode || "",
+    sourceUrl: settings.publicValidationSourceUrl || "",
+    conventionCode: settings.code || "",
+  });
+}
+
+function getRecordedPublicValidationEvidence(employee) {
+  const records = state.publicValidationEvidences || {};
+  return records[employee?.id] || null;
+}
+
+function savePublicValidationEvidence(employee, evidence) {
+  if (!employee) return null;
+  state.publicValidationEvidences = state.publicValidationEvidences || {};
+  const record = {
+    employeeId: employee.id,
+    employeeName: employee.name,
+    cpf: employee.cpf,
+    enrollment: employee.enrollment,
+    status: evidence?.status || "Pendente",
+    className: evidence?.className || "",
+    sourceName: evidence?.sourceName || "Fonte publica",
+    mode: evidence?.mode || "Consulta assistida",
+    reference: evidence?.reference || "",
+    recordedAt: today(),
+    signature: getPublicValidationSignature(employee),
+  };
+  state.publicValidationEvidences[employee.id] = record;
+  return record;
 }
 
 function saveConventionSettings() {

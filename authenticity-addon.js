@@ -35,7 +35,7 @@ function getAuthenticityReading(employee) {
   const isReviewed = employee.status !== "Em revisao";
   const hasConsent = Boolean(activeCode) || !state.conventionPolicy.requireAuthorizationForMarginConsult;
   const publicEvidence = typeof getPublicValidationEvidence === "function" ? getPublicValidationEvidence(employee) : null;
-  const hasPublicEvidence = !publicEvidence || !publicEvidence.configured || publicEvidence.status === "Encontrado";
+  const hasPublicEvidence = !publicEvidence || !publicEvidence.configured || (publicEvidence.status === "Encontrado" && !publicEvidence.stale);
 
   const signals = [
     {

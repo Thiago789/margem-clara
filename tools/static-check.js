@@ -330,6 +330,21 @@ function checkRecentDecisionCoverage() {
       message: "Fonte publica deve ter helper reutilizavel por validacao, autenticidade e prontidao.",
     },
     {
+      file: "convention-settings-addon.js",
+      snippet: "getPublicValidationSignature",
+      message: "Fonte publica deve calcular assinatura para detectar evidencia desatualizada.",
+    },
+    {
+      file: "convention-settings-addon.js",
+      snippet: "savePublicValidationEvidence",
+      message: "Fonte publica deve salvar evidencia estruturada por servidor.",
+    },
+    {
+      file: "convention-settings-addon.js",
+      snippet: "Desatualizada",
+      message: "Fonte publica deve marcar evidencia antiga como desatualizada.",
+    },
+    {
       file: "identity-validation-addon.js",
       snippet: "Fonte publica",
       message: "Validacao do servidor deve exibir fonte publica configurada.",
@@ -368,6 +383,11 @@ function checkRecentDecisionCoverage() {
       file: "operational-queue-addon.js",
       snippet: "publicValidationPending",
       message: "Fila operacional deve cobrar evidencia publica configurada e ainda nao auditada.",
+    },
+    {
+      file: "operational-queue-addon.js",
+      snippet: "stalePublicValidations",
+      message: "Fila operacional deve cobrar evidencia publica desatualizada.",
     },
     {
       file: "operational-queue-addon.js",
@@ -885,6 +905,8 @@ function checkSmokeTestExists() {
     "mobile",
     "expectPageUsable",
     "dashboard-command-center",
+    "identity-public-evidence-button",
+    "authenticity-signal-list",
     "validation-audit-button",
     "protocols-audit-button",
     "closing-audit-button",

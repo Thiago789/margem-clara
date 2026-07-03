@@ -82,7 +82,7 @@ function getIdentityScore(employee) {
   const hasPayrollIssue = employee.status === "Em revisao" || margin.available < 0;
   const hasReturnIssue = contracts.some(contractHasReturnIssue);
   const publicEvidence = typeof getPublicValidationEvidence === "function" ? getPublicValidationEvidence(employee) : null;
-  const hasPublicEvidence = !publicEvidence || !publicEvidence.configured || publicEvidence.status === "Encontrado";
+  const hasPublicEvidence = !publicEvidence || !publicEvidence.configured || (publicEvidence.status === "Encontrado" && !publicEvidence.stale);
 
   const checks = [
     {
@@ -148,9 +148,11 @@ function recordPublicValidationEvidence() {
   const evidence = typeof getPublicValidationEvidence === "function" ? getPublicValidationEvidence(employee) : null;
   const status = evidence?.status || "Pendente";
   const sourceName = evidence?.sourceName || "Fonte publica";
+  const record = typeof savePublicValidationEvidence === "function" ? savePublicValidationEvidence(employee, evidence) : null;
   const reference = evidence?.reference ? ` Referencia: ${evidence.reference}.` : "";
+  const snapshot = record ? ` Snapshot: CPF ${record.cpf}, matricula ${record.enrollment}.` : "";
   auditEvent(
-    `Validacao por fonte publica registrada para ${employee.name}: ${status} em ${sourceName}.${reference}`,
+    `Validacao por fonte publica registrada para ${employee.name}: ${status} em ${sourceName}.${reference}${snapshot}`,
     "Validacao do servidor"
   );
   saveState();

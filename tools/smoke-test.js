@@ -123,6 +123,8 @@ async function runScenario(browser, scenario) {
     ["dashboard", "#dashboard-command-center"],
     ["queue", "#queue-priority-list"],
     ["pilot", "#pilot-step-list"],
+    ["identity", "#identity-public-evidence-button"],
+    ["authenticity", "#authenticity-signal-list"],
     ["validation", "#validation-audit-button"],
     ["protocols", "#protocols-audit-button"],
     ["closing", "#closing-audit-button"],

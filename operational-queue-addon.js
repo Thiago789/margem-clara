@@ -79,6 +79,9 @@ function getOperationalQueueData() {
       typeof getPublicValidationEvidence === "function" &&
       !state.movements.some((movement) => movement.source === "Validacao do servidor" && /fonte publica/i.test(movement.text || ""))
   );
+  const stalePublicValidations = typeof getPublicValidationEvidence === "function"
+    ? state.employees.filter((employee) => getPublicValidationEvidence(employee)?.stale)
+    : [];
   const missingInstallmentProgress = state.contracts.filter(
     (contract) =>
       contract.status === "Descontando" &&
@@ -169,6 +172,14 @@ function getOperationalQueueData() {
           },
         ]
       : []),
+    ...stalePublicValidations.map((employee) => ({
+      severity: "Media",
+      className: "warning",
+      area: "Validacao publica",
+      title: employee.name,
+      detail: "Evidencia de fonte publica ficou desatualizada apos mudanca no servidor ou na configuracao do convenio.",
+      target: "identity",
+    })),
     ...reserved.map((contract) => ({
       severity: "Media",
       className: "warning",
@@ -203,7 +214,7 @@ function getOperationalQueueData() {
     })),
   ];
 
-  return { reserved, sent, rejected, reviewEmployees, negativeEmployees, missingInstallmentProgress, openTickets, items };
+  return { reserved, sent, rejected, reviewEmployees, negativeEmployees, stalePublicValidations, missingInstallmentProgress, openTickets, items };
 }
 
 function renderOperationalQueue() {
