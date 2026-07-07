@@ -263,6 +263,74 @@ function getOperationalQueueData() {
   return { reserved, sent, rejected, reviewEmployees, negativeEmployees, publicValidationCoverage, stalePublicValidations, missingInstallmentProgress, openTickets, items };
 }
 
+function getOperationalRiskSummary() {
+  const risks = [];
+  const pushRisk = (area, title, status, detail, target, severity = "Media") => {
+    risks.push({ area, title, status, detail, target, severity });
+  };
+
+  const marginFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("margin")
+    : { fresh: Boolean(state.lastMarginValidation), label: state.lastMarginValidation ? "Registrado" : "Pendente", detail: "" };
+  const insertionFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("insertion")
+    : { fresh: Boolean(state.lastInsertionValidation), label: state.lastInsertionValidation ? "Registrado" : "Pendente", detail: "" };
+  const returnFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("returnFile")
+    : { fresh: Boolean(state.lastReturnReconciliation), label: state.lastReturnReconciliation ? "Registrado" : "Pendente", detail: "" };
+  const protocolFreshness = typeof getFileProtocolFreshness === "function"
+    ? getFileProtocolFreshness()
+    : { fresh: Boolean(state.lastFileProtocol), label: state.lastFileProtocol ? state.lastFileProtocol.status : "Pendente", detail: "" };
+  const closingFreshness = typeof getPayrollClosingDecisionFreshness === "function"
+    ? getPayrollClosingDecisionFreshness()
+    : { fresh: Boolean(state.lastPayrollClosingDecision), label: state.lastPayrollClosingDecision ? state.lastPayrollClosingDecision.decision : "Pendente", detail: "" };
+  const qaFreshness = typeof getPilotQaApprovalFreshness === "function"
+    ? getPilotQaApprovalFreshness()
+    : { fresh: Boolean(state.pilotQaApproval), label: state.pilotQaApproval ? state.pilotQaApproval.status : "Pendente", detail: "" };
+  const publicCoverage = typeof getPublicValidationCoverage === "function" ? getPublicValidationCoverage() : null;
+
+  [
+    ["Arquivos", "Margem", marginFreshness, "validation"],
+    ["Arquivos", "Insercao", insertionFreshness, "validation"],
+    ["Arquivos", "Retorno", returnFreshness, "validation"],
+    ["Protocolos", "Protocolo da competencia", protocolFreshness, "protocols"],
+    ["Fechamento", "Decisao da competencia", closingFreshness, "closing"],
+    ["Homologacao", "Aceite do MVP", qaFreshness, "qa"],
+  ].forEach(([area, title, freshness, target]) => {
+    if (!freshness.fresh) {
+      pushRisk(area, title, freshness.label || "Pendente", freshness.detail || "Evidencia pendente ou desatualizada.", target);
+    }
+  });
+
+  if (publicCoverage?.configured && !publicCoverage.complete) {
+    pushRisk(
+      "Validacao publica",
+      "Fonte publica",
+      publicCoverage.stale ? "Desatualizada" : "Incompleta",
+      `${publicCoverage.fresh}/${publicCoverage.total} fresco(s), ${publicCoverage.pending} pendente(s), ${publicCoverage.stale} desatualizado(s).`,
+      "identity"
+    );
+  }
+
+  const critical = risks.filter((risk) => risk.severity === "Alta").length;
+  const stale = risks.filter((risk) => /desatualizad/i.test(`${risk.status} ${risk.detail}`)).length;
+  const pending = risks.length - stale;
+  const next = risks[0] || null;
+
+  return {
+    total: risks.length,
+    critical,
+    stale,
+    pending,
+    next,
+    risks,
+    label: risks.length ? `${risks.length} risco(s) operacional(is)` : "Controles atualizados",
+    detail: risks.length
+      ? `${stale} desatualizado(s), ${pending} pendente(s). Proximo: ${next.area} - ${next.title}.`
+      : "Snapshots criticos estao coerentes com a base atual.",
+  };
+}
+
 function renderOperationalQueue() {
   ensureOperationalQueueView();
 

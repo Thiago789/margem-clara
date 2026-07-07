@@ -412,6 +412,21 @@ async function runScenario(browser, scenario) {
 
   await expectVisible(page, "#dashboard-command-center", `${scenario.name}: Cockpit inicial`);
   await expectVisible(page, "#journey-shell", `${scenario.name}: Jornada operacional`);
+  await expectVisible(page, ".dashboard-command-card:has-text(\"Riscos operacionais\")", `${scenario.name}: resumo de riscos operacionais`);
+
+  const riskSummary = await page.evaluate(() => {
+    const summary = typeof getOperationalRiskSummary === "function" ? getOperationalRiskSummary() : null;
+    return {
+      available: Boolean(summary),
+      total: summary?.total ?? -1,
+      hasLabel: Boolean(summary?.label),
+      risksArray: Array.isArray(summary?.risks),
+    };
+  });
+
+  if (!riskSummary.available || !riskSummary.hasLabel || !riskSummary.risksArray || riskSummary.total < 0) {
+    fail(`${scenario.name}: resumo de riscos operacionais nao esta estruturado.`);
+  }
 
   const coreViews = [
     ["dashboard", "#dashboard-command-center"],

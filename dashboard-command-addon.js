@@ -131,6 +131,24 @@ function dashboardPublicValidationDecision() {
   };
 }
 
+function dashboardRiskDecision() {
+  if (typeof getOperationalRiskSummary !== "function") {
+    return {
+      label: "Riscos nao calculados",
+      detail: "Fila operacional ainda nao consolidou riscos de evidencia.",
+      className: "warning",
+      target: "queue",
+    };
+  }
+
+  const summary = getOperationalRiskSummary();
+  return {
+    ...summary,
+    className: summary.total ? "warning" : "",
+    target: summary.next?.target || "queue",
+  };
+}
+
 function dashboardFocusOrigin(queue, focus) {
   if (queue.next) return `Fila: ${queue.next.severity}`;
   return focus?.target ? `Roadmap: ${pageTitles[focus.target] || focus.target}` : "Roadmap";
@@ -160,6 +178,7 @@ function renderDashboardCommandCenter() {
   const qaApprovalEvidence = dashboardQaApprovalEvidence();
   const qaStage = dashboardQaStageLabel();
   const publicValidation = dashboardPublicValidationDecision();
+  const risk = dashboardRiskDecision();
   const queueTarget = queue.next?.target || "queue";
   const queueTitle = queue.next ? `${queue.next.area}: ${queue.next.title}` : "Fila sem pendencias criticas";
   const queueDetail = queue.next ? queue.next.detail : "Nenhuma decisao operacional critica no momento.";
@@ -212,6 +231,12 @@ function renderDashboardCommandCenter() {
       <p>${dashboardCompactText(publicValidation.detail)}</p>
       <button class="secondary-button dashboard-command-action" data-target-view="identity" type="button">Ver validacao</button>
     </article>
+    <article class="dashboard-command-card dashboard-command-support">
+      <span>Riscos operacionais</span>
+      <strong><span class="status ${risk.className}">${risk.label}</span></strong>
+      <p>${dashboardCompactText(risk.detail, 140)}</p>
+      <button class="secondary-button dashboard-command-action" data-target-view="${risk.target}" type="button">Abrir risco</button>
+    </article>
   `;
 
   document.querySelectorAll(".dashboard-command-action").forEach((button) => {
@@ -226,7 +251,7 @@ dashboardCommandStyle.textContent = `
   }
   .dashboard-command-grid {
     display: grid;
-    grid-template-columns: minmax(260px, 1.4fr) repeat(5, minmax(0, 1fr));
+    grid-template-columns: minmax(260px, 1.4fr) repeat(6, minmax(0, 1fr));
     gap: 14px;
   }
   .dashboard-command-card {

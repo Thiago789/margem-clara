@@ -411,6 +411,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "operational-queue-addon.js",
+      snippet: "getOperationalRiskSummary",
+      message: "Fila operacional deve expor resumo unico de riscos criticos.",
+    },
+    {
+      file: "operational-queue-addon.js",
       snippet: "publicValidationCoverage.pending",
       message: "Fila operacional deve usar cobertura estruturada para cobrar fonte publica pendente.",
     },
@@ -428,6 +433,16 @@ function checkRecentDecisionCoverage() {
       file: "dashboard-command-addon.js",
       snippet: "dashboardPublicValidationDecision",
       message: "Painel inicial deve mostrar cobertura de fonte publica.",
+    },
+    {
+      file: "dashboard-command-addon.js",
+      snippet: "dashboardRiskDecision",
+      message: "Painel inicial deve mostrar resumo unico de riscos operacionais.",
+    },
+    {
+      file: "dashboard-command-addon.js",
+      snippet: "Riscos operacionais",
+      message: "Painel inicial deve ter card acionavel de riscos operacionais.",
     },
     {
       file: "dashboard-command-addon.js",
@@ -1044,7 +1059,9 @@ function checkSmokeTestExists() {
     "Consulta de fonte publica",
     "Desatualizada",
     "getOperationalQueueData",
+    "getOperationalRiskSummary",
     "dashboard-command-center",
+    "Riscos operacionais",
     "identity-public-evidence-button",
     "authenticity-signal-list",
     "validation-audit-button",
