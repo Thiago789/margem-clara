@@ -459,6 +459,53 @@ async function exercisePayrollClosingDecision(page, scenarioName) {
   if (!result.auditFound) {
     fail(`${scenarioName}: decisao de fechamento nao gerou auditoria.`);
   }
+
+  const staleByBatchResult = await page.evaluate(() => {
+    const contract = state.contracts[0];
+    if (!contract) return { hasContract: false };
+
+    contract.insertionBatches = Array.isArray(contract.insertionBatches) ? contract.insertionBatches : [];
+    const previousBatches = contract.insertionBatches.map((batch) => ({ ...batch }));
+    const previousStatus = contract.status;
+    const previousReturnReason = contract.returnReason;
+    contract.status = "Nao descontado";
+    contract.returnReason = "Teste de lote pendente apos decisao";
+    contract.insertionBatches.push({
+      id: "TMP-CLOSING-BATCH",
+      competency: typeof currentCompetency === "function" ? currentCompetency() : today().slice(0, 7),
+      generatedAt: today(),
+      installment: Number(contract.installment || 0),
+      currentInstallment: Number(contract.currentInstallment || 0),
+      status: "Pendente",
+      returnStatus: "Nao descontado",
+      returnedAt: today(),
+      returnReason: "Teste de lote pendente apos decisao",
+    });
+
+    const data = getPayrollClosingData();
+    const freshness = getPayrollClosingDecisionFreshness(data);
+    contract.insertionBatches = previousBatches;
+    contract.status = previousStatus;
+    contract.returnReason = previousReturnReason;
+
+    return {
+      hasContract: true,
+      fresh: Boolean(freshness?.fresh),
+      label: freshness?.label || "",
+      detail: freshness?.detail || "",
+      unresolved: data.batchUnresolved.length,
+    };
+  });
+
+  if (!staleByBatchResult.hasContract) {
+    fail(`${scenarioName}: massa sem contrato para testar lote desatualizando fechamento.`);
+  }
+  if (staleByBatchResult.fresh || staleByBatchResult.label !== "Desatualizada" || staleByBatchResult.unresolved <= 0) {
+    fail(`${scenarioName}: mudanca em lote nao invalidou decisao de fechamento.`);
+  }
+  if (!/lote\(s\) pendente\(s\)/i.test(staleByBatchResult.detail)) {
+    fail(`${scenarioName}: detalhe de fechamento desatualizado nao mencionou lote pendente.`);
+  }
 }
 
 async function exercisePilotQaApprovalFreshness(page, scenarioName) {

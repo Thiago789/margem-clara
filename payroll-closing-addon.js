@@ -124,6 +124,10 @@ function recordPayrollClosingDecision() {
     rejected: data.rejected.length,
     protocolPending: data.protocolPending,
     reconciliationIssues: data.reconciliationIssues,
+    insertionBatchRows: data.insertionBatchRows.length,
+    batchAwaitingReturn: data.batchAwaitingReturn.length,
+    batchReturned: data.batchReturned.length,
+    batchUnresolved: data.batchUnresolved.length,
     actions: data.actions.map(([title, detail, target, severity]) => ({ title, detail, target, severity })),
   };
 
@@ -156,14 +160,18 @@ function getPayrollClosingDecisionFreshness(data = getPayrollClosingData()) {
     decision.rejected !== data.rejected.length,
     decision.protocolPending !== data.protocolPending,
     decision.reconciliationIssues !== data.reconciliationIssues,
+    decision.insertionBatchRows !== data.insertionBatchRows.length,
+    decision.batchAwaitingReturn !== data.batchAwaitingReturn.length,
+    decision.batchReturned !== data.batchReturned.length,
+    decision.batchUnresolved !== data.batchUnresolved.length,
   ].some(Boolean);
 
   return {
     fresh: !changed,
     label: changed ? "Desatualizada" : decision.decision,
     detail: changed
-      ? `Atual: ${data.decision}, ${data.blockers.length} bloqueio(s), ${data.warnings.length} ressalva(s). Registre novamente.`
-      : `${decision.processedAt} - ${decision.blockers} bloqueio(s), ${decision.warnings} ressalva(s).`,
+      ? `Atual: ${data.decision}, ${data.blockers.length} bloqueio(s), ${data.warnings.length} ressalva(s), ${data.batchUnresolved.length} lote(s) pendente(s). Registre novamente.`
+      : `${decision.processedAt} - ${decision.blockers} bloqueio(s), ${decision.warnings} ressalva(s), ${decision.batchUnresolved || 0} lote(s) pendente(s).`,
   };
 }
 

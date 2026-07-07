@@ -778,6 +778,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "payroll-closing-addon.js",
+      snippet: "batchUnresolved",
+      message: "Fechamento deve congelar e comparar pendencias de lote de insercao.",
+    },
+    {
+      file: "payroll-closing-addon.js",
+      snippet: "lote(s) pendente(s)",
+      message: "Fechamento desatualizado deve explicar impacto dos lotes pendentes.",
+    },
+    {
+      file: "payroll-closing-addon.js",
       snippet: "Decisao registrada",
       message: "Tela de fechamento deve exibir a ultima decisao registrada.",
     },
@@ -1139,6 +1149,8 @@ function checkSmokeTestExists() {
     "Protocolo desatualizado",
     "closing-audit-button",
     "Decisao de fechamento registrada",
+    "TMP-CLOSING-BATCH",
+    "mudanca em lote nao invalidou decisao de fechamento",
     "getPayrollClosingDecisionFreshness",
     "qa-audit-button",
     "getPilotQaApprovalFreshness",
