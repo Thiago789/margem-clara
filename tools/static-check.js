@@ -613,6 +613,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "payroll-adjustments-addon.js",
+      snippet: "getPayrollAdjustmentSnapshot",
+      message: "Ajustes devem capturar evidencia original antes de limpar pendencias.",
+    },
+    {
+      file: "payroll-adjustments-addon.js",
+      snippet: "decisionSnapshot",
+      message: "Registro de ajuste deve usar snapshot anterior a mudanca de status.",
+    },
+    {
+      file: "payroll-adjustments-addon.js",
       snippet: "Rejeicao libera margem",
       message: "Ajustes devem diferenciar rejeicao que libera margem de nao desconto que segura margem.",
     },
@@ -1119,6 +1129,8 @@ function checkSmokeTestExists() {
     "adjustments-list",
     "Mantem margem",
     "TMP-ADJ-REJECTED",
+    "TMP-ADJ-DIVERGENT",
+    "historico do ajuste nao preservou evidencia original",
     "getFileValidationFreshness",
     "Arquivo de margem desatualizado",
     "protocols-audit-button",

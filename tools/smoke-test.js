@@ -317,6 +317,7 @@ async function exerciseMarginReleasePolicy(page, scenarioName) {
     if (!employee) return { hasEmployee: false };
 
     const before = calculateMargin(employee).available;
+    const previousAdjustments = [...(state.payrollAdjustments || [])];
     const rejectedContract = {
       id: "TMP-ADJ-REJECTED",
       employeeId: employee.id,
@@ -337,24 +338,40 @@ async function exerciseMarginReleasePolicy(page, scenarioName) {
       returnReason: "Teste de nao desconto",
       createdAt: today(),
     };
+    const divergentContract = {
+      id: "TMP-ADJ-DIVERGENT",
+      employeeId: employee.id,
+      lenderId: "lender-1",
+      installment: 150,
+      installments: 12,
+      status: "Nao descontado",
+      currentInstallment: 1,
+      returnDivergent: true,
+      returnReason: "Valor descontado divergente para teste",
+      discountedValue: 130,
+      expectedDiscountValue: 150,
+      discountDifference: -20,
+      createdAt: today(),
+    };
 
-    state.contracts.push(rejectedContract, noDiscountContract);
+    state.contracts.push(rejectedContract, noDiscountContract, divergentContract);
     const withNoDiscount = calculateMargin(employee).available;
     applyPayrollAdjustmentDecision(rejectedContract.id, "keep_pending");
     applyPayrollAdjustmentDecision(noDiscountContract.id, "keep_pending");
+    applyPayrollAdjustmentDecision(divergentContract.id, "accept_difference");
 
     const rejectedAfter = state.contracts.find((item) => item.id === rejectedContract.id);
     const noDiscountAfter = state.contracts.find((item) => item.id === noDiscountContract.id);
+    const divergentAfter = state.contracts.find((item) => item.id === divergentContract.id);
+    const divergentRecord = state.payrollAdjustments.find((item) => item.contractId === divergentContract.id);
     const afterDecisions = calculateMargin(employee).available;
     const rejectedEffect = contractMarginEffect(rejectedAfter);
     const noDiscountEffect = contractMarginEffect(noDiscountAfter);
 
     state.contracts = state.contracts.filter(
-      (item) => ![rejectedContract.id, noDiscountContract.id].includes(item.id)
+      (item) => ![rejectedContract.id, noDiscountContract.id, divergentContract.id].includes(item.id)
     );
-    state.payrollAdjustments = (state.payrollAdjustments || []).filter(
-      (item) => ![rejectedContract.id, noDiscountContract.id].includes(item.contractId)
-    );
+    state.payrollAdjustments = previousAdjustments;
     saveState();
     render();
 
@@ -365,6 +382,11 @@ async function exerciseMarginReleasePolicy(page, scenarioName) {
       afterDecisions,
       rejectedStatus: rejectedAfter?.status || "",
       noDiscountStatus: noDiscountAfter?.status || "",
+      divergentStatus: divergentAfter?.status || "",
+      divergentReason: divergentRecord?.reason || "",
+      divergentDifference: divergentRecord?.differenceAmount ?? null,
+      divergentExpected: divergentRecord?.expectedAmount ?? null,
+      divergentCurrentInstallment: divergentAfter?.currentInstallment || 0,
       rejectedLabel: rejectedEffect?.label || "",
       noDiscountLabel: noDiscountEffect?.label || "",
     };
@@ -379,10 +401,23 @@ async function exerciseMarginReleasePolicy(page, scenarioName) {
   if (adjustmentResult.noDiscountStatus !== "Nao descontado") {
     fail(`${scenarioName}: manter pendente nao preservou Nao descontado.`);
   }
-  if (Math.abs((adjustmentResult.before - adjustmentResult.withNoDiscount) - 97) > 0.01) {
-    fail(`${scenarioName}: ajuste de Nao descontado nao segurou margem.`);
+  if (adjustmentResult.divergentStatus !== "Descontando") {
+    fail(`${scenarioName}: aceite de divergencia nao reativou contrato como Descontando.`);
   }
-  if (Math.abs((adjustmentResult.before - adjustmentResult.afterDecisions) - 97) > 0.01) {
+  if (adjustmentResult.divergentCurrentInstallment !== 2) {
+    fail(`${scenarioName}: aceite de divergencia nao avancou parcela por ajuste auditado.`);
+  }
+  if (
+    adjustmentResult.divergentReason !== "Valor descontado divergente para teste" ||
+    adjustmentResult.divergentDifference !== -20 ||
+    adjustmentResult.divergentExpected !== 150
+  ) {
+    fail(`${scenarioName}: historico do ajuste nao preservou evidencia original da divergencia.`);
+  }
+  if (Math.abs((adjustmentResult.before - adjustmentResult.withNoDiscount) - 247) > 0.01) {
+    fail(`${scenarioName}: ajustes pendentes nao seguraram margem antes da decisao.`);
+  }
+  if (Math.abs((adjustmentResult.before - adjustmentResult.afterDecisions) - 247) > 0.01) {
     fail(`${scenarioName}: decisao pendente alterou efeito de margem indevidamente.`);
   }
   if (adjustmentResult.rejectedLabel !== "Libera margem" || adjustmentResult.noDiscountLabel !== "Mantem margem") {

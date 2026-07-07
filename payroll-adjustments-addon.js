@@ -128,7 +128,16 @@ function clearReturnPendencies(contract) {
   contract.discountDifference = 0;
 }
 
-function appendPayrollAdjustmentRecord(contract, decision, previousStatus, nextStatus, adjustmentType) {
+function getPayrollAdjustmentSnapshot(contract) {
+  return {
+    amount: Number(contract.discountedValue || contract.installment || 0),
+    expectedAmount: Number(contract.expectedDiscountValue || contract.installment || 0),
+    differenceAmount: Number(contract.discountDifference || 0),
+    reason: contract.returnReason || "Decisao operacional registrada.",
+  };
+}
+
+function appendPayrollAdjustmentRecord(contract, decision, previousStatus, nextStatus, adjustmentType, snapshot = getPayrollAdjustmentSnapshot(contract)) {
   const record = {
     id: `PADJ-${today().replaceAll("-", "")}-${state.payrollAdjustments.length + 1}`,
     contractId: contract.id,
@@ -137,10 +146,10 @@ function appendPayrollAdjustmentRecord(contract, decision, previousStatus, nextS
     decisionLabel: payrollAdjustmentDecisionText(decision),
     previousStatus,
     nextStatus,
-    amount: Number(contract.discountedValue || contract.installment || 0),
-    expectedAmount: Number(contract.expectedDiscountValue || contract.installment || 0),
-    differenceAmount: Number(contract.discountDifference || 0),
-    reason: contract.returnReason || "Decisao operacional registrada.",
+    amount: snapshot.amount,
+    expectedAmount: snapshot.expectedAmount,
+    differenceAmount: snapshot.differenceAmount,
+    reason: snapshot.reason,
     decidedAt: today(),
     decidedBy: profileConfig[state.currentProfile]?.label || "Sistema",
   };
@@ -158,6 +167,7 @@ function applyPayrollAdjustmentDecision(contractId, decision) {
   const previousStatus = contract.status;
   const adjustmentType = adjustmentTypeForContract(contract);
   const wasDivergent = Boolean(contract.returnDivergent);
+  const decisionSnapshot = getPayrollAdjustmentSnapshot(contract);
   let nextStatus = previousStatus;
   let auditText = "";
 
@@ -199,7 +209,7 @@ function applyPayrollAdjustmentDecision(contractId, decision) {
     auditText = `Contrato ${contract.id} mantido como ${nextStatus} para analise operacional.`;
   }
 
-  appendPayrollAdjustmentRecord(contract, decision, previousStatus, nextStatus, adjustmentType);
+  appendPayrollAdjustmentRecord(contract, decision, previousStatus, nextStatus, adjustmentType, decisionSnapshot);
   auditEvent(auditText, "Ajustes da competencia");
   saveState();
   render();
