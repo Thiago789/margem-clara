@@ -192,7 +192,9 @@ function checkJourneyViewAliases() {
 
 function getJourneyViews() {
   const journey = read("journey-shell-addon.js");
-  const viewBlocks = Array.from(journey.matchAll(/views:\s*\[([^\]]+)\]/g), (match) => match[1]);
+  const stagesBlock = journey.match(/function getJourneyStages\(\) \{[\s\S]*?\nfunction getSidebarGroups/);
+  const source = stagesBlock ? stagesBlock[0] : journey;
+  const viewBlocks = Array.from(source.matchAll(/views:\s*\[([^\]]+)\]/g), (match) => match[1]);
   return viewBlocks.flatMap((block) => Array.from(block.matchAll(/"([^"]+)"/g), (match) => match[1]));
 }
 
@@ -925,6 +927,16 @@ function checkRecentDecisionCoverage() {
       message: "Jornada superior deve explicar a origem da proxima acao.",
     },
     {
+      file: "journey-shell-addon.js",
+      snippet: "getJourneyWorkstreams",
+      message: "Jornada superior deve agrupar modulos por frente operacional.",
+    },
+    {
+      file: "journey-shell-addon.js",
+      snippet: "journey-workstream",
+      message: "Jornada superior deve renderizar grupos de trabalho, nao apenas lista plana.",
+    },
+    {
       file: "dashboard-command-addon.js",
       snippet: "dashboardRoadmapFocus",
       message: "Painel inicial deve expor foco recomendado do roadmap.",
@@ -1061,6 +1073,8 @@ function checkSmokeTestExists() {
     "getOperationalQueueData",
     "getOperationalRiskSummary",
     "dashboard-command-center",
+    "journey-workstream",
+    "getJourneyWorkstreams",
     "Riscos operacionais",
     "identity-public-evidence-button",
     "authenticity-signal-list",

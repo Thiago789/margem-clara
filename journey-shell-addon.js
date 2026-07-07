@@ -60,9 +60,42 @@ function getSidebarGroups() {
   ];
 }
 
+function getJourneyWorkstreams(stage) {
+  const byStage = {
+    base: [
+      { title: "Servidor", views: ["employees", "identity", "enrollments", "authenticity"] },
+      { title: "Margem", views: ["margin", "validation", "health"] },
+    ],
+    operation: [
+      { title: "Reserva", views: ["simulation", "contracts", "authorizations"] },
+      { title: "Contrato", views: ["contractrules", "contractfields"] },
+      { title: "Divida", views: ["debtops", "debtbalance", "debt"] },
+    ],
+    payroll: [
+      { title: "Arquivos", views: ["import", "payroll", "layouts"] },
+      { title: "Controle", views: ["validation", "protocols", "reconciliation"] },
+      { title: "Fechamento", views: ["competencies", "adjustments", "closing"] },
+    ],
+    management: [
+      { title: "Comando", views: ["dashboard", "queue", "pilot", "readiness", "roadmap"] },
+      { title: "Governanca", views: ["audit", "tickets", "access"] },
+      { title: "Ecossistema", views: ["lenders", "integrations", "api"] },
+    ],
+  };
+
+  return byStage[stage.id] || [{ title: stage.title, views: stage.views }];
+}
+
 function getAvailableJourneyViews(stage) {
   const config = profileConfig[state.currentProfile] || profileConfig.manager;
   return stage.views.filter((view) => config.views.includes(view) && document.getElementById(`${view}-view`));
+}
+
+function getAvailableJourneyWorkstreams(stage) {
+  const available = new Set(getAvailableJourneyViews(stage));
+  return getJourneyWorkstreams(stage)
+    .map((group) => ({ ...group, views: group.views.filter((view) => available.has(view)) }))
+    .filter((group) => group.views.length);
 }
 
 function getActiveJourneyStage(activeView) {
@@ -315,27 +348,49 @@ function renderJourneyShell() {
     })
     .join("");
 
-  const currentViews = getAvailableJourneyViews(activeStage);
-  moduleList.innerHTML = currentViews.length
-    ? currentViews
-        .map(
-          (view) => {
-            const attention = attentionByView.get(view) || { high: 0, medium: 0 };
-            const attentionTotal = attention.high + attention.medium;
-            const attentionClass = attention.high ? "danger" : attention.medium ? "warning" : "";
-            const primaryItem = primaryItemByView.get(view);
-            const moduleLabel = pageTitles[view] || view;
-            const moduleHint = primaryItem
-              ? compactJourneyText(`${moduleLabel}: ${primaryItem.severity} - ${primaryItem.area}: ${primaryItem.title}`, 110)
-              : `Abrir ${moduleLabel}`;
-            return `
-              <button class="journey-module ${view === activeView ? "active" : ""} ${attentionClass}" type="button" data-target-view="${view}" title="${escapeJourneyText(moduleHint)}" aria-label="${escapeJourneyText(moduleHint)}">
-                <span>${escapeJourneyText(moduleLabel)}</span>
-                ${attentionTotal ? `<strong>${attentionTotal}</strong>` : ""}
-              </button>
-            `;
-          }
-        )
+  const currentWorkstreams = getAvailableJourneyWorkstreams(activeStage);
+  moduleList.innerHTML = currentWorkstreams.length
+    ? currentWorkstreams
+        .map((group) => {
+          const groupAttention = group.views.reduce(
+            (total, view) => {
+              const attention = attentionByView.get(view) || { high: 0, medium: 0 };
+              return { high: total.high + attention.high, medium: total.medium + attention.medium };
+            },
+            { high: 0, medium: 0 }
+          );
+          const groupAttentionTotal = groupAttention.high + groupAttention.medium;
+          const groupAttentionClass = groupAttention.high ? "danger" : groupAttention.medium ? "warning" : "";
+
+          return `
+            <section class="journey-workstream ${group.views.includes(activeView) ? "active" : ""}">
+              <div class="journey-workstream-head">
+                <strong>${escapeJourneyText(group.title)}</strong>
+                <span class="${groupAttentionClass}">${groupAttentionTotal ? `${groupAttentionTotal} pend.` : `${group.views.length} mod.`}</span>
+              </div>
+              <div class="journey-workstream-modules">
+                ${group.views
+                  .map((view) => {
+                    const attention = attentionByView.get(view) || { high: 0, medium: 0 };
+                    const attentionTotal = attention.high + attention.medium;
+                    const attentionClass = attention.high ? "danger" : attention.medium ? "warning" : "";
+                    const primaryItem = primaryItemByView.get(view);
+                    const moduleLabel = pageTitles[view] || view;
+                    const moduleHint = primaryItem
+                      ? compactJourneyText(`${moduleLabel}: ${primaryItem.severity} - ${primaryItem.area}: ${primaryItem.title}`, 110)
+                      : `Abrir ${moduleLabel}`;
+                    return `
+                      <button class="journey-module ${view === activeView ? "active" : ""} ${attentionClass}" type="button" data-target-view="${view}" title="${escapeJourneyText(moduleHint)}" aria-label="${escapeJourneyText(moduleHint)}">
+                        <span>${escapeJourneyText(moduleLabel)}</span>
+                        ${attentionTotal ? `<strong>${attentionTotal}</strong>` : ""}
+                      </button>
+                    `;
+                  })
+                  .join("")}
+              </div>
+            </section>
+          `;
+        })
         .join("")
     : `<span class="journey-empty">Nenhum modulo disponivel para este perfil.</span>`;
 
@@ -435,11 +490,54 @@ journeyShellStyle.textContent = `
     background: var(--primary);
   }
   .journey-stage-list,
-  .journey-module-list {
+  .journey-workstream-modules {
     display: flex;
     gap: 8px;
     overflow-x: auto;
     padding-bottom: 2px;
+  }
+  .journey-module-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .journey-workstream {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .journey-workstream.active {
+    border-color: rgba(15, 118, 110, 0.42);
+    background: rgba(15, 118, 110, 0.06);
+  }
+  .journey-workstream-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .journey-workstream-head strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  .journey-workstream-head span {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .journey-workstream-head span.warning {
+    color: var(--accent);
+  }
+  .journey-workstream-head span.danger {
+    color: var(--danger);
   }
   .journey-stage-note {
     display: grid;
@@ -560,6 +658,9 @@ journeyShellStyle.textContent = `
     .journey-stage-note strong,
     .journey-stage-note em {
       white-space: normal;
+    }
+    .journey-module-list {
+      grid-template-columns: 1fr;
     }
   }
 `;
