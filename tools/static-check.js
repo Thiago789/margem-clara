@@ -607,6 +607,21 @@ function checkRecentDecisionCoverage() {
       message: "Esteira de reservas deve explicar que nao desconto segura margem.",
     },
     {
+      file: "payroll-adjustments-addon.js",
+      snippet: "pendingStatusForAdjustment",
+      message: "Ajustes devem preservar Rejeitado e Nao descontado ao manter pendencia.",
+    },
+    {
+      file: "payroll-adjustments-addon.js",
+      snippet: "Rejeicao libera margem",
+      message: "Ajustes devem diferenciar rejeicao que libera margem de nao desconto que segura margem.",
+    },
+    {
+      file: "payroll-adjustments-addon.js",
+      snippet: "Nao descontado segura margem",
+      message: "Ajustes devem explicar que nao desconto segura margem ate decisao formal.",
+    },
+    {
       file: "journey-shell-addon.js",
       snippet: '"reservations"',
       message: "Jornada operacional deve incluir a esteira de reservas.",
@@ -1101,7 +1116,9 @@ function checkSmokeTestExists() {
     "authenticity-signal-list",
     "validation-audit-button",
     "reservation-summary-grid",
+    "adjustments-list",
     "Mantem margem",
+    "TMP-ADJ-REJECTED",
     "getFileValidationFreshness",
     "Arquivo de margem desatualizado",
     "protocols-audit-button",

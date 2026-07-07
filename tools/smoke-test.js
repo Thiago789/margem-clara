@@ -308,6 +308,86 @@ async function exerciseMarginReleasePolicy(page, scenarioName) {
   if (result.holdLabel !== "Mantem margem" || result.releaseLabel !== "Libera margem") {
     fail(`${scenarioName}: efeito de margem por status nao esta explicito.`);
   }
+
+  await openView(page, "adjustments");
+  await expectVisible(page, "#adjustments-list", `${scenarioName}: fila de ajustes`);
+
+  const adjustmentResult = await page.evaluate(() => {
+    const employee = state.employees[0];
+    if (!employee) return { hasEmployee: false };
+
+    const before = calculateMargin(employee).available;
+    const rejectedContract = {
+      id: "TMP-ADJ-REJECTED",
+      employeeId: employee.id,
+      lenderId: "lender-1",
+      installment: 111,
+      installments: 12,
+      status: "Rejeitado",
+      returnReason: "Teste de rejeicao",
+      createdAt: today(),
+    };
+    const noDiscountContract = {
+      id: "TMP-ADJ-NO-DISCOUNT",
+      employeeId: employee.id,
+      lenderId: "lender-1",
+      installment: 97,
+      installments: 12,
+      status: "Nao descontado",
+      returnReason: "Teste de nao desconto",
+      createdAt: today(),
+    };
+
+    state.contracts.push(rejectedContract, noDiscountContract);
+    const withNoDiscount = calculateMargin(employee).available;
+    applyPayrollAdjustmentDecision(rejectedContract.id, "keep_pending");
+    applyPayrollAdjustmentDecision(noDiscountContract.id, "keep_pending");
+
+    const rejectedAfter = state.contracts.find((item) => item.id === rejectedContract.id);
+    const noDiscountAfter = state.contracts.find((item) => item.id === noDiscountContract.id);
+    const afterDecisions = calculateMargin(employee).available;
+    const rejectedEffect = contractMarginEffect(rejectedAfter);
+    const noDiscountEffect = contractMarginEffect(noDiscountAfter);
+
+    state.contracts = state.contracts.filter(
+      (item) => ![rejectedContract.id, noDiscountContract.id].includes(item.id)
+    );
+    state.payrollAdjustments = (state.payrollAdjustments || []).filter(
+      (item) => ![rejectedContract.id, noDiscountContract.id].includes(item.contractId)
+    );
+    saveState();
+    render();
+
+    return {
+      hasEmployee: true,
+      before,
+      withNoDiscount,
+      afterDecisions,
+      rejectedStatus: rejectedAfter?.status || "",
+      noDiscountStatus: noDiscountAfter?.status || "",
+      rejectedLabel: rejectedEffect?.label || "",
+      noDiscountLabel: noDiscountEffect?.label || "",
+    };
+  });
+
+  if (!adjustmentResult.hasEmployee) {
+    fail(`${scenarioName}: massa sem servidor para testar ajustes de retorno.`);
+  }
+  if (adjustmentResult.rejectedStatus !== "Rejeitado") {
+    fail(`${scenarioName}: manter pendente converteu Rejeitado para ${adjustmentResult.rejectedStatus}.`);
+  }
+  if (adjustmentResult.noDiscountStatus !== "Nao descontado") {
+    fail(`${scenarioName}: manter pendente nao preservou Nao descontado.`);
+  }
+  if (Math.abs((adjustmentResult.before - adjustmentResult.withNoDiscount) - 97) > 0.01) {
+    fail(`${scenarioName}: ajuste de Nao descontado nao segurou margem.`);
+  }
+  if (Math.abs((adjustmentResult.before - adjustmentResult.afterDecisions) - 97) > 0.01) {
+    fail(`${scenarioName}: decisao pendente alterou efeito de margem indevidamente.`);
+  }
+  if (adjustmentResult.rejectedLabel !== "Libera margem" || adjustmentResult.noDiscountLabel !== "Mantem margem") {
+    fail(`${scenarioName}: ajuste nao preservou labels de efeito de margem.`);
+  }
 }
 
 async function exercisePayrollClosingDecision(page, scenarioName) {
@@ -493,6 +573,7 @@ async function runScenario(browser, scenario) {
     ["authenticity", "#authenticity-signal-list"],
     ["validation", "#validation-audit-button"],
     ["reservations", "#reservation-summary-grid"],
+    ["adjustments", "#adjustments-list"],
     ["protocols", "#protocols-audit-button"],
     ["closing", "#closing-audit-button"],
     ["qa", "#qa-audit-button"],

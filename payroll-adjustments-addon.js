@@ -27,6 +27,16 @@ function adjustmentTypeForContract(contract) {
   return "not_discounted";
 }
 
+function pendingStatusForAdjustment(contract) {
+  return contract.status === "Rejeitado" ? "Rejeitado" : "Nao descontado";
+}
+
+function adjustmentMarginEffectText(contract) {
+  const effect = typeof contractMarginEffect === "function" ? contractMarginEffect(contract) : null;
+  if (!effect) return "Efeito de margem nao mapeado.";
+  return `${effect.label}: ${effect.detail}`;
+}
+
 function getPayrollAdjustmentItems() {
   normalizePayrollAdjustmentRecords();
   const rejected = state.contracts.filter(contractHasReturnIssue);
@@ -50,7 +60,10 @@ function getPayrollAdjustmentItems() {
         reason: contract.returnReason || "Retorno sem motivo informado.",
         action: contract.returnDivergent
           ? "Conferir divergencia de valor antes de baixar parcela; decidir ajuste, reenvio ou aceite formal."
-          : "Corrigir, reenviar, cancelar contrato ou liberar margem conforme regra do convenio.",
+          : contract.status === "Nao descontado"
+            ? "Nao descontado segura margem: decidir entre reenvio, cancelamento/liberacao ou manter acompanhamento formal."
+            : "Rejeicao libera margem: corrigir cadastro/layout, reenviar somente com nova decisao ou manter rejeicao auditada.",
+        marginEffect: adjustmentMarginEffectText(contract),
         expectedValue: Number(contract.expectedDiscountValue || contract.installment || 0),
         discountedValue: Number(contract.discountedValue || 0),
         differenceValue: Number(contract.discountDifference || 0),
@@ -73,6 +86,7 @@ function getPayrollAdjustmentItems() {
         value: Number(contract.installment || 0),
         reason: "Contrato enviado para folha sem retorno processado.",
         action: "Cobrar retorno, registrar excecao ou impedir fechamento definitivo.",
+        marginEffect: adjustmentMarginEffectText(contract),
       };
     }),
     ...reserved.map((contract) => {
@@ -87,6 +101,7 @@ function getPayrollAdjustmentItems() {
         value: Number(contract.installment || 0),
         reason: "Reserva ainda nao enviada para insercao na folha.",
         action: "Gerar insercao, cancelar reserva expirada ou carregar para a proxima competencia.",
+        marginEffect: adjustmentMarginEffectText(contract),
       };
     }),
     ...reviewEmployees.map((employee) => ({
@@ -176,10 +191,12 @@ function applyPayrollAdjustmentDecision(contractId, decision) {
     clearReturnPendencies(contract);
     auditText = `Contrato ${contract.id} cancelado em ajuste formal para liberacao operacional da margem.`;
   } else {
-    nextStatus = "Nao descontado";
+    nextStatus = pendingStatusForAdjustment(contract);
     contract.status = nextStatus;
-    contract.adjustmentResolution = "Mantido pendente para analise";
-    auditText = `Contrato ${contract.id} mantido pendente para analise operacional.`;
+    contract.adjustmentResolution = nextStatus === "Nao descontado"
+      ? "Nao desconto mantido pendente segurando margem"
+      : "Rejeicao mantida pendente com margem liberada";
+    auditText = `Contrato ${contract.id} mantido como ${nextStatus} para analise operacional.`;
   }
 
   appendPayrollAdjustmentRecord(contract, decision, previousStatus, nextStatus, adjustmentType);
@@ -307,6 +324,7 @@ function renderPayrollAdjustments() {
                   : ""
               }
               <p><strong>Tratamento:</strong> ${item.action}</p>
+              <p><strong>Efeito na margem:</strong> ${item.marginEffect || "Nao aplicavel."}</p>
               ${
                 item.lastDecision
                   ? `<p><strong>Ultima decisao:</strong> ${payrollAdjustmentDecisionText(item.lastDecision)}</p>`
@@ -349,11 +367,11 @@ function renderPayrollAdjustments() {
   effects.innerHTML = `
     <div class="adjustment-note">
       <strong>Liberar margem</strong>
-      <span>Quando contrato for rejeitado definitivamente, parcelas futuras devem liberar margem conforme regra.</span>
+      <span>Rejeitado, cancelado e liquidado liberam margem; manter rejeicao pendente nao deve transformar em nao desconto.</span>
     </div>
     <div class="adjustment-note">
-      <strong>Manter acompanhamento</strong>
-      <span>Nao descontado pode permanecer pendente para nova tentativa, sem alterar contrato automaticamente.</span>
+      <strong>Manter margem presa</strong>
+      <span>Nao descontado permanece consumindo margem ate reenvio, cancelamento/liberacao ou baixa formal.</span>
     </div>
     <div class="adjustment-note">
       <strong>Gerar movimento</strong>
