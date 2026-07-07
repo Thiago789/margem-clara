@@ -259,6 +259,57 @@ async function exerciseFileProtocolSnapshot(page, scenarioName) {
   }
 }
 
+async function exerciseMarginReleasePolicy(page, scenarioName) {
+  await openView(page, "reservations");
+  await expectVisible(page, "#reservation-summary-grid", `${scenarioName}: resumo da esteira de reservas`);
+
+  const result = await page.evaluate(() => {
+    const employee = state.employees[0];
+    if (!employee) return { hasEmployee: false };
+
+    const before = calculateMargin(employee).available;
+    const contract = {
+      id: "TMP-MARGIN-HOLD",
+      employeeId: employee.id,
+      lenderId: "lender-1",
+      installment: 123,
+      installments: 12,
+      status: "Nao descontado",
+      createdAt: today(),
+    };
+    state.contracts.push(contract);
+
+    const noDiscount = calculateMargin(employee).available;
+    const holdEffect = typeof contractMarginEffect === "function" ? contractMarginEffect(contract) : null;
+    contract.status = "Rejeitado";
+    const rejected = calculateMargin(employee).available;
+    const releaseEffect = typeof contractMarginEffect === "function" ? contractMarginEffect(contract) : null;
+    state.contracts = state.contracts.filter((item) => item.id !== contract.id);
+
+    return {
+      hasEmployee: true,
+      before,
+      noDiscount,
+      rejected,
+      holdLabel: holdEffect?.label || "",
+      releaseLabel: releaseEffect?.label || "",
+    };
+  });
+
+  if (!result.hasEmployee) {
+    fail(`${scenarioName}: massa sem servidor para testar efeito de margem.`);
+  }
+  if (Math.abs((result.before - result.noDiscount) - 123) > 0.01) {
+    fail(`${scenarioName}: Nao descontado nao segurou margem ate decisao formal.`);
+  }
+  if (Math.abs(result.rejected - result.before) > 0.01) {
+    fail(`${scenarioName}: Rejeitado nao liberou margem.`);
+  }
+  if (result.holdLabel !== "Mantem margem" || result.releaseLabel !== "Libera margem") {
+    fail(`${scenarioName}: efeito de margem por status nao esta explicito.`);
+  }
+}
+
 async function exercisePayrollClosingDecision(page, scenarioName) {
   await openView(page, "closing");
   await expectVisible(page, "#closing-audit-button", `${scenarioName}: botao de decisao de fechamento`);
@@ -441,6 +492,7 @@ async function runScenario(browser, scenario) {
     ["identity", "#identity-public-evidence-button"],
     ["authenticity", "#authenticity-signal-list"],
     ["validation", "#validation-audit-button"],
+    ["reservations", "#reservation-summary-grid"],
     ["protocols", "#protocols-audit-button"],
     ["closing", "#closing-audit-button"],
     ["qa", "#qa-audit-button"],
@@ -456,6 +508,7 @@ async function runScenario(browser, scenario) {
   }
 
   await exerciseFileValidationSnapshot(page, scenario.name);
+  await exerciseMarginReleasePolicy(page, scenario.name);
   await exerciseFileProtocolSnapshot(page, scenario.name);
   await exercisePayrollClosingDecision(page, scenario.name);
   await exercisePilotQaApprovalFreshness(page, scenario.name);

@@ -593,6 +593,26 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "app.js",
+      snippet: '"Nao descontado"',
+      message: "Nao descontado deve estar mapeado como status que segura margem ate decisao formal.",
+    },
+    {
+      file: "app.js",
+      snippet: "contractMarginEffect",
+      message: "Regra de efeito de margem por status deve estar centralizada.",
+    },
+    {
+      file: "reservation-lifecycle-addon.js",
+      snippet: "Nao descontado segura margem",
+      message: "Esteira de reservas deve explicar que nao desconto segura margem.",
+    },
+    {
+      file: "journey-shell-addon.js",
+      snippet: '"reservations"',
+      message: "Jornada operacional deve incluir a esteira de reservas.",
+    },
+    {
+      file: "app.js",
       snippet: "consignataria(s) fora do ranking",
       message: "Simulacao deve explicar consignatarias excluidas do ranking.",
     },
@@ -1062,6 +1082,7 @@ function checkSmokeTestExists() {
     "mobile",
     "expectPageUsable",
     "exerciseFileValidationSnapshot",
+    "exerciseMarginReleasePolicy",
     "exercisePublicValidationBatch",
     "exerciseFileProtocolSnapshot",
     "exercisePayrollClosingDecision",
@@ -1079,6 +1100,8 @@ function checkSmokeTestExists() {
     "identity-public-evidence-button",
     "authenticity-signal-list",
     "validation-audit-button",
+    "reservation-summary-grid",
+    "Mantem margem",
     "getFileValidationFreshness",
     "Arquivo de margem desatualizado",
     "protocols-audit-button",

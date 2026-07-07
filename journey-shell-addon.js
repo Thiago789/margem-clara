@@ -12,7 +12,7 @@ function getJourneyStages() {
       title: "Operacao",
       detail: "Simulacao, reserva e autorizacao.",
       guidance: "Use a etapa para simular, reservar, validar contrato e controlar autorizacoes antes do envio a folha.",
-      views: ["simulation", "contracts", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debt"],
+      views: ["simulation", "contracts", "reservations", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debt"],
     },
     {
       id: "payroll",
@@ -67,7 +67,7 @@ function getJourneyWorkstreams(stage) {
       { title: "Margem", views: ["margin", "validation", "health"] },
     ],
     operation: [
-      { title: "Reserva", views: ["simulation", "contracts", "authorizations"] },
+      { title: "Reserva", views: ["simulation", "contracts", "reservations", "authorizations"] },
       { title: "Contrato", views: ["contractrules", "contractfields"] },
       { title: "Divida", views: ["debtops", "debtbalance", "debt"] },
     ],

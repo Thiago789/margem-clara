@@ -1,6 +1,6 @@
 const STORAGE_KEY = "margem-clara-v1";
 const marginPercent = 0.35;
-const marginUsageStatuses = ["Descontando", "Averbado", "Enviado para folha"];
+const marginUsageStatuses = ["Descontando", "Averbado", "Enviado para folha", "Nao descontado"];
 const marginReservationStatuses = ["Reservado"];
 const marginReleasedStatuses = ["Liquidado", "Cancelado", "Rejeitado"];
 const returnIssueStatuses = ["Rejeitado", "Nao descontado"];
@@ -206,6 +206,46 @@ function contractConsumesMargin(contract) {
 
 function contractReleasesMargin(contract) {
   return marginReleasedStatuses.includes(contract.status);
+}
+
+function contractMarginEffect(contract) {
+  if (contractReleasesMargin(contract)) {
+    return {
+      label: "Libera margem",
+      className: "",
+      detail: "Status final ou rejeitado; parcela nao deve continuar consumindo margem.",
+    };
+  }
+
+  if (marginReservationStatuses.includes(contract.status)) {
+    return {
+      label: "Reserva margem",
+      className: "warning",
+      detail: "Reserva bloqueia saldo ate envio, cancelamento ou expiracao formal.",
+    };
+  }
+
+  if (contract.status === "Nao descontado") {
+    return {
+      label: "Mantem margem",
+      className: "warning",
+      detail: "Nao desconto fica pendente e segura margem ate decisao operacional.",
+    };
+  }
+
+  if (marginUsageStatuses.includes(contract.status)) {
+    return {
+      label: "Consome margem",
+      className: "",
+      detail: "Contrato ativo ou enviado para folha consome margem consignavel.",
+    };
+  }
+
+  return {
+    label: "Revisar regra",
+    className: "warning",
+    detail: "Status sem efeito de margem mapeado; exigir decisao operacional.",
+  };
 }
 
 function contractHasReturnIssue(contract) {

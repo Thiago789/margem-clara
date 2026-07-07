@@ -73,6 +73,9 @@ function getReservationLifecycleData() {
   const sent = contracts.filter((contract) => contract.status === "Enviado para folha");
   const active = contracts.filter((contract) => marginUsageStatuses.includes(contract.status) && contract.status !== "Enviado para folha");
   const rejected = contracts.filter(contractHasReturnIssue);
+  const marginHeld = contracts.filter(contractConsumesMargin);
+  const marginReleased = contracts.filter(contractReleasesMargin);
+  const pendingNoDiscount = contracts.filter((contract) => contract.status === "Nao descontado");
   const activeCodes = state.authorizationCodes.filter((authorization) => authorization.status === "Ativo");
 
   const rows = contracts
@@ -91,7 +94,7 @@ function getReservationLifecycleData() {
       };
     });
 
-  return { requiresCode, reserved, sent, active, rejected, activeCodes, rows };
+  return { requiresCode, reserved, sent, active, rejected, marginHeld, marginReleased, pendingNoDiscount, activeCodes, rows };
 }
 
 function renderReservationLifecycle() {
@@ -106,7 +109,8 @@ function renderReservationLifecycle() {
   const cards = [
     ["Reservadas", data.reserved.length, data.reserved.length ? "warning" : ""],
     ["Enviadas a folha", data.sent.length, data.sent.length ? "warning" : ""],
-    ["Ativas", data.active.length, ""],
+    ["Segurando margem", data.marginHeld.length, data.marginHeld.length ? "warning" : ""],
+    ["Liberaram margem", data.marginReleased.length, ""],
     ["Com pendencia", data.rejected.length, data.rejected.length ? "danger" : ""],
   ];
 
@@ -129,18 +133,23 @@ function renderReservationLifecycle() {
             : marginReservationStatuses.includes(contract.status) || contract.status === "Enviado para folha"
               ? "warning"
               : "";
+          const marginEffect = typeof contractMarginEffect === "function"
+            ? contractMarginEffect(contract)
+            : { label: contractConsumesMargin(contract) ? "Consome margem" : "Libera margem", className: "", detail: "" };
           return `
             <article class="reservation-item">
               <div>
                 <div class="reservation-item-heading">
                   <strong>${contract.id}</strong>
                   <span class="status ${statusClass}">${contract.status}</span>
+                  <span class="status ${marginEffect.className}">${marginEffect.label}</span>
                 </div>
                 <p>${employee?.name ?? "Servidor removido"} - ${lenderName(contract.lenderId)} - parcela de ${money.format(contract.installment)}</p>
                 <small>
                   ${margin ? `Margem disponivel: ${money.format(margin.available)}.` : "Margem indisponivel."}
                   ${code ? ` Codigo ativo: ${code.code}.` : data.requiresCode ? " Sem codigo ativo." : " Codigo opcional."}
                   ${contract.returnReason ? ` Motivo: ${contract.returnReason}.` : ""}
+                  ${marginEffect.detail ? ` Regra: ${marginEffect.detail}` : ""}
                 </small>
               </div>
               <button class="secondary-button reservation-open" data-target-view="${needsAction ? "contracts" : "payroll"}" type="button">
@@ -166,6 +175,10 @@ function renderReservationLifecycle() {
       <span>Rejeicao libera margem conforme regra central; nao desconto fica pendente ate decisao formal.</span>
     </div>
     <div class="reservation-rule">
+      <strong>Nao descontado segura margem</strong>
+      <span>${data.pendingNoDiscount.length} contrato(s) nao descontado(s) continuam consumindo margem ate ajuste, reenvio, cancelamento ou baixa formal.</span>
+    </div>
+    <div class="reservation-rule">
       <strong>Auditoria</strong>
       <span>Cada excecao deve registrar perfil, origem e decisao operacional.</span>
     </div>
@@ -180,7 +193,7 @@ const reservationStyle = document.createElement("style");
 reservationStyle.textContent = `
   .reservation-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }
