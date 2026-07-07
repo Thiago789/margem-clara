@@ -104,6 +104,7 @@ processReturnCsv = function processReturnCsvWithReconciliationDetails(text) {
   if (invalid.length) {
     state.lastReturnReconciliation = {
       processedAt: today(),
+      competency: rows[0]?.competencia || (typeof currentCompetency === "function" ? currentCompetency() : today().slice(0, 7)),
       blocked: true,
       totalRows: rows.length,
       ok: details.filter((item) => item.category === "ok").length,
@@ -130,6 +131,7 @@ processReturnCsv = function processReturnCsvWithReconciliationDetails(text) {
 
   state.lastReturnReconciliation = {
     processedAt: today(),
+    competency: rows[0]?.competencia || (typeof currentCompetency === "function" ? currentCompetency() : today().slice(0, 7)),
     blocked: false,
     totalRows: rows.length,
     ok: details.filter((item) => item.category === "ok").length,

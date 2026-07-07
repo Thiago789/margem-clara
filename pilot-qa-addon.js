@@ -35,8 +35,18 @@ function getPilotQaScenarios() {
     : { fresh: Boolean(fileProtocol), label: fileProtocol ? fileProtocol.status : "Pendente" };
   const closingBlockers = closingData?.blockers?.length || 0;
   const closingWarnings = closingData?.warnings?.length || 0;
-  const hasMarginValidation = Boolean(state.lastMarginValidation && !state.lastMarginValidation.blocked);
-  const hasReturnReconciliation = Boolean(state.lastReturnReconciliation);
+  const marginValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("margin")
+    : { fresh: Boolean(state.lastMarginValidation), label: state.lastMarginValidation ? state.lastMarginValidation.status : "Pendente" };
+  const insertionValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("insertion")
+    : { fresh: Boolean(state.lastInsertionValidation), label: state.lastInsertionValidation ? state.lastInsertionValidation.status : "Pendente" };
+  const returnValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("returnFile")
+    : { fresh: Boolean(state.lastReturnReconciliation), label: state.lastReturnReconciliation ? "Registrado" : "Pendente" };
+  const hasMarginValidation = Boolean(state.lastMarginValidation && !state.lastMarginValidation.blocked && marginValidationFreshness.fresh);
+  const hasInsertionValidation = Boolean(state.lastInsertionValidation && !state.lastInsertionValidation.blocked && insertionValidationFreshness.fresh);
+  const hasReturnReconciliation = Boolean(state.lastReturnReconciliation && returnValidationFreshness.fresh);
   const hasContractTimeline = contracts.some((contract) => contract.adjustmentHistory?.length || contract.returnHistory?.length || contract.statusHistory?.length);
   const reviewEmployees = employees.filter((employee) => employee.status === "Em revisao");
   const hasAuditSources = movements.some((movement) => movement.source || movement.profile);
@@ -71,7 +81,7 @@ function getPilotQaScenarios() {
       title: "Importacao ou carga inicial valida",
       expected: "Servidor com CPF, matricula, renda base, desconto obrigatorio e status funcional, com validacao de margem registrada.",
       evidence: hasMarginValidation
-        ? `Validacao de margem registrada: ${state.lastMarginValidation.totalRows} linha(s), ${state.lastMarginValidation.critical} erro(s), ${state.lastMarginValidation.warnings} alerta(s).`
+        ? `Validacao de margem registrada: ${marginValidationFreshness.label}; ${state.lastMarginValidation.totalRows} linha(s), ${state.lastMarginValidation.critical} erro(s), ${state.lastMarginValidation.warnings} alerta(s).`
         : `${employees.length} servidor(es) carregado(s), ${reviewEmployees.length} em revisao; registre a validacao da margem.`,
       target: "validation",
       ok: hasMarginValidation && employees.length >= 3 && employees.every((employee) => employee.cpf && employee.enrollment && employee.income > 0),
@@ -155,19 +165,19 @@ function getPilotQaScenarios() {
       title: "Arquivo de descontos para folha",
       expected: "Reservas prontas geram registros de insercao com contrato, CPF, matricula, rubrica e valor.",
       evidence: sent.length
-        ? `${sent.length} contrato(s) enviado(s) para folha.`
+        ? `${sent.length} contrato(s) enviado(s) para folha. Validacao: ${insertionValidationFreshness.label}.`
         : reserved.length
-          ? `${reserved.length} reserva(s) pronta(s) para gerar insercao.`
+          ? `${reserved.length} reserva(s) pronta(s) para gerar insercao. Validacao: ${insertionValidationFreshness.label}.`
           : "Sem reserva pendente para gerar insercao.",
       target: "import",
-      ok: reserved.length > 0 || sent.length > 0,
+      ok: (reserved.length > 0 || sent.length > 0) && hasInsertionValidation,
     },
     {
       area: "Retorno",
       title: "Conciliacao do processamento da folha",
       expected: "Retorno deve confirmar desconto ou abrir pendencia com motivo.",
       evidence: hasReturnReconciliation
-        ? "Ultimo retorno possui conciliacao detalhada por linha."
+        ? `Ultimo retorno possui conciliacao detalhada por linha: ${returnValidationFreshness.label}.`
         : `${active.length} ativo(s), ${rejected.length} rejeitado(s) ou nao descontado(s).`,
       target: "import",
       ok: hasReturnReconciliation || active.length > 0 || rejected.length > 0,

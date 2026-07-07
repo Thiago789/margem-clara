@@ -11,6 +11,15 @@ function getReadinessGroups() {
   const marginValidation = state.lastMarginValidation;
   const insertionValidation = state.lastInsertionValidation;
   const returnReconciliation = state.lastReturnReconciliation;
+  const marginValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("margin")
+    : { fresh: Boolean(marginValidation) };
+  const insertionValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("insertion")
+    : { fresh: Boolean(insertionValidation) };
+  const returnValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("returnFile")
+    : { fresh: Boolean(returnReconciliation) };
   const qaScenarios = typeof getPilotQaScenarios === "function" ? getPilotQaScenarios() : [];
   const qaApproved = qaScenarios.filter((scenario) => scenario.ok).length;
   const qaScore = qaScenarios.length ? Math.round((qaApproved / qaScenarios.length) * 100) : 0;
@@ -32,10 +41,14 @@ function getReadinessGroups() {
   const hasFileEvidence = Boolean(marginValidation || insertionValidation || returnReconciliation);
   const hasAccessMatrix = profileConfig.manager.views.includes("access") && !profileConfig.employee.views.includes("access");
   const hasEnrollments = Array.isArray(state.enrollments) && state.enrollments.length >= state.employees.length;
-  const hasFileGuards = Boolean(marginValidation || insertionValidation || returnReconciliation);
-  const hasReturnGuard = Boolean(returnReconciliation);
-  const hasInsertionGuard = Boolean(insertionValidation);
-  const hasMarginGuard = Boolean(marginValidation);
+  const hasFileGuards = Boolean(
+    (marginValidation && marginValidationFreshness.fresh) ||
+      (insertionValidation && insertionValidationFreshness.fresh) ||
+      (returnReconciliation && returnValidationFreshness.fresh)
+  );
+  const hasReturnGuard = Boolean(returnReconciliation && returnValidationFreshness.fresh);
+  const hasInsertionGuard = Boolean(insertionValidation && insertionValidationFreshness.fresh);
+  const hasMarginGuard = Boolean(marginValidation && marginValidationFreshness.fresh);
   const hasContracts = state.contracts.length > 0;
   const hasInstallmentProgress = state.contracts.some((contract) => Number(contract.currentInstallment || 0) > 0 || contract.status === "Liquidado");
   const hasAudit = state.movements.length > 0;

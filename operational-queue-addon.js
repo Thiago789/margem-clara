@@ -70,6 +70,26 @@ function getOperationalQueueData() {
   const openTickets = state.tickets.filter((ticket) => ticket.status === "Aberto");
   const marginValidationPending = Boolean(state.employees.length && !state.lastMarginValidation);
   const insertionValidationPending = Boolean(reserved.length && !state.lastInsertionValidation);
+  const marginValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("margin")
+    : { fresh: Boolean(state.lastMarginValidation), detail: "" };
+  const insertionValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("insertion")
+    : { fresh: Boolean(state.lastInsertionValidation), detail: "" };
+  const returnValidationFreshness = typeof getFileValidationFreshness === "function"
+    ? getFileValidationFreshness("returnFile")
+    : { fresh: Boolean(state.lastReturnReconciliation), detail: "" };
+  const staleFileValidations = [
+    state.lastMarginValidation && !marginValidationFreshness.fresh
+      ? ["Arquivo de margem", marginValidationFreshness.detail]
+      : null,
+    state.lastInsertionValidation && !insertionValidationFreshness.fresh
+      ? ["Arquivo de insercao", insertionValidationFreshness.detail]
+      : null,
+    state.lastReturnReconciliation && !returnValidationFreshness.fresh
+      ? ["Arquivo retorno", returnValidationFreshness.detail]
+      : null,
+  ].filter(Boolean);
   const protocolRegistrationPending = Boolean(
     !state.lastFileProtocol &&
       (state.lastMarginValidation || state.lastInsertionValidation || state.lastReturnReconciliation)
@@ -154,6 +174,14 @@ function getOperationalQueueData() {
           },
         ]
       : []),
+    ...staleFileValidations.map(([title, detail]) => ({
+      severity: "Media",
+      className: "warning",
+      area: "Validacao de arquivos",
+      title: `${title} desatualizado`,
+      detail,
+      target: "validation",
+    })),
     ...(protocolRegistrationPending
       ? [
           {

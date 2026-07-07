@@ -406,6 +406,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "operational-queue-addon.js",
+      snippet: "staleFileValidations",
+      message: "Fila operacional deve cobrar validacoes de arquivo desatualizadas.",
+    },
+    {
+      file: "operational-queue-addon.js",
       snippet: "publicValidationCoverage.pending",
       message: "Fila operacional deve usar cobertura estruturada para cobrar fonte publica pendente.",
     },
@@ -453,6 +458,11 @@ function checkRecentDecisionCoverage() {
       file: "readiness-addon.js",
       snippet: "publicValidationCoverage.complete",
       message: "Prontidao deve diferenciar fonte publica configurada de evidencia fresca.",
+    },
+    {
+      file: "readiness-addon.js",
+      snippet: "marginValidationFreshness.fresh",
+      message: "Prontidao deve considerar somente validacao de margem atualizada.",
     },
     {
       file: "pilot-qa-addon.js",
@@ -591,6 +601,21 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "pilot-qa-addon.js",
+      snippet: "marginValidationFreshness.fresh",
+      message: "Homologacao deve aceitar somente validacao de margem atualizada.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "insertionValidationFreshness.fresh",
+      message: "Homologacao deve aceitar somente validacao de insercao atualizada.",
+    },
+    {
+      file: "pilot-qa-addon.js",
+      snippet: "returnValidationFreshness.fresh",
+      message: "Homologacao deve aceitar somente conciliacao de retorno atualizada.",
+    },
+    {
+      file: "pilot-qa-addon.js",
       snippet: "registre a validacao da margem",
       message: "Homologacao deve orientar evidencia pendente de validacao de margem.",
     },
@@ -606,8 +631,28 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "file-validation-addon.js",
+      snippet: "getFileValidationFreshness",
+      message: "Validacao de arquivos deve detectar snapshots desatualizados.",
+    },
+    {
+      file: "file-validation-addon.js",
+      snippet: "getMarginValidationSnapshot",
+      message: "Validacao de margem deve comparar o snapshot registrado com a base atual.",
+    },
+    {
+      file: "file-validation-addon.js",
       snippet: "state.lastInsertionValidation =",
       message: "Validacao de arquivos deve gravar evidencia da insercao processada.",
+    },
+    {
+      file: "file-validation-addon.js",
+      snippet: "getInsertionValidationSnapshot",
+      message: "Validacao de insercao deve comparar o snapshot registrado com as reservas atuais.",
+    },
+    {
+      file: "file-validation-addon.js",
+      snippet: "getReturnValidationSnapshot",
+      message: "Validacao de retorno deve comparar a conciliacao registrada com os contratos atuais.",
     },
     {
       file: "file-validation-addon.js",
@@ -989,6 +1034,7 @@ function checkSmokeTestExists() {
     "coreViews",
     "mobile",
     "expectPageUsable",
+    "exerciseFileValidationSnapshot",
     "exercisePublicValidationBatch",
     "exerciseFileProtocolSnapshot",
     "exercisePayrollClosingDecision",
@@ -1002,6 +1048,8 @@ function checkSmokeTestExists() {
     "identity-public-evidence-button",
     "authenticity-signal-list",
     "validation-audit-button",
+    "getFileValidationFreshness",
+    "Arquivo de margem desatualizado",
     "protocols-audit-button",
     "Protocolo de remessa registrado",
     "getFileProtocolFreshness",

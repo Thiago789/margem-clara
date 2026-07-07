@@ -90,17 +90,17 @@ function getValidationDecision(metrics) {
 
 function getValidationStatusClass(status) {
   if (["Bloquear"].includes(status)) return "danger";
-  if (["Revisar", "Apto com alerta", "Pendente"].includes(status)) return "warning";
+  if (["Revisar", "Apto com alerta", "Pendente", "Desatualizado"].includes(status)) return "warning";
   return "";
 }
 
-function recordFileValidationSnapshot() {
-  const metrics = getFileValidationMetrics();
-  const competency = state.conventionSettings?.payrollCompetency || today().slice(0, 7);
-  const reservedContracts = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
+function fileValidationCompetency() {
+  return state.conventionSettings?.payrollCompetency || today().slice(0, 7);
+}
 
-  state.lastMarginValidation = {
-    processedAt: today(),
+function getMarginValidationSnapshot(metrics = getFileValidationMetrics()) {
+  const competency = fileValidationCompetency();
+  return {
     competency,
     totalRows: metrics.margin.rows,
     critical: metrics.margin.critical,
@@ -123,10 +123,22 @@ function recordFileValidationSnapshot() {
       };
     }),
   };
+}
 
-  state.lastInsertionValidation = {
-    processedAt: today(),
-    competency,
+function getInsertionValidationSnapshot(metrics = getFileValidationMetrics()) {
+  if (typeof validateInsertionRows === "function") {
+    const validation = validateInsertionRows();
+    const { processedAt, ...snapshot } = validation;
+    return {
+      ...snapshot,
+      competency: fileValidationCompetency(),
+      status: validation.blocked ? "Bloquear" : validation.warnings ? "Revisar" : validation.totalRows ? "Apto" : "Sem movimento",
+    };
+  }
+
+  const reservedContracts = state.contracts.filter((contract) => marginReservationStatuses.includes(contract.status));
+  return {
+    competency: fileValidationCompetency(),
     totalRows: metrics.insertion.rows,
     critical: metrics.insertion.critical,
     warnings: metrics.insertion.warnings,
@@ -141,6 +153,156 @@ function recordFileValidationSnapshot() {
       critical: [],
       warnings: ["Reserva aguardando geracao do arquivo de insercao"],
     })),
+  };
+}
+
+function getReturnValidationSnapshot() {
+  const reconciliation = state.lastReturnReconciliation;
+  if (!reconciliation) return null;
+
+  return {
+    competency: fileValidationCompetency(),
+    totalRows: reconciliation.totalRows || 0,
+    blocked: Boolean(reconciliation.blocked),
+    ok: reconciliation.ok || 0,
+    invalid: reconciliation.invalid || 0,
+    divergent: reconciliation.divergent || 0,
+    pending: reconciliation.pending || 0,
+    duplicate: reconciliation.duplicate || 0,
+    notFound: reconciliation.notFound || 0,
+    details: (reconciliation.details || []).map((item) => {
+      const contract = state.contracts.find((contractItem) => contractItem.id === item.contractId);
+      const expected = contract ? Number(contract.installment || 0) : Number(item.expected || 0);
+      return {
+        contractId: item.contractId,
+        competency: item.competency,
+        status: item.status,
+        amount: Number(item.amount || 0),
+        expected,
+        difference: Number((Number(item.amount || 0) - expected).toFixed(2)),
+        category: item.category,
+      };
+    }),
+  };
+}
+
+function normalizeFileValidationSnapshot(value) {
+  return JSON.stringify(value || null);
+}
+
+function compactFileValidationDetails(details) {
+  return (details || []).map((item) => ({
+    line: item.line,
+    cpf: item.cpf,
+    enrollment: item.enrollment,
+    name: item.name,
+    contractId: item.contractId,
+    competency: item.competency || item.row?.competencia,
+    status: item.status,
+    critical: item.critical || [],
+    warnings: item.warnings || [],
+    row: item.row
+      ? {
+          contrato: item.row.contrato,
+          cpf: item.row.cpf,
+          matricula: item.row.matricula,
+          rubrica: item.row.rubrica,
+          parcela: item.row.parcela,
+          prazo: item.row.prazo,
+          competencia: item.row.competencia,
+          acao: item.row.acao,
+        }
+      : undefined,
+  }));
+}
+
+function getFileValidationFreshness(kind, currentSnapshot) {
+  const evidenceByKind = {
+    margin: state.lastMarginValidation,
+    insertion: state.lastInsertionValidation,
+    returnFile: state.lastReturnReconciliation,
+  };
+  const evidence = evidenceByKind[kind];
+  if (!evidence) {
+    return {
+      fresh: false,
+      label: "Pendente",
+      detail: "Registre a validacao para congelar o snapshot da competencia.",
+    };
+  }
+
+  let current = currentSnapshot || (
+    kind === "margin"
+      ? getMarginValidationSnapshot()
+      : kind === "insertion"
+        ? getInsertionValidationSnapshot()
+        : getReturnValidationSnapshot()
+  );
+  const evidenceSnapshot = kind === "returnFile"
+    ? {
+        competency: evidence.competency || fileValidationCompetency(),
+        totalRows: evidence.totalRows || 0,
+        blocked: Boolean(evidence.blocked),
+        ok: evidence.ok || 0,
+        invalid: evidence.invalid || 0,
+        divergent: evidence.divergent || 0,
+        pending: evidence.pending || 0,
+        duplicate: evidence.duplicate || 0,
+        notFound: evidence.notFound || 0,
+        details: (evidence.details || []).map((item) => ({
+          contractId: item.contractId,
+          competency: item.competency,
+          status: item.status,
+          amount: Number(item.amount || 0),
+          expected: Number(item.expected || 0),
+          difference: Number(item.difference || 0),
+          category: item.category,
+        })),
+      }
+    : {
+        competency: evidence.competency || fileValidationCompetency(),
+        totalRows: evidence.totalRows,
+        critical: evidence.critical,
+        warnings: evidence.warnings,
+        blocked: Boolean(evidence.blocked),
+        status: evidence.status || (evidence.blocked ? "Bloquear" : evidence.warnings ? "Revisar" : evidence.totalRows ? "Apto" : "Sem movimento"),
+        details: compactFileValidationDetails(evidence.details),
+      };
+  if (current && kind !== "returnFile") {
+    current = {
+      competency: current.competency || fileValidationCompetency(),
+      totalRows: current.totalRows,
+      critical: current.critical,
+      warnings: current.warnings,
+      blocked: Boolean(current.blocked),
+      status: current.status || (current.blocked ? "Bloquear" : current.warnings ? "Revisar" : current.totalRows ? "Apto" : "Sem movimento"),
+      details: compactFileValidationDetails(current.details),
+    };
+  }
+  const changed = normalizeFileValidationSnapshot(evidenceSnapshot) !== normalizeFileValidationSnapshot(current);
+
+  return {
+    fresh: !changed,
+    label: changed ? "Desatualizado" : evidenceSnapshot.status || (evidenceSnapshot.blocked ? "Bloqueado" : "Registrado"),
+    detail: changed
+      ? "Os dados atuais mudaram depois do ultimo snapshot. Registre a validacao novamente."
+      : `${evidence.processedAt || "data nao informada"} - ${evidenceSnapshot.totalRows} item(ns), ${evidenceSnapshot.critical || evidenceSnapshot.invalid || 0} erro(s), ${evidenceSnapshot.warnings || evidenceSnapshot.divergent || 0} alerta(s).`,
+  };
+}
+
+function recordFileValidationSnapshot() {
+  const metrics = getFileValidationMetrics();
+  const marginSnapshot = getMarginValidationSnapshot(metrics);
+  const insertionSnapshot = getInsertionValidationSnapshot(metrics);
+
+  state.lastMarginValidation = {
+    ...marginSnapshot,
+    processedAt: today(),
+  };
+
+  state.lastInsertionValidation = {
+    ...insertionSnapshot,
+    processedAt: today(),
   };
 
   auditEvent(
@@ -226,6 +388,12 @@ function renderFileValidation() {
   const decision = getValidationDecision(metrics);
   const marginEvidence = state.lastMarginValidation;
   const insertionEvidence = state.lastInsertionValidation;
+  const returnEvidence = state.lastReturnReconciliation;
+  const marginFreshness = getFileValidationFreshness("margin", getMarginValidationSnapshot(metrics));
+  const insertionFreshness = getFileValidationFreshness("insertion", getInsertionValidationSnapshot(metrics));
+  const returnFreshness = returnEvidence
+    ? getFileValidationFreshness("returnFile", getReturnValidationSnapshot())
+    : { label: "Pendente", detail: "Nenhum retorno detalhado processado ainda." };
   const totals = Object.values(metrics).reduce(
     (acc, item) => ({
       rows: acc.rows + item.rows,
@@ -254,17 +422,22 @@ function renderFileValidation() {
     { label: "Alertas", value: totals.warnings },
     {
       label: "Evidencia margem",
-      value: marginEvidence ? marginEvidence.status : "Pendente",
+      value: marginEvidence ? marginFreshness.label : "Pendente",
       detail: marginEvidence
-        ? `${marginEvidence.processedAt} - ${marginEvidence.totalRows} linha(s), ${marginEvidence.critical} erro(s), ${marginEvidence.warnings} alerta(s).`
+        ? marginFreshness.detail
         : "Clique em Registrar validacao para gerar o snapshot.",
     },
     {
       label: "Evidencia insercao",
-      value: insertionEvidence ? insertionEvidence.status : "Pendente",
+      value: insertionEvidence ? insertionFreshness.label : "Pendente",
       detail: insertionEvidence
-        ? `${insertionEvidence.processedAt} - ${insertionEvidence.totalRows} item(ns), ${insertionEvidence.critical} erro(s), ${insertionEvidence.warnings} alerta(s).`
+        ? insertionFreshness.detail
         : "Reservas validadas antes da geracao do arquivo.",
+    },
+    {
+      label: "Evidencia retorno",
+      value: returnEvidence ? returnFreshness.label : "Pendente",
+      detail: returnEvidence ? returnFreshness.detail : "Retorno conciliado gera evidencia propria.",
     },
   ]
     .map(

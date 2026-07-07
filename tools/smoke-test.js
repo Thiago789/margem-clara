@@ -133,10 +133,18 @@ async function exercisePublicValidationBatch(page, scenarioName) {
     saveState();
 
     const evidence = getPublicValidationEvidence(employee);
+    const marginFreshness = typeof getFileValidationFreshness === "function"
+      ? getFileValidationFreshness("margin")
+      : null;
     const queue = typeof getOperationalQueueData === "function" ? getOperationalQueueData() : null;
     const queueFound = Boolean(
       queue?.items.some(
         (item) => item.area === "Validacao publica" && /desatualizada/i.test(item.detail || "")
+      )
+    );
+    const marginQueueFound = Boolean(
+      queue?.items.some(
+        (item) => item.area === "Validacao de arquivos" && item.title === "Arquivo de margem desatualizado"
       )
     );
 
@@ -144,7 +152,10 @@ async function exercisePublicValidationBatch(page, scenarioName) {
       hasEmployee: true,
       stale: Boolean(evidence?.stale),
       status: evidence?.status || "",
+      marginFresh: Boolean(marginFreshness?.fresh),
+      marginLabel: marginFreshness?.label || "",
       queueFound,
+      marginQueueFound,
     };
   });
 
@@ -156,6 +167,52 @@ async function exercisePublicValidationBatch(page, scenarioName) {
   }
   if (!staleResult.queueFound) {
     fail(`${scenarioName}: fila nao cobrou evidencia publica desatualizada.`);
+  }
+  if (staleResult.marginFresh || staleResult.marginLabel !== "Desatualizado") {
+    fail(`${scenarioName}: mudanca no servidor nao invalidou validacao de margem.`);
+  }
+  if (!staleResult.marginQueueFound) {
+    fail(`${scenarioName}: fila nao cobrou validacao de margem desatualizada.`);
+  }
+}
+
+async function exerciseFileValidationSnapshot(page, scenarioName) {
+  await openView(page, "validation");
+  await expectVisible(page, "#validation-audit-button", `${scenarioName}: botao de validacao de arquivos`);
+  await page.locator("#validation-audit-button").click();
+  await expectVisible(page, "#validation-summary-grid", `${scenarioName}: resumo de validacao de arquivos`);
+
+  const result = await page.evaluate(() => {
+    const marginFreshness = typeof getFileValidationFreshness === "function" ? getFileValidationFreshness("margin") : null;
+    const insertionFreshness = typeof getFileValidationFreshness === "function" ? getFileValidationFreshness("insertion") : null;
+    const auditFound = state.movements.some(
+      (movement) =>
+        movement.source === "Validacao de arquivos" &&
+        /Validacao dos arquivos registrada/i.test(movement.text || "")
+    );
+
+    return {
+      hasMargin: Boolean(state.lastMarginValidation),
+      hasInsertion: Boolean(state.lastInsertionValidation),
+      marginFresh: Boolean(marginFreshness?.fresh),
+      insertionFresh: Boolean(insertionFreshness?.fresh),
+      marginLabel: marginFreshness?.label || "",
+      insertionLabel: insertionFreshness?.label || "",
+      auditFound,
+    };
+  });
+
+  if (!result.hasMargin || !result.hasInsertion) {
+    fail(`${scenarioName}: validacao nao gravou snapshots de margem e insercao.`);
+  }
+  if (!result.marginFresh) {
+    fail(`${scenarioName}: validacao de margem registrada ja nasceu desatualizada (${result.marginLabel}).`);
+  }
+  if (!result.insertionFresh) {
+    fail(`${scenarioName}: validacao de insercao registrada ja nasceu desatualizada (${result.insertionLabel}).`);
+  }
+  if (!result.auditFound) {
+    fail(`${scenarioName}: validacao de arquivos nao gerou auditoria.`);
   }
 }
 
@@ -377,6 +434,7 @@ async function runScenario(browser, scenario) {
     await expectPageUsable(page, `${scenario.name}: ${view}`);
   }
 
+  await exerciseFileValidationSnapshot(page, scenario.name);
   await exerciseFileProtocolSnapshot(page, scenario.name);
   await exercisePayrollClosingDecision(page, scenario.name);
   await exercisePilotQaApprovalFreshness(page, scenario.name);
