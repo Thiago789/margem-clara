@@ -157,6 +157,11 @@ function getAvailableJourneyWorkstreams(stage) {
     .filter((group) => group.views.length);
 }
 
+function getActiveJourneyWorkstream(stage, activeView) {
+  const workstreams = getAvailableJourneyWorkstreams(stage);
+  return workstreams.find((group) => group.views.includes(activeView)) || workstreams[0] || null;
+}
+
 function getActiveJourneyStage(activeView) {
   return getJourneyStages().find((stage) => stage.views.includes(activeView)) || getJourneyStages()[0];
 }
@@ -346,6 +351,7 @@ function ensureJourneyShell() {
           <button class="secondary-button" id="journey-primary-action" type="button">Abrir proxima acao</button>
         </div>
         <div class="journey-stage-list" id="journey-stage-list"></div>
+        <div class="journey-context-bar" id="journey-context-bar"></div>
         <div class="journey-module-list" id="journey-module-list"></div>
         <div class="journey-stage-note" id="journey-stage-note"></div>
       </section>
@@ -358,12 +364,13 @@ function renderJourneyShell() {
   ensureJourneyShell();
   const shell = document.getElementById("journey-shell");
   const stageList = document.getElementById("journey-stage-list");
+  const contextBar = document.getElementById("journey-context-bar");
   const moduleList = document.getElementById("journey-module-list");
   const stageNote = document.getElementById("journey-stage-note");
   const title = document.getElementById("journey-current-title");
   const action = document.getElementById("journey-primary-action");
   const health = document.getElementById("journey-health");
-  if (!shell || !stageList || !moduleList || !stageNote || !title || !action || !health) return;
+  if (!shell || !stageList || !contextBar || !moduleList || !stageNote || !title || !action || !health) return;
 
   shell.hidden = state.currentProfile !== "manager";
   if (shell.hidden) return;
@@ -384,6 +391,9 @@ function renderJourneyShell() {
   const focusDetail = compactJourneyText(focusItem?.detail || focusItem?.description || roadmapFocus?.detail || focusItem?.title || "", 140);
   const nextTarget = actionSource.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
   const nextLabel = pageTitles[nextTarget] || nextTarget;
+  const activeWorkstream = getActiveJourneyWorkstream(activeStage, activeView);
+  const activeModuleLabel = pageTitles[activeView] || activeView;
+  const activeWorkstreamLabel = activeWorkstream?.title || activeStage.title;
   const focusLabel = focusItem ? `Prioridade: ${focusSummary}` : roadmapFocus ? `Foco recomendado: ${roadmapFocus.title} - ${roadmapFocus.detail}` : `Proximo atalho: ${nextLabel}`;
 
   document.querySelectorAll(".nav-item").forEach((button) => {
@@ -437,6 +447,25 @@ function renderJourneyShell() {
       `;
     })
     .join("");
+
+  contextBar.innerHTML = `
+    <div class="journey-context-item">
+      <span>Frente</span>
+      <strong>${escapeJourneyText(activeStage.title)}</strong>
+    </div>
+    <div class="journey-context-item">
+      <span>Grupo</span>
+      <strong>${escapeJourneyText(activeWorkstreamLabel)}</strong>
+    </div>
+    <div class="journey-context-item">
+      <span>Modulo atual</span>
+      <strong>${escapeJourneyText(activeModuleLabel)}</strong>
+    </div>
+    <button class="journey-context-action" type="button" data-target-view="${escapeJourneyText(nextTarget)}">
+      <span>Proxima acao</span>
+      <strong>${escapeJourneyText(nextLabel)}</strong>
+    </button>
+  `;
 
   const currentWorkstreams = getAvailableJourneyWorkstreams(activeStage);
   moduleList.innerHTML = currentWorkstreams.length
@@ -500,6 +529,10 @@ function renderJourneyShell() {
 
   moduleList.querySelectorAll(".journey-module").forEach((button) => {
     button.addEventListener("click", () => openView(button.dataset.targetView));
+  });
+
+  contextBar.querySelector(".journey-context-action")?.addEventListener("click", (event) => {
+    openView(event.currentTarget.dataset.targetView);
   });
 
   action.onclick = () => openView(action.dataset.targetView);
@@ -588,6 +621,46 @@ journeyShellStyle.textContent = `
     gap: 8px;
     overflow-x: auto;
     padding-bottom: 2px;
+  }
+  .journey-context-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(160px, auto);
+    gap: 8px;
+  }
+  .journey-context-item,
+  .journey-context-action {
+    min-width: 0;
+    min-height: 58px;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #f8faf8;
+    text-align: left;
+  }
+  .journey-context-action {
+    cursor: pointer;
+    background: rgba(15, 118, 110, 0.08);
+  }
+  .journey-context-item span,
+  .journey-context-action span {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .journey-context-item strong,
+  .journey-context-action strong {
+    display: block;
+    min-width: 0;
+    margin-top: 4px;
+    overflow: hidden;
+    color: var(--text);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .journey-context-action strong {
+    color: var(--primary-strong);
   }
   .journey-module-list {
     display: grid;
@@ -754,6 +827,13 @@ journeyShellStyle.textContent = `
     }
     .journey-module-list {
       grid-template-columns: 1fr;
+    }
+    .journey-context-bar {
+      grid-template-columns: 1fr;
+    }
+    .journey-context-item,
+    .journey-context-action {
+      min-height: auto;
     }
   }
 `;

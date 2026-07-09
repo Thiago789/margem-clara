@@ -625,6 +625,7 @@ async function runScenario(browser, scenario) {
 
   await expectVisible(page, "#dashboard-command-center", `${scenario.name}: Cockpit inicial`);
   await expectVisible(page, "#journey-shell", `${scenario.name}: Jornada operacional`);
+  await expectVisible(page, "#journey-context-bar", `${scenario.name}: contexto da jornada operacional`);
   await expectVisible(page, ".journey-workstream", `${scenario.name}: grupos da jornada operacional`);
   await expectVisible(page, ".dashboard-command-card:has-text(\"Riscos operacionais\")", `${scenario.name}: resumo de riscos operacionais`);
 
@@ -642,6 +643,7 @@ async function runScenario(browser, scenario) {
     const moduleJumpOptions = Array.from(moduleJump?.querySelectorAll("option") || []).map((option) => option.value);
     const primaryTargets = Array.from(document.querySelectorAll(".nav-list .nav-item[data-primary-nav='true']"))
       .map((button) => [button.textContent.trim(), button.dataset.primaryTargetView || ""]);
+    const contextAction = document.querySelector(".journey-context-action");
     return {
       available: Boolean(summary),
       total: summary?.total ?? -1,
@@ -653,6 +655,8 @@ async function runScenario(browser, scenario) {
       moduleJumpGroups,
       moduleJumpOptions,
       primaryTargets,
+      contextText: document.getElementById("journey-context-bar")?.textContent || "",
+      contextTarget: contextAction?.dataset.targetView || "",
     };
   });
 
@@ -682,6 +686,9 @@ async function runScenario(browser, scenario) {
   }
   if (!riskSummary.primaryTargets.some(([label, target]) => label === "Base e margem" && ["employees", "identity", "enrollments", "margin", "validation", "health", "authenticity"].includes(target))) {
     fail(`${scenario.name}: frente Base e margem nao direciona para modulo da etapa.`);
+  }
+  if (!riskSummary.contextText.includes("Frente") || !riskSummary.contextText.includes("Proxima acao") || !riskSummary.contextTarget) {
+    fail(`${scenario.name}: contexto da jornada nao resume frente, modulo e proxima acao.`);
   }
 
   const coreViews = [

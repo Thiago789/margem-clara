@@ -1022,6 +1022,16 @@ function checkRecentDecisionCoverage() {
       message: "Jornada superior deve renderizar grupos de trabalho, nao apenas lista plana.",
     },
     {
+      file: "journey-shell-addon.js",
+      snippet: "journey-context-bar",
+      message: "Jornada superior deve mostrar contexto atual da frente, grupo, modulo e proxima acao.",
+    },
+    {
+      file: "journey-shell-addon.js",
+      snippet: "getActiveJourneyWorkstream",
+      message: "Jornada superior deve identificar o grupo operacional ativo.",
+    },
+    {
       file: "dashboard-command-addon.js",
       snippet: "dashboardRoadmapFocus",
       message: "Painel inicial deve expor foco recomendado do roadmap.",
