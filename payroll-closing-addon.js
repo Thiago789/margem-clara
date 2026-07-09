@@ -110,13 +110,41 @@ function getPayrollClosingData() {
   };
 }
 
+function getPayrollClosingApproval(data = getPayrollClosingData()) {
+  const level = data.blockers.length
+    ? "Excecao formal exigida"
+    : data.warnings.length
+      ? "Aceite com ressalva"
+      : "Aprovacao simples";
+  const className = data.blockers.length ? "danger" : data.warnings.length ? "warning" : "";
+  const terms = [
+    data.blockers.length
+      ? "Nao encerrar competencia sem resolver bloqueios ou registrar excecao formal do gestor."
+      : "Competencia sem bloqueio impeditivo identificado.",
+    data.warnings.length
+      ? "Ressalvas devem permanecer visiveis no historico da decisao."
+      : "Sem ressalvas operacionais abertas no momento.",
+    "Registrar decisao congela o retrato atual para auditoria, prontidao e homologacao.",
+  ];
+
+  return {
+    level,
+    className,
+    terms,
+    summary: `${level}: ${data.blockers.length} bloqueio(s), ${data.warnings.length} ressalva(s), ${data.actions.length} acao(oes).`,
+  };
+}
+
 function recordPayrollClosingDecision() {
   const data = getPayrollClosingData();
+  const approval = getPayrollClosingApproval(data);
 
   state.lastPayrollClosingDecision = {
     processedAt: today(),
     competency: data.month,
     decision: data.decision,
+    approvalLevel: approval.level,
+    approvalTerms: approval.terms,
     blockers: data.blockers.length,
     warnings: data.warnings.length,
     reserved: data.reserved.length,
@@ -132,7 +160,7 @@ function recordPayrollClosingDecision() {
   };
 
   auditEvent(
-    `Decisao de fechamento registrada: ${data.decision}, ${data.blockers.length} bloqueio(s), ${data.warnings.length} ressalva(s).`,
+    `Decisao de fechamento registrada: ${data.decision}. ${approval.summary}`,
     "Fechamento"
   );
   saveState();
@@ -202,6 +230,7 @@ function ensurePayrollClosingView() {
         </div>
 
         <section class="closing-decision-panel" id="closing-decision-panel"></section>
+        <section class="closing-approval-panel" id="closing-approval-panel"></section>
 
         <section class="panel closing-action-panel">
           <div class="panel-heading">
@@ -245,16 +274,18 @@ function renderPayrollClosing() {
   ensurePayrollClosingView();
 
   const decisionPanel = document.getElementById("closing-decision-panel");
+  const approvalPanel = document.getElementById("closing-approval-panel");
   const summary = document.getElementById("closing-summary-grid");
   const blockers = document.getElementById("closing-blockers");
   const warnings = document.getElementById("closing-warnings");
   const checklist = document.getElementById("closing-checklist");
   const actionList = document.getElementById("closing-action-list");
-  if (!decisionPanel || !summary || !blockers || !warnings || !checklist || !actionList) return;
+  if (!decisionPanel || !approvalPanel || !summary || !blockers || !warnings || !checklist || !actionList) return;
 
   const data = getPayrollClosingData();
   const closingDecision = state.lastPayrollClosingDecision;
   const closingFreshness = getPayrollClosingDecisionFreshness(data);
+  const approval = getPayrollClosingApproval(data);
 
   decisionPanel.innerHTML = `
     <div>
@@ -263,6 +294,17 @@ function renderPayrollClosing() {
       <p>${data.blockers.length ? "Existem bloqueios que impedem o fechamento operacional." : data.warnings.length ? "Pode seguir apenas com aceite formal das ressalvas." : "Fluxo apto para congelar a competencia."}</p>
     </div>
     <span class="status ${data.className}">${data.decision}</span>
+  `;
+
+  approvalPanel.innerHTML = `
+    <div>
+      <span>Termo operacional</span>
+      <strong class="${approval.className}">${approval.level}</strong>
+      <p>${approval.summary}</p>
+    </div>
+    <div class="closing-approval-terms">
+      ${approval.terms.map((term) => `<span>${term}</span>`).join("")}
+    </div>
   `;
 
   actionList.innerHTML = data.actions.length
@@ -336,6 +378,7 @@ function renderPayrollClosing() {
 const payrollClosingStyle = document.createElement("style");
 payrollClosingStyle.textContent = `
   .closing-decision-panel,
+  .closing-approval-panel,
   .closing-summary-card,
   .closing-note,
   .closing-action-row,
@@ -353,8 +396,19 @@ payrollClosingStyle.textContent = `
     margin-bottom: 18px;
     box-shadow: var(--shadow);
   }
+  .closing-approval-panel {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.4fr);
+    gap: 16px;
+    align-items: start;
+    padding: 16px;
+    margin: 0 0 18px;
+    background: #f8faf8;
+  }
   .closing-decision-panel span,
   .closing-decision-panel p,
+  .closing-approval-panel span,
+  .closing-approval-panel p,
   .closing-summary-card span,
   .closing-summary-card small,
   .closing-note span,
@@ -368,6 +422,30 @@ payrollClosingStyle.textContent = `
     display: block;
     margin-top: 6px;
     font-size: 30px;
+  }
+  .closing-approval-panel strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 20px;
+  }
+  .closing-approval-panel strong.warning {
+    color: var(--accent);
+  }
+  .closing-approval-panel strong.danger {
+    color: var(--danger);
+  }
+  .closing-approval-panel p {
+    margin: 6px 0 0;
+  }
+  .closing-approval-terms {
+    display: grid;
+    gap: 8px;
+  }
+  .closing-approval-terms span {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
   }
   .closing-decision-panel p {
     margin: 8px 0 0;
@@ -435,6 +513,7 @@ payrollClosingStyle.textContent = `
   }
   @media (max-width: 640px) {
     .closing-decision-panel,
+    .closing-approval-panel,
     .closing-summary-grid,
     .closing-action-row,
     .closing-check {

@@ -802,6 +802,21 @@ function checkRecentDecisionCoverage() {
       message: "Tela de fechamento deve exibir a ultima decisao registrada.",
     },
     {
+      file: "payroll-closing-addon.js",
+      snippet: "getPayrollClosingApproval",
+      message: "Fechamento deve classificar o nivel de aceite operacional exigido.",
+    },
+    {
+      file: "payroll-closing-addon.js",
+      snippet: "approvalTerms",
+      message: "Fechamento deve congelar os termos da decisao para auditoria.",
+    },
+    {
+      file: "payroll-closing-addon.js",
+      snippet: "closing-approval-panel",
+      message: "Tela de fechamento deve mostrar termo operacional antes do registro.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "closingDecision",
       message: "Homologacao deve cobrar decisao de fechamento registrada.",

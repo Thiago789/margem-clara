@@ -428,6 +428,7 @@ async function exerciseMarginReleasePolicy(page, scenarioName) {
 async function exercisePayrollClosingDecision(page, scenarioName) {
   await openView(page, "closing");
   await expectVisible(page, "#closing-audit-button", `${scenarioName}: botao de decisao de fechamento`);
+  await expectVisible(page, "#closing-approval-panel", `${scenarioName}: termo operacional de fechamento`);
   await page.locator("#closing-audit-button").click();
   await expectVisible(page, "#closing-decision-panel", `${scenarioName}: painel de decisao de fechamento`);
 
@@ -444,6 +445,11 @@ async function exercisePayrollClosingDecision(page, scenarioName) {
 
     return {
       hasDecision: Boolean(state.lastPayrollClosingDecision),
+      approvalLevel: state.lastPayrollClosingDecision?.approvalLevel || "",
+      approvalTerms: Array.isArray(state.lastPayrollClosingDecision?.approvalTerms)
+        ? state.lastPayrollClosingDecision.approvalTerms.length
+        : 0,
+      approvalText: document.getElementById("closing-approval-panel")?.textContent || "",
       fresh: Boolean(freshness?.fresh),
       label: freshness?.label || "",
       auditFound,
@@ -452,6 +458,9 @@ async function exercisePayrollClosingDecision(page, scenarioName) {
 
   if (!result.hasDecision) {
     fail(`${scenarioName}: decisao de fechamento nao foi registrada.`);
+  }
+  if (!result.approvalLevel || result.approvalTerms < 3 || !result.approvalText.includes("Termo operacional")) {
+    fail(`${scenarioName}: fechamento nao congelou termo operacional da decisao.`);
   }
   if (!result.fresh) {
     fail(`${scenarioName}: decisao de fechamento registrada ja nasceu desatualizada (${result.label}).`);
