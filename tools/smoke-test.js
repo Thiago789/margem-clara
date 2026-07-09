@@ -631,12 +631,20 @@ async function runScenario(browser, scenario) {
   const riskSummary = await page.evaluate(() => {
     const summary = typeof getOperationalRiskSummary === "function" ? getOperationalRiskSummary() : null;
     const workstreams = typeof getJourneyWorkstreams === "function" ? getJourneyWorkstreams(getJourneyStages()[0]) : [];
+    const visibleNavItems = Array.from(document.querySelectorAll(".nav-list .nav-item"))
+      .filter((button) => !button.hidden && getComputedStyle(button).display !== "none")
+      .map((button) => button.textContent.trim());
+    const hiddenSecondaryItems = Array.from(document.querySelectorAll(".nav-list .nav-item.nav-secondary"))
+      .filter((button) => getComputedStyle(button).display === "none")
+      .length;
     return {
       available: Boolean(summary),
       total: summary?.total ?? -1,
       hasLabel: Boolean(summary?.label),
       risksArray: Array.isArray(summary?.risks),
       workstreams: workstreams.length,
+      visibleNavItems,
+      hiddenSecondaryItems,
     };
   });
 
@@ -645,6 +653,15 @@ async function runScenario(browser, scenario) {
   }
   if (riskSummary.workstreams < 2) {
     fail(`${scenario.name}: jornada operacional nao agrupou modulos por frente.`);
+  }
+  if (riskSummary.visibleNavItems.length > 8) {
+    fail(`${scenario.name}: menu lateral ainda esta longo demais (${riskSummary.visibleNavItems.length} itens visiveis).`);
+  }
+  if (!riskSummary.visibleNavItems.includes("Base e margem") || !riskSummary.visibleNavItems.includes("Folha e retorno")) {
+    fail(`${scenario.name}: menu lateral nao consolidou a jornada em frentes principais.`);
+  }
+  if (riskSummary.hiddenSecondaryItems < 5) {
+    fail(`${scenario.name}: modulos secundarios nao foram recolhidos do menu lateral.`);
   }
 
   const coreViews = [

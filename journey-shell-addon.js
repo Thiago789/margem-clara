@@ -60,6 +60,34 @@ function getSidebarGroups() {
   ];
 }
 
+function getPrimarySidebarNavigation() {
+  return new Map([
+    ["dashboard", "Painel"],
+    ["queue", "Pendencias"],
+    ["employees", "Base e margem"],
+    ["contracts", "Reserva e contrato"],
+    ["import", "Folha e retorno"],
+    ["closing", "Fechamento"],
+    ["audit", "Auditoria"],
+  ]);
+}
+
+function getPrimarySidebarViewFor(activeView) {
+  const primaryNavigation = getPrimarySidebarNavigation();
+  if (primaryNavigation.has(activeView)) return activeView;
+
+  const stage = getActiveJourneyStage(activeView);
+  if (stage.id === "base") return "employees";
+  if (stage.id === "operation") return "contracts";
+  if (stage.id === "payroll") {
+    return ["competencies", "adjustments", "closing"].includes(activeView) ? "closing" : "import";
+  }
+  if (stage.id === "management") {
+    return ["audit", "tickets", "access"].includes(activeView) ? "audit" : "dashboard";
+  }
+  return "dashboard";
+}
+
 function getJourneyWorkstreams(stage) {
   const byStage = {
     base: [
@@ -221,26 +249,35 @@ function organizeSidebarNavigation() {
   nav.querySelectorAll(".nav-section-label").forEach((label) => label.remove());
 
   const buttons = Array.from(nav.querySelectorAll(".nav-item"));
+  const primaryNavigation = getPrimarySidebarNavigation();
   const byView = new Map(buttons.map((button) => [button.dataset.view, button]));
   const placed = new Set();
 
+  buttons.forEach((button) => {
+    const label = primaryNavigation.get(button.dataset.view);
+    if (!button.dataset.originalLabel) button.dataset.originalLabel = button.textContent.trim();
+    button.classList.toggle("nav-secondary", !label);
+    button.textContent = label || button.dataset.originalLabel;
+  });
+
   getSidebarGroups().forEach((group) => {
     const groupButtons = group.views.map((view) => byView.get(view)).filter(Boolean);
-    if (!groupButtons.length) return;
+    const primaryGroupButtons = groupButtons.filter((button) => primaryNavigation.has(button.dataset.view));
+    if (!primaryGroupButtons.length) return;
 
     const label = document.createElement("div");
     label.className = "nav-section-label";
     label.textContent = group.title;
-    label.hidden = groupButtons.every((button) => button.hidden);
+    label.hidden = primaryGroupButtons.every((button) => button.hidden);
     nav.appendChild(label);
 
-    groupButtons.forEach((button) => {
+    primaryGroupButtons.forEach((button) => {
       nav.appendChild(button);
       placed.add(button.dataset.view);
     });
   });
 
-  const remaining = buttons.filter((button) => !placed.has(button.dataset.view));
+  const remaining = buttons.filter((button) => !placed.has(button.dataset.view) && primaryNavigation.has(button.dataset.view));
   if (remaining.length) {
     const label = document.createElement("div");
     label.className = "nav-section-label";
@@ -295,6 +332,7 @@ function renderJourneyShell() {
 
   const activeView = document.querySelector(".view.active")?.id?.replace("-view", "") || "dashboard";
   const activeStage = getActiveJourneyStage(activeView);
+  const primaryActiveView = getPrimarySidebarViewFor(activeView);
   const stages = getJourneyStages();
   const attentionByStage = getJourneyAttentionByStage();
   const attentionByView = getJourneyAttentionByView();
@@ -309,6 +347,11 @@ function renderJourneyShell() {
   const nextTarget = actionSource.target || getAvailableJourneyViews(activeStage)[0] || "dashboard";
   const nextLabel = pageTitles[nextTarget] || nextTarget;
   const focusLabel = focusItem ? `Prioridade: ${focusSummary}` : roadmapFocus ? `Foco recomendado: ${roadmapFocus.title} - ${roadmapFocus.detail}` : `Proximo atalho: ${nextLabel}`;
+
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    if (button.classList.contains("nav-secondary")) return;
+    button.classList.toggle("active", button.dataset.view === primaryActiveView);
+  });
 
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
   action.textContent = actionSource.action;
@@ -436,6 +479,9 @@ journeyShellStyle.textContent = `
     text-transform: uppercase;
   }
   .nav-section-label[hidden] {
+    display: none;
+  }
+  .nav-item.nav-secondary {
     display: none;
   }
   .journey-head {

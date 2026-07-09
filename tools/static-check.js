@@ -988,6 +988,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "journey-shell-addon.js",
+      snippet: "getPrimarySidebarNavigation",
+      message: "Menu lateral deve mostrar frentes principais em vez de todos os modulos.",
+    },
+    {
+      file: "journey-shell-addon.js",
+      snippet: "nav-secondary",
+      message: "Modulos secundarios devem sair do menu lateral e continuar acessiveis pela jornada.",
+    },
+    {
+      file: "journey-shell-addon.js",
       snippet: "journey-workstream",
       message: "Jornada superior deve renderizar grupos de trabalho, nao apenas lista plana.",
     },
@@ -1131,6 +1141,8 @@ function checkSmokeTestExists() {
     "dashboard-command-center",
     "journey-workstream",
     "getJourneyWorkstreams",
+    "Base e margem",
+    "modulos secundarios nao foram recolhidos",
     "Riscos operacionais",
     "identity-public-evidence-button",
     "authenticity-signal-list",
