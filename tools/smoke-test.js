@@ -637,6 +637,9 @@ async function runScenario(browser, scenario) {
     const hiddenSecondaryItems = Array.from(document.querySelectorAll(".nav-list .nav-item.nav-secondary"))
       .filter((button) => getComputedStyle(button).display === "none")
       .length;
+    const moduleJump = document.getElementById("module-jump");
+    const moduleJumpGroups = Array.from(moduleJump?.querySelectorAll("optgroup") || []).map((group) => group.label);
+    const moduleJumpOptions = Array.from(moduleJump?.querySelectorAll("option") || []).map((option) => option.value);
     return {
       available: Boolean(summary),
       total: summary?.total ?? -1,
@@ -645,6 +648,8 @@ async function runScenario(browser, scenario) {
       workstreams: workstreams.length,
       visibleNavItems,
       hiddenSecondaryItems,
+      moduleJumpGroups,
+      moduleJumpOptions,
     };
   });
 
@@ -662,6 +667,12 @@ async function runScenario(browser, scenario) {
   }
   if (riskSummary.hiddenSecondaryItems < 5) {
     fail(`${scenario.name}: modulos secundarios nao foram recolhidos do menu lateral.`);
+  }
+  if (!riskSummary.moduleJumpGroups.includes("Base") || !riskSummary.moduleJumpGroups.includes("Folha")) {
+    fail(`${scenario.name}: seletor superior nao organizou modulos por etapa.`);
+  }
+  if (!riskSummary.moduleJumpOptions.includes("identity") || !riskSummary.moduleJumpOptions.includes("adjustments")) {
+    fail(`${scenario.name}: seletor superior perdeu acesso a modulos secundarios.`);
   }
 
   const coreViews = [

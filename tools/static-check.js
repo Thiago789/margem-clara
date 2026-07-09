@@ -997,6 +997,16 @@ function checkRecentDecisionCoverage() {
       message: "Modulos secundarios devem sair do menu lateral e continuar acessiveis pela jornada.",
     },
     {
+      file: "module-jump-addon.js",
+      snippet: "getModuleJumpGroups",
+      message: "Seletor superior deve agrupar modulos por etapa da jornada.",
+    },
+    {
+      file: "module-jump-addon.js",
+      snippet: "optgroup",
+      message: "Seletor superior deve usar grupos para reduzir sensacao de lista longa.",
+    },
+    {
       file: "journey-shell-addon.js",
       snippet: "journey-workstream",
       message: "Jornada superior deve renderizar grupos de trabalho, nao apenas lista plana.",
@@ -1143,6 +1153,7 @@ function checkSmokeTestExists() {
     "getJourneyWorkstreams",
     "Base e margem",
     "modulos secundarios nao foram recolhidos",
+    "seletor superior nao organizou modulos por etapa",
     "Riscos operacionais",
     "identity-public-evidence-button",
     "authenticity-signal-list",
