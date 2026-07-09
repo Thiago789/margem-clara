@@ -993,6 +993,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "journey-shell-addon.js",
+      snippet: "getPrimarySidebarTarget",
+      message: "Menu lateral principal deve abrir a proxima acao da frente operacional.",
+    },
+    {
+      file: "journey-shell-addon.js",
+      snippet: "data-primary-nav",
+      message: "Itens principais do menu devem carregar alvo operacional calculado.",
+    },
+    {
+      file: "journey-shell-addon.js",
       snippet: "nav-secondary",
       message: "Modulos secundarios devem sair do menu lateral e continuar acessiveis pela jornada.",
     },
@@ -1153,6 +1163,7 @@ function checkSmokeTestExists() {
     "getJourneyWorkstreams",
     "Base e margem",
     "modulos secundarios nao foram recolhidos",
+    "menu principal nao aponta para alvos operacionais",
     "seletor superior nao organizou modulos por etapa",
     "Riscos operacionais",
     "identity-public-evidence-button",

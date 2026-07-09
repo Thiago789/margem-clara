@@ -640,6 +640,8 @@ async function runScenario(browser, scenario) {
     const moduleJump = document.getElementById("module-jump");
     const moduleJumpGroups = Array.from(moduleJump?.querySelectorAll("optgroup") || []).map((group) => group.label);
     const moduleJumpOptions = Array.from(moduleJump?.querySelectorAll("option") || []).map((option) => option.value);
+    const primaryTargets = Array.from(document.querySelectorAll(".nav-list .nav-item[data-primary-nav='true']"))
+      .map((button) => [button.textContent.trim(), button.dataset.primaryTargetView || ""]);
     return {
       available: Boolean(summary),
       total: summary?.total ?? -1,
@@ -650,6 +652,7 @@ async function runScenario(browser, scenario) {
       hiddenSecondaryItems,
       moduleJumpGroups,
       moduleJumpOptions,
+      primaryTargets,
     };
   });
 
@@ -673,6 +676,12 @@ async function runScenario(browser, scenario) {
   }
   if (!riskSummary.moduleJumpOptions.includes("identity") || !riskSummary.moduleJumpOptions.includes("adjustments")) {
     fail(`${scenario.name}: seletor superior perdeu acesso a modulos secundarios.`);
+  }
+  if (!riskSummary.primaryTargets.length || riskSummary.primaryTargets.some(([, target]) => !target)) {
+    fail(`${scenario.name}: menu principal nao aponta para alvos operacionais.`);
+  }
+  if (!riskSummary.primaryTargets.some(([label, target]) => label === "Base e margem" && ["employees", "identity", "enrollments", "margin", "validation", "health", "authenticity"].includes(target))) {
+    fail(`${scenario.name}: frente Base e margem nao direciona para modulo da etapa.`);
   }
 
   const coreViews = [

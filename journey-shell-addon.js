@@ -88,6 +88,37 @@ function getPrimarySidebarViewFor(activeView) {
   return "dashboard";
 }
 
+function getPrimarySidebarStageForView(view) {
+  const stageByPrimary = {
+    employees: "base",
+    contracts: "operation",
+    import: "payroll",
+    closing: "payroll",
+    dashboard: "management",
+    queue: "management",
+    audit: "management",
+  };
+
+  return getJourneyStages().find((stage) => stage.id === stageByPrimary[view]) || null;
+}
+
+function getPrimarySidebarTarget(view) {
+  if (["dashboard", "queue", "audit"].includes(view)) return view;
+
+  const stage = getPrimarySidebarStageForView(view);
+  if (!stage) return view;
+
+  const priorityTarget = getJourneyPriorityTargetForStage(stage);
+  if (priorityTarget) return priorityTarget;
+
+  if (view === "closing") {
+    const closingTargets = ["competencies", "adjustments", "closing"];
+    return closingTargets.find((target) => getAvailableJourneyViews(stage).includes(target)) || "closing";
+  }
+
+  return getAvailableJourneyViews(stage)[0] || view;
+}
+
 function getJourneyWorkstreams(stage) {
   const byStage = {
     base: [
@@ -258,6 +289,13 @@ function organizeSidebarNavigation() {
     if (!button.dataset.originalLabel) button.dataset.originalLabel = button.textContent.trim();
     button.classList.toggle("nav-secondary", !label);
     button.textContent = label || button.dataset.originalLabel;
+    if (label) {
+      button.dataset.primaryNav = "true";
+      button.title = `Abrir frente ${label}`;
+    } else {
+      delete button.dataset.primaryNav;
+      button.title = "";
+    }
   });
 
   getSidebarGroups().forEach((group) => {
@@ -351,6 +389,15 @@ function renderJourneyShell() {
   document.querySelectorAll(".nav-item").forEach((button) => {
     if (button.classList.contains("nav-secondary")) return;
     button.classList.toggle("active", button.dataset.view === primaryActiveView);
+  });
+
+  document.querySelectorAll(".nav-item[data-primary-nav='true']").forEach((button) => {
+    const target = getPrimarySidebarTarget(button.dataset.view);
+    const targetLabel = pageTitles[target] || target;
+    button.dataset.primaryTargetView = target;
+    button.title = target === button.dataset.view
+      ? `Abrir ${button.textContent.trim()}`
+      : `Abrir ${button.textContent.trim()}: ${targetLabel}`;
   });
 
   title.textContent = `${activeStage.title}: ${activeStage.detail}`;
@@ -723,5 +770,21 @@ openView = function openViewWithJourneyShell(viewName) {
   openViewBeforeJourneyShell(viewName);
   renderJourneyShell();
 };
+
+document.addEventListener(
+  "click",
+  (event) => {
+    const button = event.target.closest(".nav-item[data-primary-nav='true']");
+    if (!button || button.classList.contains("nav-secondary")) return;
+
+    const target = button.dataset.primaryTargetView || getPrimarySidebarTarget(button.dataset.view);
+    if (!target || target === button.dataset.view) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openView(target);
+  },
+  true
+);
 
 render();
