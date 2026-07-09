@@ -462,6 +462,21 @@ function checkRecentDecisionCoverage() {
       message: "Painel inicial deve abrir validacao do servidor a partir da fonte publica.",
     },
     {
+      file: "audit-enhancements-addon.js",
+      snippet: "audit-decision-trail",
+      message: "Auditoria deve destacar trilha de decisoes formais, bloqueios e excecoes.",
+    },
+    {
+      file: "audit-enhancements-addon.js",
+      snippet: "data-audit-lens",
+      message: "Auditoria deve oferecer filtros rapidos por tipo de evento sensivel.",
+    },
+    {
+      file: "audit-enhancements-addon.js",
+      snippet: "isAuditDecisionEvent",
+      message: "Auditoria deve classificar decisoes formais de modo reutilizavel.",
+    },
+    {
       file: "roadmap-addon.js",
       snippet: "Validar servidor",
       message: "Roadmap deve direcionar criterio de fonte publica para validacao do servidor.",

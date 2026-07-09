@@ -2,6 +2,7 @@ const auditFilters = {
   query: "",
   source: "all",
   profile: "all",
+  lens: "all",
 };
 
 function ensureAuditControls() {
@@ -30,11 +31,15 @@ function ensureAuditControls() {
             <select id="audit-profile-filter" class="select-input"></select>
           </label>
           <button class="secondary-button" id="audit-accreditation-blocks" type="button">Bloqueios cred.</button>
+          <button class="secondary-button audit-lens-button" data-audit-lens="decisions" type="button">Decisoes</button>
+          <button class="secondary-button audit-lens-button" data-audit-lens="blocks" type="button">Bloqueios</button>
+          <button class="secondary-button audit-lens-button" data-audit-lens="exceptions" type="button">Excecoes</button>
           <button class="secondary-button" id="audit-simulate-accreditation-block" type="button">Gerar teste bloqueio</button>
           <button class="secondary-button" id="audit-clear-filters" type="button">Limpar</button>
           <button class="primary-button" id="audit-export" type="button">Exportar CSV</button>
         </div>
       </section>
+      <section class="panel audit-decision-trail" id="audit-decision-trail"></section>
     `
   );
 
@@ -57,8 +62,16 @@ function ensureAuditControls() {
     auditFilters.query = "";
     auditFilters.source = "Bloqueio de credenciamento";
     auditFilters.profile = "all";
+    auditFilters.lens = "blocks";
     document.getElementById("audit-search").value = "";
     renderAudit();
+  });
+
+  document.querySelectorAll(".audit-lens-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      auditFilters.lens = auditFilters.lens === button.dataset.auditLens ? "all" : button.dataset.auditLens;
+      renderAudit();
+    });
   });
 
   document.getElementById("audit-simulate-accreditation-block").addEventListener("click", () => {
@@ -79,6 +92,7 @@ function ensureAuditControls() {
     auditFilters.query = "";
     auditFilters.source = "all";
     auditFilters.profile = "all";
+    auditFilters.lens = "all";
     document.getElementById("audit-search").value = "";
     renderAudit();
   });
@@ -89,14 +103,41 @@ function ensureAuditControls() {
 function getAuditSummaryCards(rows) {
   const sensitiveEvents = rows.filter((movement) => /permiss|acesso|navegacao|redirecionado|bloquead|auditoria|fechamento/i.test(`${movement.text} ${movement.source || ""}`));
   const navigationEvents = rows.filter((movement) => /redirecionado|navegacao/i.test(`${movement.text} ${movement.source || ""}`));
+  const decisionEvents = rows.filter(isAuditDecisionEvent);
 
   return [
     ["Eventos filtrados", rows.length],
     ["Eventos sensiveis", sensitiveEvents.length],
+    ["Decisoes formais", decisionEvents.length],
     ["Navegacao protegida", navigationEvents.length],
     ["Origens", uniqueAuditValues("source").length],
-    ["Perfis", uniqueAuditValues("profile").length],
   ];
+}
+
+function isAuditDecisionEvent(movement) {
+  return /decisao|checkpoint|protocolo|fechamento|homologacao|termo operacional|aceite/i.test(`${movement.text} ${movement.source || ""}`);
+}
+
+function isAuditBlockEvent(movement) {
+  return /bloque|imped|negad|redirecionado/i.test(`${movement.text} ${movement.source || ""}`);
+}
+
+function isAuditExceptionEvent(movement) {
+  return /excecao|ressalva|diverg|rejei|nao descont/i.test(`${movement.text} ${movement.source || ""}`);
+}
+
+function matchesAuditLens(movement) {
+  if (auditFilters.lens === "decisions") return isAuditDecisionEvent(movement);
+  if (auditFilters.lens === "blocks") return isAuditBlockEvent(movement);
+  if (auditFilters.lens === "exceptions") return isAuditExceptionEvent(movement);
+  return true;
+}
+
+function getAuditDecisionTrailRows(rows) {
+  const important = rows.filter(
+    (movement) => isAuditDecisionEvent(movement) || isAuditBlockEvent(movement) || isAuditExceptionEvent(movement)
+  );
+  return important.slice(0, 5);
 }
 
 function uniqueAuditValues(field) {
@@ -132,7 +173,7 @@ function getFilteredAuditRows() {
     const matchesQuery = !auditFilters.query || searchable.includes(auditFilters.query);
     const matchesSource = auditFilters.source === "all" || source === auditFilters.source;
     const matchesProfile = auditFilters.profile === "all" || profile === auditFilters.profile;
-    return matchesQuery && matchesSource && matchesProfile;
+    return matchesQuery && matchesSource && matchesProfile && matchesAuditLens(movement);
   });
 }
 
@@ -196,9 +237,44 @@ auditEnhancementStyle.textContent = `
   }
   .audit-toolbar {
     display: grid;
-    grid-template-columns: minmax(220px, 1.4fr) minmax(150px, 1fr) minmax(150px, 1fr) repeat(4, auto);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
     align-items: end;
+  }
+  .audit-lens-button.active {
+    border-color: rgba(15, 118, 110, 0.45);
+    background: rgba(15, 118, 110, 0.1);
+    color: var(--primary-strong);
+  }
+  .audit-decision-trail {
+    margin-bottom: 18px;
+  }
+  .audit-decision-trail-list {
+    display: grid;
+    gap: 8px;
+  }
+  .audit-decision-trail-row {
+    display: grid;
+    grid-template-columns: minmax(110px, auto) 1fr minmax(120px, auto);
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .audit-decision-trail-row strong,
+  .audit-decision-trail-row span,
+  .audit-decision-trail-row small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .audit-decision-trail-row span,
+  .audit-decision-trail-row small {
+    color: var(--muted);
+    font-size: 13px;
   }
   .audit-toolbar label {
     display: grid;
@@ -206,6 +282,16 @@ auditEnhancementStyle.textContent = `
     color: var(--muted);
     font-size: 13px;
     font-weight: 700;
+    min-width: 0;
+  }
+  .audit-toolbar input,
+  .audit-toolbar select,
+  .audit-toolbar button {
+    min-width: 0;
+    width: 100%;
+  }
+  .audit-toolbar button {
+    white-space: normal;
   }
   @media (max-width: 980px) {
     .audit-summary-grid {
@@ -222,6 +308,9 @@ auditEnhancementStyle.textContent = `
     .audit-summary-grid {
       grid-template-columns: 1fr;
     }
+    .audit-decision-trail-row {
+      grid-template-columns: 1fr;
+    }
   }
 `;
 document.head.appendChild(auditEnhancementStyle);
@@ -233,9 +322,13 @@ renderAudit = function renderAuditWithFilters() {
 
   const table = document.getElementById("audit-table");
   const summary = document.getElementById("audit-summary-grid");
+  const decisionTrail = document.getElementById("audit-decision-trail");
   if (!table) return;
 
   const filteredRows = getFilteredAuditRows();
+  document.querySelectorAll(".audit-lens-button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.auditLens === auditFilters.lens);
+  });
 
   if (summary) {
     summary.innerHTML = getAuditSummaryCards(filteredRows)
@@ -248,6 +341,32 @@ renderAudit = function renderAuditWithFilters() {
         `
       )
       .join("");
+  }
+
+  if (decisionTrail) {
+    const trailRows = getAuditDecisionTrailRows(filteredRows);
+    decisionTrail.innerHTML = `
+      <div class="panel-heading">
+        <h3>Trilha de decisoes</h3>
+      </div>
+      <div class="audit-decision-trail-list">
+        ${
+          trailRows.length
+            ? trailRows
+                .map(
+                  (movement) => `
+                    <article class="audit-decision-trail-row">
+                      <span>${movement.date}</span>
+                      <strong>${movement.text}</strong>
+                      <small>${movement.source || "MVP"} - ${movement.profile || "Sistema"}</small>
+                    </article>
+                  `
+                )
+                .join("")
+            : `<div class="empty-state">Nenhuma decisao, bloqueio ou excecao encontrada para os filtros atuais.</div>`
+        }
+      </div>
+    `;
   }
 
   const rows = filteredRows.map((movement) => {

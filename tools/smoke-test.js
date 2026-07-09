@@ -656,6 +656,7 @@ async function runScenario(browser, scenario) {
     const compactWorkstreams = Array.from(document.querySelectorAll(".journey-workstream.compact"));
     const activeWorkstreamModules = Array.from(document.querySelectorAll(".journey-workstream.active .journey-module"));
     const queueStages = Array.from(document.querySelectorAll(".queue-stage-card"));
+    const auditLensButtons = Array.from(document.querySelectorAll(".audit-lens-button"));
     return {
       available: Boolean(summary),
       total: summary?.total ?? -1,
@@ -674,6 +675,9 @@ async function runScenario(browser, scenario) {
       activeWorkstreamModules: activeWorkstreamModules.length,
       queueStageCards: queueStages.length,
       queueStageTargets: queueStages.map((button) => button.dataset.targetView || ""),
+      auditDecisionTrail: Boolean(document.getElementById("audit-decision-trail")),
+      auditLensButtons: auditLensButtons.length,
+      auditLensValues: auditLensButtons.map((button) => button.dataset.auditLens || ""),
     };
   });
 
@@ -715,6 +719,9 @@ async function runScenario(browser, scenario) {
   }
   if (riskSummary.queueStageCards !== 4 || riskSummary.queueStageTargets.some((target) => !target)) {
     fail(`${scenario.name}: fila operacional nao consolidou pendencias por frente com alvo acionavel.`);
+  }
+  if (!riskSummary.auditDecisionTrail || riskSummary.auditLensButtons < 3 || !riskSummary.auditLensValues.includes("decisions")) {
+    fail(`${scenario.name}: auditoria nao carregou trilha de decisoes e filtros rapidos.`);
   }
 
   const coreViews = [
