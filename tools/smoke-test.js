@@ -646,6 +646,7 @@ async function runScenario(browser, scenario) {
     const contextAction = document.querySelector(".journey-context-action");
     const compactWorkstreams = Array.from(document.querySelectorAll(".journey-workstream.compact"));
     const activeWorkstreamModules = Array.from(document.querySelectorAll(".journey-workstream.active .journey-module"));
+    const queueStages = Array.from(document.querySelectorAll(".queue-stage-card"));
     return {
       available: Boolean(summary),
       total: summary?.total ?? -1,
@@ -662,6 +663,8 @@ async function runScenario(browser, scenario) {
       compactWorkstreams: compactWorkstreams.length,
       compactTargets: compactWorkstreams.map((group) => group.querySelector(".journey-workstream-open")?.dataset.targetView || ""),
       activeWorkstreamModules: activeWorkstreamModules.length,
+      queueStageCards: queueStages.length,
+      queueStageTargets: queueStages.map((button) => button.dataset.targetView || ""),
     };
   });
 
@@ -700,6 +703,9 @@ async function runScenario(browser, scenario) {
   }
   if (riskSummary.activeWorkstreamModules < 1) {
     fail(`${scenario.name}: grupo ativo da jornada nao manteve acesso aos modulos.`);
+  }
+  if (riskSummary.queueStageCards !== 4 || riskSummary.queueStageTargets.some((target) => !target)) {
+    fail(`${scenario.name}: fila operacional nao consolidou pendencias por frente com alvo acionavel.`);
   }
 
   const coreViews = [

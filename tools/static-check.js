@@ -418,6 +418,16 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "operational-queue-addon.js",
+      snippet: "getOperationalQueueStageData",
+      message: "Fila operacional deve consolidar pendencias por frente da jornada.",
+    },
+    {
+      file: "operational-queue-addon.js",
+      snippet: "queue-stage-card",
+      message: "Fila operacional deve exibir cards acionaveis por frente.",
+    },
+    {
+      file: "operational-queue-addon.js",
       snippet: "publicValidationCoverage.pending",
       message: "Fila operacional deve usar cobertura estruturada para cobrar fonte publica pendente.",
     },

@@ -33,6 +33,7 @@ function ensureOperationalQueueView() {
         </div>
 
         <div class="queue-summary-grid" id="queue-summary-grid"></div>
+        <div class="queue-stage-board" id="queue-stage-board"></div>
 
         <div class="content-grid queue-content">
           <section class="panel">
@@ -263,6 +264,56 @@ function getOperationalQueueData() {
   return { reserved, sent, rejected, reviewEmployees, negativeEmployees, publicValidationCoverage, stalePublicValidations, missingInstallmentProgress, openTickets, items };
 }
 
+function getOperationalQueueStages() {
+  return [
+    {
+      id: "base",
+      title: "Base e margem",
+      views: ["employees", "identity", "enrollments", "margin", "validation", "health", "authenticity"],
+    },
+    {
+      id: "operation",
+      title: "Reserva e contrato",
+      views: ["simulation", "contracts", "reservations", "authorizations", "contractrules", "contractfields", "debtops", "debtbalance", "debt"],
+    },
+    {
+      id: "payroll",
+      title: "Folha e retorno",
+      views: ["import", "payroll", "protocols", "reconciliation", "competencies", "adjustments", "closing", "layouts"],
+    },
+    {
+      id: "management",
+      title: "Gestao",
+      views: ["dashboard", "queue", "pilot", "readiness", "audit", "roadmap", "tickets", "lenders", "integrations", "api", "access", "qa"],
+    },
+  ];
+}
+
+function getOperationalQueueStageData(items) {
+  const severityRank = { Alta: 0, Media: 1, Baixa: 2 };
+
+  return getOperationalQueueStages().map((stage) => {
+    const stageItems = items
+      .filter((item) => stage.views.includes(item.target))
+      .sort((a, b) => (severityRank[a.severity] ?? 3) - (severityRank[b.severity] ?? 3));
+    const high = stageItems.filter((item) => item.severity === "Alta").length;
+    const medium = stageItems.filter((item) => item.severity === "Media").length;
+    const low = stageItems.filter((item) => item.severity === "Baixa").length;
+    const next = stageItems[0] || null;
+
+    return {
+      ...stage,
+      high,
+      medium,
+      low,
+      total: stageItems.length,
+      next,
+      className: high ? "danger" : medium ? "warning" : "",
+      status: high ? "Bloqueio" : medium ? "Atencao" : stageItems.length ? "Acompanhar" : "Livre",
+    };
+  });
+}
+
 function getOperationalRiskSummary() {
   const risks = [];
   const pushRisk = (area, title, status, detail, target, severity = "Media") => {
@@ -335,14 +386,16 @@ function renderOperationalQueue() {
   ensureOperationalQueueView();
 
   const summary = document.getElementById("queue-summary-grid");
+  const stageBoard = document.getElementById("queue-stage-board");
   const list = document.getElementById("queue-priority-list");
   const actions = document.getElementById("queue-actions");
-  if (!summary || !list || !actions) return;
+  if (!summary || !stageBoard || !list || !actions) return;
 
   const data = getOperationalQueueData();
   const highPriority = data.items.filter((item) => item.severity === "Alta").length;
   const mediumPriority = data.items.filter((item) => item.severity === "Media").length;
   const nextItem = data.items[0] || null;
+  const stageData = getOperationalQueueStageData(data.items);
 
   const cards = [
     ["Prioridade alta", highPriority, highPriority ? "danger" : ""],
@@ -361,6 +414,23 @@ function renderOperationalQueue() {
         </article>
       `
     )
+    .join("");
+
+  stageBoard.innerHTML = stageData
+    .map((stage) => {
+      const target = stage.next?.target || stage.views[0] || "queue";
+      const detail = stage.next
+        ? `${stage.next.area}: ${stage.next.title}`
+        : "Sem pendencia acionavel nesta frente.";
+      return `
+        <button class="queue-stage-card ${stage.className}" type="button" data-target-view="${target}">
+          <span>${stage.title}</span>
+          <strong>${stage.status}</strong>
+          <small>${stage.high} alta(s), ${stage.medium} media(s), ${stage.low} baixa(s)</small>
+          <em>${detail}</em>
+        </button>
+      `;
+    })
     .join("");
 
   list.innerHTML = data.items.length
@@ -412,6 +482,10 @@ function renderOperationalQueue() {
   document.querySelectorAll(".queue-open").forEach((button) => {
     button.addEventListener("click", () => openView(button.dataset.targetView));
   });
+
+  document.querySelectorAll(".queue-stage-card").forEach((button) => {
+    button.addEventListener("click", () => openView(button.dataset.targetView));
+  });
 }
 
 const queueStyle = document.createElement("style");
@@ -450,6 +524,54 @@ queueStyle.textContent = `
     display: grid;
     gap: 10px;
   }
+  .queue-stage-board {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 18px;
+  }
+  .queue-stage-card {
+    display: grid;
+    gap: 5px;
+    min-height: 128px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    text-align: left;
+  }
+  .queue-stage-card.warning {
+    border-color: rgba(217, 119, 6, 0.35);
+    background: rgba(217, 119, 6, 0.07);
+  }
+  .queue-stage-card.danger {
+    border-color: rgba(185, 28, 28, 0.35);
+    background: rgba(185, 28, 28, 0.07);
+  }
+  .queue-stage-card span,
+  .queue-stage-card small,
+  .queue-stage-card em {
+    color: var(--muted);
+    font-size: 12px;
+    font-style: normal;
+    line-height: 1.35;
+  }
+  .queue-stage-card strong {
+    font-size: 18px;
+  }
+  .queue-stage-card.warning strong {
+    color: var(--accent);
+  }
+  .queue-stage-card.danger strong {
+    color: var(--danger);
+  }
+  .queue-stage-card em {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .queue-item {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -486,15 +608,20 @@ queueStyle.textContent = `
     align-items: center;
   }
   @media (max-width: 1040px) {
-    .queue-summary-grid {
+    .queue-summary-grid,
+    .queue-stage-board {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
   @media (max-width: 640px) {
     .queue-summary-grid,
+    .queue-stage-board,
     .queue-item,
     .queue-next-action {
       grid-template-columns: 1fr;
+    }
+    .queue-stage-card {
+      min-height: auto;
     }
   }
 `;
