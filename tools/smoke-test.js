@@ -644,6 +644,8 @@ async function runScenario(browser, scenario) {
     const primaryTargets = Array.from(document.querySelectorAll(".nav-list .nav-item[data-primary-nav='true']"))
       .map((button) => [button.textContent.trim(), button.dataset.primaryTargetView || ""]);
     const contextAction = document.querySelector(".journey-context-action");
+    const compactWorkstreams = Array.from(document.querySelectorAll(".journey-workstream.compact"));
+    const activeWorkstreamModules = Array.from(document.querySelectorAll(".journey-workstream.active .journey-module"));
     return {
       available: Boolean(summary),
       total: summary?.total ?? -1,
@@ -657,6 +659,9 @@ async function runScenario(browser, scenario) {
       primaryTargets,
       contextText: document.getElementById("journey-context-bar")?.textContent || "",
       contextTarget: contextAction?.dataset.targetView || "",
+      compactWorkstreams: compactWorkstreams.length,
+      compactTargets: compactWorkstreams.map((group) => group.querySelector(".journey-workstream-open")?.dataset.targetView || ""),
+      activeWorkstreamModules: activeWorkstreamModules.length,
     };
   });
 
@@ -689,6 +694,12 @@ async function runScenario(browser, scenario) {
   }
   if (!riskSummary.contextText.includes("Frente") || !riskSummary.contextText.includes("Proxima acao") || !riskSummary.contextTarget) {
     fail(`${scenario.name}: contexto da jornada nao resume frente, modulo e proxima acao.`);
+  }
+  if (riskSummary.compactWorkstreams < 1 || riskSummary.compactTargets.some((target) => !target)) {
+    fail(`${scenario.name}: grupos inativos da jornada nao foram compactados com alvo de abertura.`);
+  }
+  if (riskSummary.activeWorkstreamModules < 1) {
+    fail(`${scenario.name}: grupo ativo da jornada nao manteve acesso aos modulos.`);
   }
 
   const coreViews = [

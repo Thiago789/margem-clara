@@ -277,6 +277,18 @@ function getJourneyPriorityTargetForStage(stage) {
   return items[0]?.target || null;
 }
 
+function getJourneyWorkstreamTarget(group) {
+  if (typeof getOperationalQueueData === "function") {
+    const severityRank = { Alta: 0, Media: 1, Baixa: 2 };
+    const item = getOperationalQueueData().items
+      .filter((candidate) => group.views.includes(candidate.target))
+      .sort((a, b) => (severityRank[a.severity] ?? 3) - (severityRank[b.severity] ?? 3))[0];
+    if (item?.target) return item.target;
+  }
+
+  return group.views[0] || null;
+}
+
 function organizeSidebarNavigation() {
   const nav = document.querySelector(".nav-list");
   if (!nav || nav.dataset.journeyOrganizing === "true") return;
@@ -471,6 +483,9 @@ function renderJourneyShell() {
   moduleList.innerHTML = currentWorkstreams.length
     ? currentWorkstreams
         .map((group) => {
+          const isActiveWorkstream = group.views.includes(activeView);
+          const targetView = getJourneyWorkstreamTarget(group);
+          const targetLabel = pageTitles[targetView] || targetView || "Abrir";
           const groupAttention = group.views.reduce(
             (total, view) => {
               const attention = attentionByView.get(view) || { high: 0, medium: 0 };
@@ -482,31 +497,38 @@ function renderJourneyShell() {
           const groupAttentionClass = groupAttention.high ? "danger" : groupAttention.medium ? "warning" : "";
 
           return `
-            <section class="journey-workstream ${group.views.includes(activeView) ? "active" : ""}">
+            <section class="journey-workstream ${isActiveWorkstream ? "active" : "compact"}">
               <div class="journey-workstream-head">
                 <strong>${escapeJourneyText(group.title)}</strong>
                 <span class="${groupAttentionClass}">${groupAttentionTotal ? `${groupAttentionTotal} pend.` : `${group.views.length} mod.`}</span>
               </div>
-              <div class="journey-workstream-modules">
-                ${group.views
-                  .map((view) => {
-                    const attention = attentionByView.get(view) || { high: 0, medium: 0 };
-                    const attentionTotal = attention.high + attention.medium;
-                    const attentionClass = attention.high ? "danger" : attention.medium ? "warning" : "";
-                    const primaryItem = primaryItemByView.get(view);
-                    const moduleLabel = pageTitles[view] || view;
-                    const moduleHint = primaryItem
-                      ? compactJourneyText(`${moduleLabel}: ${primaryItem.severity} - ${primaryItem.area}: ${primaryItem.title}`, 110)
-                      : `Abrir ${moduleLabel}`;
-                    return `
-                      <button class="journey-module ${view === activeView ? "active" : ""} ${attentionClass}" type="button" data-target-view="${view}" title="${escapeJourneyText(moduleHint)}" aria-label="${escapeJourneyText(moduleHint)}">
-                        <span>${escapeJourneyText(moduleLabel)}</span>
-                        ${attentionTotal ? `<strong>${attentionTotal}</strong>` : ""}
-                      </button>
-                    `;
-                  })
-                  .join("")}
-              </div>
+              ${
+                isActiveWorkstream
+                  ? `<div class="journey-workstream-modules">
+                      ${group.views
+                        .map((view) => {
+                          const attention = attentionByView.get(view) || { high: 0, medium: 0 };
+                          const attentionTotal = attention.high + attention.medium;
+                          const attentionClass = attention.high ? "danger" : attention.medium ? "warning" : "";
+                          const primaryItem = primaryItemByView.get(view);
+                          const moduleLabel = pageTitles[view] || view;
+                          const moduleHint = primaryItem
+                            ? compactJourneyText(`${moduleLabel}: ${primaryItem.severity} - ${primaryItem.area}: ${primaryItem.title}`, 110)
+                            : `Abrir ${moduleLabel}`;
+                          return `
+                            <button class="journey-module ${view === activeView ? "active" : ""} ${attentionClass}" type="button" data-target-view="${view}" title="${escapeJourneyText(moduleHint)}" aria-label="${escapeJourneyText(moduleHint)}">
+                              <span>${escapeJourneyText(moduleLabel)}</span>
+                              ${attentionTotal ? `<strong>${attentionTotal}</strong>` : ""}
+                            </button>
+                          `;
+                        })
+                        .join("")}
+                    </div>`
+                  : `<button class="journey-workstream-open" type="button" data-target-view="${escapeJourneyText(targetView)}">
+                      <span>Abrir grupo</span>
+                      <strong>${escapeJourneyText(targetLabel)}</strong>
+                    </button>`
+              }
             </section>
           `;
         })
@@ -528,6 +550,10 @@ function renderJourneyShell() {
   });
 
   moduleList.querySelectorAll(".journey-module").forEach((button) => {
+    button.addEventListener("click", () => openView(button.dataset.targetView));
+  });
+
+  moduleList.querySelectorAll(".journey-workstream-open").forEach((button) => {
     button.addEventListener("click", () => openView(button.dataset.targetView));
   });
 
@@ -680,6 +706,9 @@ journeyShellStyle.textContent = `
     border-color: rgba(15, 118, 110, 0.42);
     background: rgba(15, 118, 110, 0.06);
   }
+  .journey-workstream.compact {
+    align-content: start;
+  }
   .journey-workstream-head {
     display: flex;
     align-items: center;
@@ -704,6 +733,30 @@ journeyShellStyle.textContent = `
   }
   .journey-workstream-head span.danger {
     color: var(--danger);
+  }
+  .journey-workstream-open {
+    display: grid;
+    gap: 3px;
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid rgba(15, 118, 110, 0.22);
+    border-radius: 8px;
+    background: rgba(15, 118, 110, 0.07);
+    color: var(--text);
+    text-align: left;
+  }
+  .journey-workstream-open span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .journey-workstream-open strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--primary-strong);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .journey-stage-note {
     display: grid;

@@ -1032,6 +1032,16 @@ function checkRecentDecisionCoverage() {
       message: "Jornada superior deve identificar o grupo operacional ativo.",
     },
     {
+      file: "journey-shell-addon.js",
+      snippet: "getJourneyWorkstreamTarget",
+      message: "Grupos compactos da jornada devem apontar para um modulo acionavel.",
+    },
+    {
+      file: "journey-shell-addon.js",
+      snippet: "journey-workstream-open",
+      message: "Jornada superior deve compactar grupos inativos sem perder acesso.",
+    },
+    {
       file: "dashboard-command-addon.js",
       snippet: "dashboardRoadmapFocus",
       message: "Painel inicial deve expor foco recomendado do roadmap.",
