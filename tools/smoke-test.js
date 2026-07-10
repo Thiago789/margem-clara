@@ -517,6 +517,37 @@ async function exercisePayrollClosingDecision(page, scenarioName) {
   }
 }
 
+async function exerciseAccessReviewSnapshot(page, scenarioName) {
+  await openView(page, "access");
+  await expectVisible(page, "#access-audit-button", `${scenarioName}: botao de revisao de permissoes`);
+  await expectVisible(page, "#access-review-panel", `${scenarioName}: painel de revisao de permissoes`);
+  await page.locator("#access-audit-button").click();
+
+  const result = await page.evaluate(() => {
+    const auditFound = state.movements.some(
+      (movement) =>
+        movement.source === "Permissoes" &&
+        /Revisao de permissoes registrada/i.test(movement.text || "")
+    );
+
+    return {
+      hasReview: Boolean(state.lastAccessReview),
+      mappedProfiles: state.lastAccessReview?.mappedProfiles || 0,
+      mappedModules: state.lastAccessReview?.mappedModules || 0,
+      restrictedToManager: state.lastAccessReview?.restrictedToManager ?? -1,
+      auditFound,
+      panelText: document.getElementById("access-review-panel")?.textContent || "",
+    };
+  });
+
+  if (!result.hasReview || result.mappedProfiles < 3 || result.mappedModules < 1 || result.restrictedToManager < 0) {
+    fail(`${scenarioName}: revisao de permissoes nao congelou snapshot estruturado.`);
+  }
+  if (!result.auditFound || !result.panelText.includes("Ultima revisao")) {
+    fail(`${scenarioName}: revisao de permissoes nao gerou auditoria ou painel de evidencia.`);
+  }
+}
+
 async function exercisePilotQaApprovalFreshness(page, scenarioName) {
   await openView(page, "qa");
   await expectVisible(page, "#qa-audit-button", `${scenarioName}: botao de homologacao`);
@@ -739,6 +770,7 @@ async function runScenario(browser, scenario) {
     ["readiness", "#readiness-grid"],
     ["roadmap", "#roadmap-list"],
     ["audit", "#audit-view"],
+    ["access", "#access-audit-button"],
   ];
 
   for (const [view, selector] of coreViews) {
@@ -751,6 +783,7 @@ async function runScenario(browser, scenario) {
   await exerciseMarginReleasePolicy(page, scenario.name);
   await exerciseFileProtocolSnapshot(page, scenario.name);
   await exercisePayrollClosingDecision(page, scenario.name);
+  await exerciseAccessReviewSnapshot(page, scenario.name);
   await exercisePilotQaApprovalFreshness(page, scenario.name);
   await exercisePublicValidationBatch(page, scenario.name);
 

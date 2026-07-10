@@ -92,6 +92,37 @@ function getMvpSecurityChecklist() {
   ];
 }
 
+function getAccessReviewSnapshot() {
+  const matrix = getAccessModuleMatrix();
+  const securityChecklist = getMvpSecurityChecklist();
+  const activeProfile = profileConfig[state.currentProfile] || profileConfig.manager;
+  const blockers = securityChecklist.filter((item) => item.className === "danger").length;
+  const warnings = securityChecklist.filter((item) => item.className === "warning").length;
+
+  return {
+    reviewedAt: today(),
+    activeProfile: activeProfile.label,
+    activeScope: activeProfile.scope,
+    mappedProfiles: getAccessProfiles().length,
+    mappedModules: matrix.allViews.length,
+    sensitiveModules: matrix.sensitiveViews.length,
+    restrictedToManager: matrix.restrictedToManager.length,
+    checklistItems: securityChecklist.length,
+    blockers,
+    warnings,
+    summary: `${matrix.restrictedToManager.length} modulo(s) sensivel(is) restrito(s), ${blockers} bloqueio(s), ${warnings} alerta(s).`,
+  };
+}
+
+function recordAccessReviewSnapshot() {
+  const snapshot = getAccessReviewSnapshot();
+  state.lastAccessReview = snapshot;
+  auditEvent(`Revisao de permissoes registrada: ${snapshot.summary}`, "Permissoes");
+  saveState();
+  render();
+  openView("access");
+}
+
 function ensureAccessControlView() {
   if (document.getElementById("access-view")) return;
 
@@ -119,6 +150,7 @@ function ensureAccessControlView() {
         </div>
 
         <section class="panel access-command" id="access-command"></section>
+        <section class="panel access-review-panel" id="access-review-panel"></section>
 
         <div class="access-summary-grid" id="access-summary-grid"></div>
 
@@ -162,25 +194,21 @@ function ensureAccessControlView() {
     `
   );
 
-  document.getElementById("access-audit-button")?.addEventListener("click", () => {
-    auditEvent("Revisao de permissoes e perfis registrada.", "Permissoes");
-    saveState();
-    render();
-    openView("access");
-  });
+  document.getElementById("access-audit-button")?.addEventListener("click", recordAccessReviewSnapshot);
 }
 
 function renderAccessControl() {
   ensureAccessControlView();
 
   const command = document.getElementById("access-command");
+  const reviewPanel = document.getElementById("access-review-panel");
   const summary = document.getElementById("access-summary-grid");
   const list = document.getElementById("access-list");
   const controls = document.getElementById("access-controls");
   const ux = document.getElementById("access-ux");
   const moduleGrid = document.getElementById("access-module-grid");
   const securityList = document.getElementById("access-security-list");
-  if (!command || !summary || !list || !controls || !ux || !moduleGrid || !securityList) return;
+  if (!command || !reviewPanel || !summary || !list || !controls || !ux || !moduleGrid || !securityList) return;
 
   const profiles = getAccessProfiles();
   const matrix = getAccessModuleMatrix();
@@ -190,6 +218,7 @@ function renderAccessControl() {
   const totalRestrictions = profiles.reduce((sum, profile) => sum + profile.restrictions.length, 0);
   const activeProfile = profileConfig[state.currentProfile] || profileConfig.manager;
   const guardedNavigationEnabled = typeof openView === "function" && Boolean(document.getElementById("navigation-guard-notice") || document.querySelector(".topbar"));
+  const reviewSnapshot = state.lastAccessReview;
 
   command.innerHTML = `
     <div>
@@ -203,6 +232,20 @@ function renderAccessControl() {
         ${matrix.restrictedToManager.length} modulo(s) sensivel(is) restrito(s) ao gestor
       </span>
       <button class="primary-button access-audit-shortcut" type="button">Abrir auditoria</button>
+    </div>
+  `;
+
+  reviewPanel.innerHTML = `
+    <div>
+      <span>Ultima revisao</span>
+      <strong>${reviewSnapshot ? reviewSnapshot.reviewedAt : "Pendente"}</strong>
+      <p>${reviewSnapshot ? reviewSnapshot.summary : "Registre a revisao para congelar a matriz atual de acesso e riscos do MVP."}</p>
+    </div>
+    <div class="access-review-metrics">
+      <span>${reviewSnapshot?.mappedProfiles || profiles.length} perfil(is)</span>
+      <span>${reviewSnapshot?.mappedModules || matrix.allViews.length} modulo(s)</span>
+      <span>${reviewSnapshot?.restrictedToManager ?? matrix.restrictedToManager.length} sensivel(is) restrito(s)</span>
+      <span>${reviewSnapshot?.checklistItems || securityChecklist.length} controle(s)</span>
     </div>
   `;
 
@@ -338,6 +381,42 @@ accessStyle.textContent = `
     margin-bottom: 18px;
     background: linear-gradient(135deg, #f8fafc, #eef6ff);
   }
+  .access-review-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+    background: #f8faf8;
+  }
+  .access-review-panel span,
+  .access-review-panel p {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .access-review-panel strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 20px;
+  }
+  .access-review-panel p {
+    margin: 6px 0 0;
+  }
+  .access-review-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .access-review-metrics span {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 800;
+  }
   .access-command-label {
     display: block;
     color: var(--muted);
@@ -471,6 +550,7 @@ accessStyle.textContent = `
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .access-command,
+    .access-review-panel,
     .access-module-row {
       grid-template-columns: 1fr;
     }
@@ -480,6 +560,7 @@ accessStyle.textContent = `
   }
   @media (max-width: 640px) {
     .access-summary-grid,
+    .access-review-metrics,
     .access-row {
       grid-template-columns: 1fr;
     }

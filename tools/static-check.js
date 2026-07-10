@@ -277,6 +277,21 @@ function checkRecentDecisionCoverage() {
       message: "Tela de permissoes deve diferenciar demo estatica de operacao real.",
     },
     {
+      file: "access-control-addon.js",
+      snippet: "getAccessReviewSnapshot",
+      message: "Permissoes deve congelar snapshot estruturado da matriz de acesso.",
+    },
+    {
+      file: "access-control-addon.js",
+      snippet: "state.lastAccessReview",
+      message: "Permissoes deve guardar a ultima revisao para auditoria e evidencia.",
+    },
+    {
+      file: "access-control-addon.js",
+      snippet: "access-review-panel",
+      message: "Tela de permissoes deve exibir evidencia da ultima revisao registrada.",
+    },
+    {
       file: "readiness-addon.js",
       snippet: "Checklist de seguranca do MVP",
       message: "Prontidao deve medir checklist de seguranca do MVP.",
