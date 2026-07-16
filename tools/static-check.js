@@ -1098,6 +1098,11 @@ function checkRecentDecisionCoverage() {
     },
     {
       file: "journey-shell-addon.js",
+      snippet: "journey-context-summary",
+      message: "Jornada superior deve manter o contexto em um resumo compacto.",
+    },
+    {
+      file: "journey-shell-addon.js",
       snippet: "getActiveJourneyWorkstream",
       message: "Jornada superior deve identificar o grupo operacional ativo.",
     },
@@ -1199,7 +1204,8 @@ function checkDocumentationBasics() {
     {
       file: "estado-do-projeto.md",
       snippets: [
-        "Atualizado em: 2026-06-30",
+        "Atualizado em: 2026-07-16",
+        "Marco de consolidacao do MVP estatico",
         "Navegacao bloqueada por perfil",
         "Auditoria deve resumir eventos sensiveis",
         "Homologacao deve validar navegacao protegida",

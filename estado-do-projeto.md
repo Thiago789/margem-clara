@@ -1,6 +1,6 @@
 # Estado do Projeto - Margem Clara
 
-Atualizado em: 2026-06-30
+Atualizado em: 2026-07-16
 
 ## Objetivo
 
@@ -13,6 +13,19 @@ Construir um MVP de sistema de gestao de margem consignavel para validar fluxo o
 - Publicacao atual: MVP estatico no GitHub Pages.
 
 ## Estado Atual
+
+### Marco de consolidacao do MVP estatico
+
+Em 2026-07-16 o MVP estatico entrou em consolidacao. Novas telas e funcionalidades demonstrativas ficam congeladas, salvo quando forem necessarias para corrigir uma regra essencial, um erro ou uma lacuna do fluxo ponta a ponta.
+
+O foco imediato passa a ser:
+
+- simplificar a experiencia de uso e a demonstracao;
+- manter regras, evidencias e status consistentes;
+- executar verificacoes automaticas antes de publicar;
+- preparar a fundacao da versao real com backend, banco, autenticacao e auditoria persistente.
+
+O GitHub Actions deve executar checagem de seguranca, integridade estatica e smoke test da jornada principal antes de liberar a publicacao no GitHub Pages.
 
 O MVP ja possui uma base navegavel com:
 
@@ -33,6 +46,12 @@ O MVP ja possui uma base navegavel com:
 - validacao/autenticidade do servidor em nivel de MVP;
 - assistente/insights em nivel conceitual;
 - catalogo e politica de campos do contrato.
+- menu consolidado em frentes operacionais e contexto compacto da jornada;
+- fila operacional agrupada por frente;
+- fechamento com nivel e termo de aprovacao;
+- trilha de decisoes na auditoria;
+- snapshot de revisao de acessos;
+- roteiro guiado para demonstracao.
 
 ## Regras de Negocio Ja Decididas
 
@@ -248,20 +267,20 @@ Servidor/matricula:
 
 ## Prioridade de Desenvolvimento
 
-1. Consolidar fluxo ponta a ponta:
-   servidor/matricula -> margem -> reserva -> contrato -> insercao -> retorno -> baixa de parcela/liquidacao.
+1. Consolidar e congelar o MVP demonstravel:
+   simplificar a jornada, revisar campos essenciais e corrigir lacunas do fluxo ponta a ponta.
 
-2. Corrigir erros e testar:
-   validar no GitHub Pages apos cada mudanca relevante.
+2. Proteger a publicacao:
+   executar seguranca, integridade estatica e smoke test automaticamente antes do deploy.
 
-3. Melhorar usabilidade:
-   reduzir sensacao de muitas telas, agrupar modulos e guiar melhor a jornada.
+3. Iniciar a fundacao da versao real:
+   backend, PostgreSQL, autenticacao, permissoes, auditoria e isolamento por convenio.
 
-4. Completar regras e campos:
-   contrato, servidor, convenio, consignataria, produtos, rubricas, competencia, data de corte e tipos de operacao.
+4. Migrar o nucleo de dominio:
+   convenio, servidor/matricula, margem, reserva, contrato e ciclo de arquivos.
 
-5. Preparar versao real:
-   backend, banco, autenticacao, seguranca, APIs e logs robustos.
+5. Homologar a operacao real:
+   testes de permissao, concorrencia, arquivos, seguranca, LGPD e recuperacao.
 
 ## Cuidados de Arquitetura
 

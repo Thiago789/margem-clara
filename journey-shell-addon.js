@@ -406,7 +406,6 @@ function renderJourneyShell() {
   const activeWorkstream = getActiveJourneyWorkstream(activeStage, activeView);
   const activeModuleLabel = pageTitles[activeView] || activeView;
   const activeWorkstreamLabel = activeWorkstream?.title || activeStage.title;
-  const focusLabel = focusItem ? `Prioridade: ${focusSummary}` : roadmapFocus ? `Foco recomendado: ${roadmapFocus.title} - ${roadmapFocus.detail}` : `Proximo atalho: ${nextLabel}`;
 
   document.querySelectorAll(".nav-item").forEach((button) => {
     if (button.classList.contains("nav-secondary")) return;
@@ -461,16 +460,14 @@ function renderJourneyShell() {
     .join("");
 
   contextBar.innerHTML = `
-    <div class="journey-context-item">
+    <div class="journey-context-summary" aria-label="Contexto atual da jornada">
       <span>Frente</span>
       <strong>${escapeJourneyText(activeStage.title)}</strong>
-    </div>
-    <div class="journey-context-item">
+      <i aria-hidden="true">/</i>
       <span>Grupo</span>
       <strong>${escapeJourneyText(activeWorkstreamLabel)}</strong>
-    </div>
-    <div class="journey-context-item">
-      <span>Modulo atual</span>
+      <i aria-hidden="true">/</i>
+      <span>Modulo</span>
       <strong>${escapeJourneyText(activeModuleLabel)}</strong>
     </div>
     <button class="journey-context-action" type="button" data-target-view="${escapeJourneyText(nextTarget)}">
@@ -536,9 +533,8 @@ function renderJourneyShell() {
     : `<span class="journey-empty">Nenhum modulo disponivel para este perfil.</span>`;
 
   stageNote.innerHTML = `
-    <span>Objetivo da etapa</span>
+    <span>Objetivo</span>
     <strong>${escapeJourneyText(activeStage.guidance)}</strong>
-    <em>${escapeJourneyText(actionSource.label)}: ${escapeJourneyText(focusLabel)}</em>
   `;
 
   stageList.querySelectorAll(".journey-stage").forEach((button) => {
@@ -650,42 +646,59 @@ journeyShellStyle.textContent = `
   }
   .journey-context-bar {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(160px, auto);
+    grid-template-columns: minmax(0, 1fr) minmax(160px, auto);
     gap: 8px;
   }
-  .journey-context-item,
+  .journey-context-summary,
   .journey-context-action {
     min-width: 0;
-    min-height: 58px;
-    padding: 9px 11px;
+    min-height: 44px;
+    padding: 8px 11px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: #f8faf8;
     text-align: left;
   }
+  .journey-context-summary {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .journey-context-summary i {
+    color: var(--line-strong, #b9c4be);
+    font-style: normal;
+  }
   .journey-context-action {
     cursor: pointer;
     background: rgba(15, 118, 110, 0.08);
   }
-  .journey-context-item span,
+  .journey-context-summary span,
   .journey-context-action span {
-    display: block;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
+    text-transform: uppercase;
   }
-  .journey-context-item strong,
+  .journey-context-summary strong,
   .journey-context-action strong {
-    display: block;
     min-width: 0;
-    margin-top: 4px;
     overflow: hidden;
     color: var(--text);
     font-size: 13px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .journey-context-summary strong {
+    flex: 0 1 auto;
+  }
+  .journey-context-action span,
   .journey-context-action strong {
+    display: block;
+  }
+  .journey-context-action strong {
+    margin-top: 2px;
     color: var(--primary-strong);
   }
   .journey-module-list {
@@ -760,7 +773,7 @@ journeyShellStyle.textContent = `
   }
   .journey-stage-note {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
@@ -781,11 +794,6 @@ journeyShellStyle.textContent = `
     white-space: nowrap;
     color: var(--text);
     font-weight: 700;
-  }
-  .journey-stage-note em {
-    color: var(--muted);
-    font-style: normal;
-    white-space: nowrap;
   }
   .journey-stage,
   .journey-module {
@@ -884,9 +892,13 @@ journeyShellStyle.textContent = `
     .journey-context-bar {
       grid-template-columns: 1fr;
     }
-    .journey-context-item,
+    .journey-context-summary,
     .journey-context-action {
       min-height: auto;
+    }
+    .journey-context-summary {
+      flex-wrap: wrap;
+      white-space: normal;
     }
   }
 `;

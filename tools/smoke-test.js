@@ -718,6 +718,8 @@ async function runScenario(browser, scenario) {
       moduleJumpOptions,
       primaryTargets,
       contextText: document.getElementById("journey-context-bar")?.textContent || "",
+      contextSummaryCount: document.querySelectorAll(".journey-context-summary").length,
+      contextCardCount: document.querySelectorAll(".journey-context-item").length,
       contextTarget: contextAction?.dataset.targetView || "",
       compactWorkstreams: compactWorkstreams.length,
       compactTargets: compactWorkstreams.map((group) => group.querySelector(".journey-workstream-open")?.dataset.targetView || ""),
@@ -759,6 +761,9 @@ async function runScenario(browser, scenario) {
   }
   if (!riskSummary.contextText.includes("Frente") || !riskSummary.contextText.includes("Proxima acao") || !riskSummary.contextTarget) {
     fail(`${scenario.name}: contexto da jornada nao resume frente, modulo e proxima acao.`);
+  }
+  if (riskSummary.contextSummaryCount !== 1 || riskSummary.contextCardCount !== 0) {
+    fail(`${scenario.name}: contexto da jornada voltou a usar cards redundantes.`);
   }
   if (riskSummary.compactWorkstreams < 1 || riskSummary.compactTargets.some((target) => !target)) {
     fail(`${scenario.name}: grupos inativos da jornada nao foram compactados com alvo de abertura.`);
