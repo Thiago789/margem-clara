@@ -2,6 +2,10 @@ if (!Array.isArray(state.demoScriptChecks)) {
   state.demoScriptChecks = [];
 }
 
+if (!Number.isInteger(state.demoScriptGuideIndex)) {
+  state.demoScriptGuideIndex = 0;
+}
+
 function getDemoScriptSteps() {
   return [
     {
@@ -93,6 +97,23 @@ function toggleDemoScriptStep(stepId) {
   openView("demo");
 }
 
+function setDemoScriptGuideIndex(index) {
+  const steps = getDemoScriptSteps();
+  const maxIndex = Math.max(0, steps.length - 1);
+  state.demoScriptGuideIndex = Math.min(Math.max(0, index), maxIndex);
+  saveState();
+  render();
+  openView("demo");
+}
+
+function getDemoScriptGuideStep(steps) {
+  const index = Math.min(Math.max(0, Number(state.demoScriptGuideIndex || 0)), Math.max(0, steps.length - 1));
+  return {
+    index,
+    step: steps[index] || null,
+  };
+}
+
 function renderDemoScript() {
   ensureDemoScriptPanel();
   const list = document.getElementById("demo-script-list");
@@ -101,8 +122,32 @@ function renderDemoScript() {
   const checked = new Set(state.demoScriptChecks || []);
   const steps = getDemoScriptSteps();
   const done = steps.filter((step) => checked.has(step.id)).length;
+  const guide = getDemoScriptGuideStep(steps);
+  const guideStep = guide.step;
+  const guideDone = guideStep ? checked.has(guideStep.id) : false;
 
   list.innerHTML = `
+    ${
+      guideStep
+        ? `
+          <section class="demo-script-guide" id="demo-script-guide">
+            <div>
+              <span>Modo guiado</span>
+              <strong>${guideStep.title}</strong>
+              <p>${guideStep.message}</p>
+              <small>${guideStep.evidence}</small>
+            </div>
+            <div class="demo-script-guide-actions">
+              <span>${guide.index + 1}/${steps.length}</span>
+              <button class="secondary-button demo-script-prev" type="button" ${guide.index === 0 ? "disabled" : ""}>Anterior</button>
+              <button class="secondary-button demo-script-current-check" data-script-step="${guideStep.id}" type="button">${guideDone ? "Desmarcar" : "Marcar evidencia"}</button>
+              <button class="primary-button demo-script-current-open" data-target-view="${guideStep.target}" type="button">Abrir etapa</button>
+              <button class="secondary-button demo-script-next" type="button" ${guide.index >= steps.length - 1 ? "disabled" : ""}>Proxima</button>
+            </div>
+          </section>
+        `
+        : ""
+    }
     <div class="demo-script-progress">
       <div>
         <strong>${done}/${steps.length} etapa(s) marcadas</strong>
@@ -131,6 +176,22 @@ function renderDemoScript() {
     button.addEventListener("click", () => toggleDemoScriptStep(button.dataset.scriptStep));
   });
 
+  document.querySelector(".demo-script-current-check")?.addEventListener("click", (event) => {
+    toggleDemoScriptStep(event.currentTarget.dataset.scriptStep);
+  });
+
+  document.querySelector(".demo-script-current-open")?.addEventListener("click", (event) => {
+    openView(event.currentTarget.dataset.targetView);
+  });
+
+  document.querySelector(".demo-script-prev")?.addEventListener("click", () => {
+    setDemoScriptGuideIndex(guide.index - 1);
+  });
+
+  document.querySelector(".demo-script-next")?.addEventListener("click", () => {
+    setDemoScriptGuideIndex(guide.index + 1);
+  });
+
   document.querySelectorAll(".demo-script-open").forEach((button) => {
     button.addEventListener("click", () => openView(button.dataset.targetView));
   });
@@ -151,6 +212,44 @@ demoScriptStyle.textContent = `
   .demo-script-list {
     display: grid;
     gap: 10px;
+  }
+  .demo-script-guide {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+    gap: 14px;
+    align-items: center;
+    padding: 14px;
+    border: 1px solid rgba(15, 118, 110, 0.28);
+    border-radius: 8px;
+    background: #f8faf8;
+  }
+  .demo-script-guide span,
+  .demo-script-guide p,
+  .demo-script-guide small {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .demo-script-guide strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 20px;
+  }
+  .demo-script-guide p {
+    margin: 8px 0 0;
+  }
+  .demo-script-guide small {
+    margin-top: 5px;
+  }
+  .demo-script-guide-actions {
+    display: grid;
+    gap: 8px;
+  }
+  .demo-script-guide-actions > span {
+    justify-self: end;
+    color: var(--primary-strong);
+    font-weight: 800;
   }
   .demo-script-progress,
   .demo-script-row {
@@ -198,9 +297,13 @@ demoScriptStyle.textContent = `
     border-color: #bbf7d0;
   }
   @media (max-width: 760px) {
+    .demo-script-guide,
     .demo-script-progress,
     .demo-script-row {
       grid-template-columns: 1fr;
+    }
+    .demo-script-guide-actions > span {
+      justify-self: start;
     }
     .demo-script-check {
       justify-self: start;

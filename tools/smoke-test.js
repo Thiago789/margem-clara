@@ -548,6 +548,24 @@ async function exerciseAccessReviewSnapshot(page, scenarioName) {
   }
 }
 
+async function exerciseDemoScriptGuide(page, scenarioName) {
+  await openView(page, "demo");
+  await expectVisible(page, "#demo-script-guide", `${scenarioName}: modo guiado do roteiro`);
+  await page.locator(".demo-script-next").click();
+  await page.locator(".demo-script-current-check").click();
+
+  const result = await page.evaluate(() => ({
+    guideIndex: state.demoScriptGuideIndex,
+    checks: Array.isArray(state.demoScriptChecks) ? state.demoScriptChecks.length : 0,
+    guideText: document.getElementById("demo-script-guide")?.textContent || "",
+    hasOpenAction: Boolean(document.querySelector(".demo-script-current-open")?.dataset.targetView),
+  }));
+
+  if (result.guideIndex < 1 || result.checks < 1 || !result.guideText.includes("Modo guiado") || !result.hasOpenAction) {
+    fail(`${scenarioName}: roteiro guiado nao avancou, marcou evidencia ou manteve acao de abertura.`);
+  }
+}
+
 async function exercisePilotQaApprovalFreshness(page, scenarioName) {
   await openView(page, "qa");
   await expectVisible(page, "#qa-audit-button", `${scenarioName}: botao de homologacao`);
@@ -771,6 +789,7 @@ async function runScenario(browser, scenario) {
     ["roadmap", "#roadmap-list"],
     ["audit", "#audit-view"],
     ["access", "#access-audit-button"],
+    ["demo", "#demo-script-guide"],
   ];
 
   for (const [view, selector] of coreViews) {
@@ -784,6 +803,7 @@ async function runScenario(browser, scenario) {
   await exerciseFileProtocolSnapshot(page, scenario.name);
   await exercisePayrollClosingDecision(page, scenario.name);
   await exerciseAccessReviewSnapshot(page, scenario.name);
+  await exerciseDemoScriptGuide(page, scenario.name);
   await exercisePilotQaApprovalFreshness(page, scenario.name);
   await exercisePublicValidationBatch(page, scenario.name);
 

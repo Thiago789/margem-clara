@@ -922,6 +922,21 @@ function checkRecentDecisionCoverage() {
       message: "Roteiro de apresentacao deve abrir diretamente a tela de protocolos.",
     },
     {
+      file: "demo-script-addon.js",
+      snippet: "demo-script-guide",
+      message: "Roteiro de apresentacao deve ter modo guiado para demonstracao assistida.",
+    },
+    {
+      file: "demo-script-addon.js",
+      snippet: "setDemoScriptGuideIndex",
+      message: "Modo guiado do roteiro deve permitir avancar e voltar entre etapas.",
+    },
+    {
+      file: "demo-script-addon.js",
+      snippet: "demo-script-current-check",
+      message: "Modo guiado do roteiro deve marcar evidencia da etapa atual.",
+    },
+    {
       file: "pilot-qa-addon.js",
       snippet: "recordPilotQaApproval",
       message: "Homologacao deve registrar checkpoint reutilizavel pela prontidao.",
