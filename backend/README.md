@@ -59,7 +59,9 @@ O primeiro endpoint verifica apenas o processo da API. O segundo consulta o Post
 - contexto de correlacao;
 - regra pura de isolamento por convenio e parte;
 - fabrica de evento de auditoria;
-- esquema Prisma do primeiro incremento.
-- migracao SQL inicial gerada e revisavel, ainda nao aplicada em banco local.
+- esquema Prisma e migracoes aplicadas no PostgreSQL local;
+- tabelas de sessao e tentativas de autenticacao;
+- hash de senha com `scrypt`, salt aleatorio e comparacao em tempo constante;
+- token de sessao opaco com persistencia apenas do hash.
 
-Autenticacao, persistencia de auditoria e endpoints operacionais ainda nao estao implementados. Nenhuma protecao demonstrativa do frontend deve ser considerada seguranca do backend.
+Endpoints de login, cookie seguro, guardas de sessao e persistencia de auditoria ainda nao estao implementados. Nenhuma protecao demonstrativa do frontend deve ser considerada seguranca do backend.

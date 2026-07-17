@@ -4,6 +4,7 @@ import { validateEnvironment } from "./config/environment.js";
 import { HealthModule } from "./health/health.module.js";
 import { CorrelationMiddleware } from "./platform/request-context/correlation.middleware.js";
 import { DatabaseModule } from "./platform/database/database.module.js";
+import { AuthModule } from "./platform/auth/auth.module.js";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { DatabaseModule } from "./platform/database/database.module.js";
       validate: validateEnvironment,
     }),
     DatabaseModule,
+    AuthModule,
     HealthModule,
   ],
 })

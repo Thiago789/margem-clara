@@ -65,16 +65,22 @@ enum EnvironmentKind {
   PRODUCTION
 }
 
+enum AuthAttemptOutcome {
+  SUCCESS
+  FAILURE
+  BLOCKED
+}
+
 model Organization {
-  id             String      @id @default(uuid()) @db.Uuid
+  id             String       @id @default(uuid()) @db.Uuid
   name           String
-  documentNumber String      @unique @map("document_number")
+  documentNumber String       @unique @map("document_number")
   type           String
   status         RecordStatus @default(ACTIVE)
   agreements     Agreement[]
-  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
-  version        Int         @default(1)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version        Int          @default(1)
 
   @@map("organizations")
 }
@@ -161,27 +167,27 @@ model Product {
 }
 
 model Accreditation {
-  id                 String              @id @default(uuid()) @db.Uuid
-  agreementId        String              @map("agreement_id") @db.Uuid
-  agreement          Agreement           @relation(fields: [agreementId], references: [id])
-  partyId            String              @map("party_id") @db.Uuid
-  party              Party               @relation(fields: [partyId], references: [id])
-  productId          String              @map("product_id") @db.Uuid
-  product            Product             @relation(fields: [productId], references: [id])
-  status             AccreditationStatus @default(PENDING)
-  environment        EnvironmentKind     @default(HOMOLOGATION)
-  integrationMode    String              @default("manual") @map("integration_mode")
-  operationalLimit   Decimal?            @map("operational_limit") @db.Decimal(18, 2)
-  validFrom          DateTime            @map("valid_from") @db.Timestamptz(6)
-  validUntil         DateTime?           @map("valid_until") @db.Timestamptz(6)
-  approvedByUserId   String?             @map("approved_by_user_id") @db.Uuid
-  suspensionReason   String?             @map("suspension_reason")
-  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
-  version            Int                 @default(1)
+  id               String              @id @default(uuid()) @db.Uuid
+  agreementId      String              @map("agreement_id") @db.Uuid
+  agreement        Agreement           @relation(fields: [agreementId], references: [id])
+  partyId          String              @map("party_id") @db.Uuid
+  party            Party               @relation(fields: [partyId], references: [id])
+  productId        String              @map("product_id") @db.Uuid
+  product          Product             @relation(fields: [productId], references: [id])
+  status           AccreditationStatus @default(PENDING)
+  environment      EnvironmentKind     @default(HOMOLOGATION)
+  integrationMode  String              @default("manual") @map("integration_mode")
+  operationalLimit Decimal?            @map("operational_limit") @db.Decimal(18, 2)
+  validFrom        DateTime            @map("valid_from") @db.Timestamptz(6)
+  validUntil       DateTime?           @map("valid_until") @db.Timestamptz(6)
+  approvedByUserId String?             @map("approved_by_user_id") @db.Uuid
+  suspensionReason String?             @map("suspension_reason")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version          Int                 @default(1)
 
-  @@index([agreementId, partyId, status])
   @@unique([agreementId, partyId, productId, environment, validFrom])
+  @@index([agreementId, partyId, status])
   @@map("accreditations")
 }
 
@@ -233,18 +239,51 @@ model Enrollment {
 }
 
 model User {
-  id           String       @id @default(uuid()) @db.Uuid
+  id           String        @id @default(uuid()) @db.Uuid
   name         String
-  email        String       @unique
-  passwordHash String       @map("password_hash")
-  status       RecordStatus @default(ACTIVE)
-  lastLoginAt  DateTime?    @map("last_login_at") @db.Timestamptz(6)
+  email        String        @unique
+  passwordHash String        @map("password_hash")
+  status       RecordStatus  @default(ACTIVE)
+  lastLoginAt  DateTime?     @map("last_login_at") @db.Timestamptz(6)
   memberships  Membership[]
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  version      Int          @default(1)
+  authSessions AuthSession[]
+  authAttempts AuthAttempt[]
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version      Int           @default(1)
 
   @@map("users")
+}
+
+model AuthSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id])
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  ipAddress  String?   @map("ip_address")
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model AuthAttempt {
+  id              String             @id @default(uuid()) @db.Uuid
+  userId          String?            @map("user_id") @db.Uuid
+  user            User?              @relation(fields: [userId], references: [id])
+  emailLookupHash String             @map("email_lookup_hash")
+  ipLookupHash    String             @map("ip_lookup_hash")
+  outcome         AuthAttemptOutcome
+  occurredAt      DateTime           @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([emailLookupHash, occurredAt])
+  @@index([ipLookupHash, occurredAt])
+  @@map("auth_attempts")
 }
 
 model Role {
@@ -281,19 +320,19 @@ model RolePermission {
 }
 
 model Membership {
-  id         String       @id @default(uuid()) @db.Uuid
-  userId     String       @map("user_id") @db.Uuid
-  user       User         @relation(fields: [userId], references: [id])
-  roleId     String       @map("role_id") @db.Uuid
-  role       Role         @relation(fields: [roleId], references: [id])
-  agreementId String?     @map("agreement_id") @db.Uuid
-  agreement  Agreement?   @relation(fields: [agreementId], references: [id])
-  partyId    String?      @map("party_id") @db.Uuid
-  party      Party?       @relation(fields: [partyId], references: [id])
-  status     RecordStatus @default(ACTIVE)
-  validFrom  DateTime     @map("valid_from") @db.Timestamptz(6)
-  validUntil DateTime?    @map("valid_until") @db.Timestamptz(6)
-  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  user        User         @relation(fields: [userId], references: [id])
+  roleId      String       @map("role_id") @db.Uuid
+  role        Role         @relation(fields: [roleId], references: [id])
+  agreementId String?      @map("agreement_id") @db.Uuid
+  agreement   Agreement?   @relation(fields: [agreementId], references: [id])
+  partyId     String?      @map("party_id") @db.Uuid
+  party       Party?       @relation(fields: [partyId], references: [id])
+  status      RecordStatus @default(ACTIVE)
+  validFrom   DateTime     @map("valid_from") @db.Timestamptz(6)
+  validUntil  DateTime?    @map("valid_until") @db.Timestamptz(6)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([agreementId, userId, status])
   @@index([partyId, userId, status])
@@ -301,24 +340,24 @@ model Membership {
 }
 
 model AuditEvent {
-  id           String     @id @default(uuid()) @db.Uuid
-  agreementId  String?    @map("agreement_id") @db.Uuid
-  agreement    Agreement? @relation(fields: [agreementId], references: [id])
-  actorUserId  String?    @map("actor_user_id") @db.Uuid
-  actorRole    String?    @map("actor_role")
-  actorPartyId String?    @map("actor_party_id") @db.Uuid
-  action       String
-  outcome      String
-  entityType   String     @map("entity_type")
-  entityId     String?    @map("entity_id")
-  correlationId String    @map("correlation_id") @db.Uuid
-  requestId    String?    @map("request_id")
-  previousData Json?      @map("previous_data")
-  newData      Json?      @map("new_data")
-  reason       String?
-  ipAddress    String?    @map("ip_address")
-  userAgent    String?    @map("user_agent")
-  occurredAt   DateTime   @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  id            String     @id @default(uuid()) @db.Uuid
+  agreementId   String?    @map("agreement_id") @db.Uuid
+  agreement     Agreement? @relation(fields: [agreementId], references: [id])
+  actorUserId   String?    @map("actor_user_id") @db.Uuid
+  actorRole     String?    @map("actor_role")
+  actorPartyId  String?    @map("actor_party_id") @db.Uuid
+  action        String
+  outcome       String
+  entityType    String     @map("entity_type")
+  entityId      String?    @map("entity_id")
+  correlationId String     @map("correlation_id") @db.Uuid
+  requestId     String?    @map("request_id")
+  previousData  Json?      @map("previous_data")
+  newData       Json?      @map("new_data")
+  reason        String?
+  ipAddress     String?    @map("ip_address")
+  userAgent     String?    @map("user_agent")
+  occurredAt    DateTime   @default(now()) @map("occurred_at") @db.Timestamptz(6)
 
   @@index([agreementId, occurredAt])
   @@index([correlationId])
@@ -326,18 +365,18 @@ model AuditEvent {
 }
 
 model OutboxEvent {
-  id            String     @id @default(uuid()) @db.Uuid
-  agreementId   String     @map("agreement_id") @db.Uuid
-  agreement     Agreement  @relation(fields: [agreementId], references: [id])
-  aggregateType String     @map("aggregate_type")
-  aggregateId   String     @map("aggregate_id")
-  eventType     String     @map("event_type")
+  id            String    @id @default(uuid()) @db.Uuid
+  agreementId   String    @map("agreement_id") @db.Uuid
+  agreement     Agreement @relation(fields: [agreementId], references: [id])
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id")
+  eventType     String    @map("event_type")
   payload       Json
-  correlationId String     @map("correlation_id") @db.Uuid
-  occurredAt    DateTime   @default(now()) @map("occurred_at") @db.Timestamptz(6)
-  publishedAt   DateTime?  @map("published_at") @db.Timestamptz(6)
-  attempts      Int        @default(0)
-  status        String     @default("pending")
+  correlationId String    @map("correlation_id") @db.Uuid
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  attempts      Int       @default(0)
+  status        String    @default("pending")
 
   @@index([status, occurredAt])
   @@index([agreementId, aggregateType, aggregateId])
