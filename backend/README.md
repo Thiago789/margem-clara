@@ -48,7 +48,10 @@ Health check local:
 
 ```text
 GET http://127.0.0.1:3333/api/v1/health
+GET http://127.0.0.1:3333/api/v1/health/ready
 ```
+
+O primeiro endpoint verifica apenas o processo da API. O segundo consulta o PostgreSQL e retorna `503` sem detalhes internos quando a dependencia nao esta pronta.
 
 ## Limites atuais
 

@@ -9,3 +9,4 @@ backend/node_modules/
 backend/dist/
 backend/coverage/
 backend/src/generated/
+/commercial-private/

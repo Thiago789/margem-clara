@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { validateEnvironment } from "./config/environment.js";
 import { HealthModule } from "./health/health.module.js";
 import { CorrelationMiddleware } from "./platform/request-context/correlation.middleware.js";
+import { DatabaseModule } from "./platform/database/database.module.js";
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { CorrelationMiddleware } from "./platform/request-context/correlation.mi
       isGlobal: true,
       validate: validateEnvironment,
     }),
+    DatabaseModule,
     HealthModule,
   ],
 })

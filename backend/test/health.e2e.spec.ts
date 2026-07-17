@@ -2,10 +2,12 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PrismaService } from "../src/platform/database/prisma.service.js";
 
 describe("health endpoint", () => {
   let app: INestApplication;
+  let prisma: PrismaService;
 
   beforeEach(async () => {
     process.env.NODE_ENV = "test";
@@ -17,6 +19,7 @@ describe("health endpoint", () => {
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix("api/v1");
     await app.init();
+    prisma = app.get(PrismaService);
   });
 
   afterEach(async () => {
@@ -42,5 +45,30 @@ describe("health endpoint", () => {
       .expect(200);
 
     expect(response.headers["x-correlation-id"]).toBe(correlationId);
+  });
+
+  it("reports readiness when the database responds", async () => {
+    vi.spyOn(prisma, "assertReady").mockResolvedValue();
+
+    const response = await request(app.getHttpServer()).get("/api/v1/health/ready").expect(200);
+
+    expect(response.body).toMatchObject({
+      status: "ready",
+      service: "margem-clara-api-test",
+      dependencies: { database: "ok" },
+    });
+  });
+
+  it("returns a safe unavailable response when the database fails", async () => {
+    vi.spyOn(prisma, "assertReady").mockRejectedValue(new Error("database detail must stay private"));
+
+    const response = await request(app.getHttpServer()).get("/api/v1/health/ready").expect(503);
+
+    expect(response.body).toMatchObject({
+      status: "not_ready",
+      service: "margem-clara-api-test",
+      dependencies: { database: "unavailable" },
+    });
+    expect(JSON.stringify(response.body)).not.toContain("database detail must stay private");
   });
 });
