@@ -46,6 +46,21 @@ Joao Martins,456.789.012-33,MAT-1004,4100,350,Ativo
 
 Este MVP ainda nao possui backend, banco de dados ou autenticacao real. Ele foi feito como prototipo funcional para validar fluxo, regra de margem e experiencia de uso antes da implementacao completa da API.
 
+## Backend operacional em construcao
+
+A fundacao da API real esta em `backend/`, separada da demonstracao estatica.
+
+Ela ja possui:
+
+- NestJS e TypeScript em modo estrito;
+- esquema Prisma para PostgreSQL;
+- contexto de correlacao e health check;
+- isolamento de acesso por convenio e parte conveniada;
+- fabrica de eventos de auditoria;
+- testes unitarios e de endpoint.
+
+O backend ainda nao deve receber dados reais. Autenticacao, persistencia operacional e migracoes aplicadas em banco serao os proximos incrementos.
+
 ## Checagem estatica
 
 Antes de publicar uma mudanca, rode:

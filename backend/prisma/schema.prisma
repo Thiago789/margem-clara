@@ -1,0 +1,345 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum PolicyStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum PartyType {
+  FINANCIAL_INSTITUTION
+  HEALTH_PLAN
+  INSURER
+  PENSION_PROVIDER
+  ASSOCIATION
+  UNION
+  COOPERATIVE
+  COMMERCE
+  SERVICE_PROVIDER
+  LAW_OFFICE
+  OTHER
+}
+
+enum ProductFamily {
+  PAYROLL_LOAN
+  PAYROLL_CARD
+  BENEFIT_CARD
+  OPTIONAL_DEDUCTION
+}
+
+enum ChargeMode {
+  FIXED_INSTALLMENTS
+  INDEFINITE_RECURRING
+  PERCENTAGE
+  VARIABLE_BY_COMPETENCY
+  OCCASIONAL
+  SINGLE_CHARGE
+  RESERVED_LIMIT
+}
+
+enum AccreditationStatus {
+  PENDING
+  HOMOLOGATION
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+}
+
+enum EnvironmentKind {
+  HOMOLOGATION
+  PRODUCTION
+}
+
+model Organization {
+  id             String      @id @default(uuid()) @db.Uuid
+  name           String
+  documentNumber String      @unique @map("document_number")
+  type           String
+  status         RecordStatus @default(ACTIVE)
+  agreements     Agreement[]
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version        Int         @default(1)
+
+  @@map("organizations")
+}
+
+model Agreement {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  organizationId     String                   @map("organization_id") @db.Uuid
+  organization       Organization             @relation(fields: [organizationId], references: [id])
+  tenantKey          String                   @unique @map("tenant_key")
+  code               String
+  name               String
+  timezone           String                   @default("America/Fortaleza")
+  payrollFrequency   String                   @default("monthly") @map("payroll_frequency")
+  dataClassification String                   @default("confidential") @map("data_classification")
+  status             RecordStatus             @default(ACTIVE)
+  policies           AgreementPolicyVersion[]
+  accreditations     Accreditation[]
+  enrollments        Enrollment[]
+  memberships        Membership[]
+  auditEvents        AuditEvent[]
+  outboxEvents       OutboxEvent[]
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version            Int                      @default(1)
+
+  @@unique([organizationId, code])
+  @@map("agreements")
+}
+
+model AgreementPolicyVersion {
+  id               String       @id @default(uuid()) @db.Uuid
+  agreementId      String       @map("agreement_id") @db.Uuid
+  agreement        Agreement    @relation(fields: [agreementId], references: [id])
+  policyType       String       @map("policy_type")
+  versionNumber    Int          @map("version_number")
+  payload          Json
+  validFrom        DateTime     @map("valid_from") @db.Timestamptz(6)
+  validUntil       DateTime?    @map("valid_until") @db.Timestamptz(6)
+  status           PolicyStatus @default(DRAFT)
+  approvedByUserId String?      @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime?    @map("approved_at") @db.Timestamptz(6)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([agreementId, policyType, versionNumber])
+  @@index([agreementId, policyType, status])
+  @@map("agreement_policy_versions")
+}
+
+model Party {
+  id                   String          @id @default(uuid()) @db.Uuid
+  legalName            String          @map("legal_name")
+  tradeName            String?         @map("trade_name")
+  documentNumber       String          @unique @map("document_number")
+  partyType            PartyType       @map("party_type")
+  regulatoryIdentifier String?         @map("regulatory_identifier")
+  status               RecordStatus    @default(ACTIVE)
+  contactEmail         String?         @map("contact_email")
+  contactPhone         String?         @map("contact_phone")
+  metadata             Json?
+  accreditations       Accreditation[]
+  memberships          Membership[]
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version              Int             @default(1)
+
+  @@map("parties")
+}
+
+model Product {
+  id                     String          @id @default(uuid()) @db.Uuid
+  code                   String          @unique
+  name                   String
+  family                 ProductFamily
+  chargeMode             ChargeMode      @map("charge_mode")
+  requiresCreditContract Boolean         @default(false) @map("requires_credit_contract")
+  requiresConsent        Boolean         @default(true) @map("requires_consent")
+  supportsVariableAmount Boolean         @default(false) @map("supports_variable_amount")
+  status                 RecordStatus    @default(ACTIVE)
+  accreditations         Accreditation[]
+  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("products")
+}
+
+model Accreditation {
+  id                 String              @id @default(uuid()) @db.Uuid
+  agreementId        String              @map("agreement_id") @db.Uuid
+  agreement          Agreement           @relation(fields: [agreementId], references: [id])
+  partyId            String              @map("party_id") @db.Uuid
+  party              Party               @relation(fields: [partyId], references: [id])
+  productId          String              @map("product_id") @db.Uuid
+  product            Product             @relation(fields: [productId], references: [id])
+  status             AccreditationStatus @default(PENDING)
+  environment        EnvironmentKind     @default(HOMOLOGATION)
+  integrationMode    String              @default("manual") @map("integration_mode")
+  operationalLimit   Decimal?            @map("operational_limit") @db.Decimal(18, 2)
+  validFrom          DateTime            @map("valid_from") @db.Timestamptz(6)
+  validUntil         DateTime?           @map("valid_until") @db.Timestamptz(6)
+  approvedByUserId   String?             @map("approved_by_user_id") @db.Uuid
+  suspensionReason   String?             @map("suspension_reason")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version            Int                 @default(1)
+
+  @@index([agreementId, partyId, status])
+  @@unique([agreementId, partyId, productId, environment, validFrom])
+  @@map("accreditations")
+}
+
+model Person {
+  id             String       @id @default(uuid()) @db.Uuid
+  fullName       String       @map("full_name")
+  socialName     String?      @map("social_name")
+  cpfEncrypted   String       @map("cpf_encrypted")
+  cpfLookupHash  String       @unique @map("cpf_lookup_hash")
+  birthDate      DateTime     @map("birth_date") @db.Date
+  emailEncrypted String?      @map("email_encrypted")
+  phoneEncrypted String?      @map("phone_encrypted")
+  status         RecordStatus @default(ACTIVE)
+  enrollments    Enrollment[]
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version        Int          @default(1)
+
+  @@map("people")
+}
+
+model Enrollment {
+  id                  String       @id @default(uuid()) @db.Uuid
+  agreementId         String       @map("agreement_id") @db.Uuid
+  agreement           Agreement    @relation(fields: [agreementId], references: [id])
+  personId            String       @map("person_id") @db.Uuid
+  person              Person       @relation(fields: [personId], references: [id])
+  enrollmentNumber    String       @map("enrollment_number")
+  enrollmentLookupKey String       @map("enrollment_lookup_key")
+  functionalStatus    String       @map("functional_status")
+  employmentType      String?      @map("employment_type")
+  admissionDate       DateTime?    @map("admission_date") @db.Date
+  terminationDate     DateTime?    @map("termination_date") @db.Date
+  payrollGroup        String?      @map("payroll_group")
+  department          String?
+  costCenter          String?      @map("cost_center")
+  baseSalary          Decimal      @default(0) @map("base_salary") @db.Decimal(18, 2)
+  mandatoryDeductions Decimal      @default(0) @map("mandatory_deductions") @db.Decimal(18, 2)
+  marginBase          Decimal      @default(0) @map("margin_base") @db.Decimal(18, 2)
+  sourceUpdatedAt     DateTime?    @map("source_updated_at") @db.Timestamptz(6)
+  status              RecordStatus @default(ACTIVE)
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version             Int          @default(1)
+
+  @@unique([agreementId, enrollmentLookupKey])
+  @@index([agreementId, personId, status])
+  @@map("enrollments")
+}
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  email        String       @unique
+  passwordHash String       @map("password_hash")
+  status       RecordStatus @default(ACTIVE)
+  lastLoginAt  DateTime?    @map("last_login_at") @db.Timestamptz(6)
+  memberships  Membership[]
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version      Int          @default(1)
+
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique
+  name        String
+  description String?
+  permissions RolePermission[]
+  memberships Membership[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique
+  description String?
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id])
+  permissionId String     @map("permission_id") @db.Uuid
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Membership {
+  id         String       @id @default(uuid()) @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  user       User         @relation(fields: [userId], references: [id])
+  roleId     String       @map("role_id") @db.Uuid
+  role       Role         @relation(fields: [roleId], references: [id])
+  agreementId String?     @map("agreement_id") @db.Uuid
+  agreement  Agreement?   @relation(fields: [agreementId], references: [id])
+  partyId    String?      @map("party_id") @db.Uuid
+  party      Party?       @relation(fields: [partyId], references: [id])
+  status     RecordStatus @default(ACTIVE)
+  validFrom  DateTime     @map("valid_from") @db.Timestamptz(6)
+  validUntil DateTime?    @map("valid_until") @db.Timestamptz(6)
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([agreementId, userId, status])
+  @@index([partyId, userId, status])
+  @@map("memberships")
+}
+
+model AuditEvent {
+  id           String     @id @default(uuid()) @db.Uuid
+  agreementId  String?    @map("agreement_id") @db.Uuid
+  agreement    Agreement? @relation(fields: [agreementId], references: [id])
+  actorUserId  String?    @map("actor_user_id") @db.Uuid
+  actorRole    String?    @map("actor_role")
+  actorPartyId String?    @map("actor_party_id") @db.Uuid
+  action       String
+  outcome      String
+  entityType   String     @map("entity_type")
+  entityId     String?    @map("entity_id")
+  correlationId String    @map("correlation_id") @db.Uuid
+  requestId    String?    @map("request_id")
+  previousData Json?      @map("previous_data")
+  newData      Json?      @map("new_data")
+  reason       String?
+  ipAddress    String?    @map("ip_address")
+  userAgent    String?    @map("user_agent")
+  occurredAt   DateTime   @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([agreementId, occurredAt])
+  @@index([correlationId])
+  @@map("audit_events")
+}
+
+model OutboxEvent {
+  id            String     @id @default(uuid()) @db.Uuid
+  agreementId   String     @map("agreement_id") @db.Uuid
+  agreement     Agreement  @relation(fields: [agreementId], references: [id])
+  aggregateType String     @map("aggregate_type")
+  aggregateId   String     @map("aggregate_id")
+  eventType     String     @map("event_type")
+  payload       Json
+  correlationId String     @map("correlation_id") @db.Uuid
+  occurredAt    DateTime   @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  publishedAt   DateTime?  @map("published_at") @db.Timestamptz(6)
+  attempts      Int        @default(0)
+  status        String     @default("pending")
+
+  @@index([status, occurredAt])
+  @@index([agreementId, aggregateType, aggregateId])
+  @@map("outbox_events")
+}

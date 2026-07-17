@@ -1,0 +1,46 @@
+import "reflect-metadata";
+import type { INestApplication } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
+import request from "supertest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+describe("health endpoint", () => {
+  let app: INestApplication;
+
+  beforeEach(async () => {
+    process.env.NODE_ENV = "test";
+    process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/margem_clara_test";
+    process.env.SERVICE_NAME = "margem-clara-api-test";
+
+    const { AppModule } = await import("../src/app.module.js");
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    app.setGlobalPrefix("api/v1");
+    await app.init();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it("returns service health and a correlation id", async () => {
+    const response = await request(app.getHttpServer()).get("/api/v1/health").expect(200);
+
+    expect(response.body).toMatchObject({
+      status: "ok",
+      service: "margem-clara-api-test",
+      version: "0.1.0",
+    });
+    expect(response.headers["x-correlation-id"]).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  it("preserves a valid caller correlation id", async () => {
+    const correlationId = "d1e510a4-d571-4d92-9302-b10292ed591a";
+    const response = await request(app.getHttpServer())
+      .get("/api/v1/health")
+      .set("x-correlation-id", correlationId)
+      .expect(200);
+
+    expect(response.headers["x-correlation-id"]).toBe(correlationId);
+  });
+});

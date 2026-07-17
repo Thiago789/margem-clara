@@ -1,5 +1,7 @@
 # Ideias e Decisoes de Produto - Margem Clara
 
+Atualizado em: 2026-07-16
+
 Este documento e um espaco vivo para registrar ideias, hipoteses, pontos de atencao e decisoes futuras do Margem Clara.
 
 Objetivo: capturar boas ideias sem interromper o desenvolvimento do MVP. Cada item pode virar backlog, arquitetura, pesquisa ou ficar em observacao.
@@ -287,14 +289,14 @@ Riscos:
 
 ## 8. Decisoes de Foco Atual
 
-O foco atual continua:
+O foco atual, apos a consolidacao do MVP estatico, passa a ser:
 
-1. demo forte do fluxo operacional;
-2. troca de arquivos;
-3. reserva e autorizacao configuravel;
-4. margem explicada;
-5. auditoria;
-6. arquitetura segura para a versao real.
+1. consolidar o inventario definitivo da V1;
+2. ampliar o modelo de emprestimo para plataforma de consignacoes e descontos facultativos;
+3. modelar corretamente emprestimo, cartao consignado e cartao beneficio;
+4. preparar portabilidade e compra de divida sem liberar fluxos incompletos;
+5. atualizar o modelo de dados antes de iniciar o backend;
+6. iniciar a arquitetura segura da versao real com API, banco, identidade, permissoes e auditoria.
 
 Novas ideias devem ser registradas aqui e avaliadas antes de entrar no desenvolvimento.
 
@@ -306,3 +308,211 @@ Novas ideias devem ser registradas aqui e avaliadas antes de entrar no desenvolv
 - Documento de API futura.
 - Rascunho de casos de uso com IA assistiva.
 - Regras de validacao de identidade do servidor.
+
+## 10. Visao Estrategica Ampliada
+
+### Tese do produto
+
+O Margem Clara deve evoluir de um sistema de controle de emprestimos para uma plataforma de consignacoes, descontos facultativos, saude financeira e credito integrado a folha.
+
+Proposta de posicionamento:
+
+> Margem Clara: plataforma de consignacoes, saude financeira e credito integrado a folha.
+
+Pilares:
+
+- gestao confiavel de margem e descontos facultativos;
+- transparencia e educacao financeira para o servidor;
+- operacao orientada por evidencias para o convenio;
+- integracao eficiente e responsavel para consignatarias e prestadores;
+- infraestrutura futura para credito integrado a compras e pagamentos.
+
+### Decisao de escopo
+
+Classificacao: Agora/Proximo.
+
+- Emprestimo consignado, cartao consignado e cartao beneficio sao produtos essenciais da V1 real.
+- Cartoes nao devem reutilizar o modelo de parcelas fixas do emprestimo.
+- A fundacao da V1 deve incluir um motor generico de descontos facultativos.
+- Novos prestadores e produtos devem entrar por configuracao e especializacao de regras, nao por duplicacao do sistema.
+
+## 11. Consignatarias e Prestadores Conveniados
+
+### Decisao de dominio
+
+O conceito atual de `lender` e insuficiente para representar todo o ecossistema. A arquitetura real deve adotar uma entidade mais ampla de consignataria ou prestador conveniado, mantendo instituicao financeira como uma categoria.
+
+Categorias iniciais:
+
+- instituicao financeira;
+- operadora de plano de saude;
+- seguradora;
+- previdencia complementar;
+- associacao;
+- sindicato;
+- cooperativa;
+- comercio;
+- prestador de servico;
+- escritorio de advocacia;
+- categoria configuravel pelo convenio.
+
+Formas de desconto que o motor deve suportar:
+
+- parcela fixa com prazo;
+- recorrente sem prazo definido;
+- percentual sobre base configurada;
+- valor variavel por competencia;
+- lancamento eventual;
+- parcela unica;
+- reserva de limite.
+
+Cada produto ou servico deve configurar rubrica, margem, prioridade, forma de calculo, vigencia, reajuste, autorizacao, documentos, desconto parcial, reprocessamento e comportamento nos arquivos de insercao e retorno.
+
+## 12. Inteligencia Artificial por Perfil
+
+### Principio comum
+
+A IA deve comecar assistiva, explicavel e auditavel. Ela pode recomendar proximas acoes e explicar dados, mas nao deve aprovar credito, negar direitos, alterar margem ou executar operacoes financeiras sem regra deterministica, permissao e confirmacao humana.
+
+Respostas operacionais relevantes devem indicar os dados e as regras utilizados. Quando influenciar uma decisao sensivel, a interacao deve poder ser registrada em auditoria.
+
+### IA para o servidor
+
+Objetivos:
+
+- explicar margem, contratos, parcelas, CET e retorno da folha;
+- mostrar comprometimento atual e futuro;
+- projetar liquidacoes e liberacao de margem;
+- alertar sobre concentracao de dividas e multiplas contratacoes;
+- comparar cenarios sem favorecer oferta por comissao;
+- criar orientacoes e metas de educacao financeira;
+- encaminhar situacoes sensiveis para atendimento humano.
+
+Nao deve criar score oculto, pressionar contratacao ou apresentar aconselhamento financeiro como garantia de resultado.
+
+### IA para o gestor e RH
+
+Objetivos:
+
+- detectar arquivos fora do padrao, duplicidades e divergencias;
+- explicar rejeicoes e pendencias da folha;
+- prever riscos para corte e fechamento;
+- comparar competencias e qualidade operacional;
+- priorizar fila de trabalho;
+- produzir relatorios narrativos;
+- responder regras citando regulamento, politica e evidencia do convenio.
+
+### IA para a consignataria ou prestador
+
+Objetivos:
+
+- explicar por que uma consulta, proposta, reserva ou contrato foi bloqueado;
+- indicar documentos e evidencias pendentes;
+- acompanhar prazos de saldo devedor, portabilidade, retorno e conciliacao;
+- analisar rejeicoes e qualidade da carteira;
+- detectar contratos sem retorno, parcelas divergentes e risco de reprocessamento;
+- revisar tabelas de taxa, CET, prazo e produto contra as regras do convenio;
+- resumir comunicacoes e tickets;
+- recomendar a proxima acao operacional para resolver pendencias;
+- gerar visoes por convenio, produto, correspondente e competencia.
+
+Limites:
+
+- nao pode selecionar servidores para assedio comercial;
+- nao pode inferir vulnerabilidade para aumentar taxa ou pressionar venda;
+- nao pode burlar credenciamento, autorizacao ou regra de margem;
+- nao pode aprovar ou rejeitar automaticamente uma operacao sensivel sem regra formal e supervisao.
+
+### Ordem recomendada de entrega
+
+1. Copiloto operacional do gestor.
+2. Explicador de pendencias para consignataria.
+3. Assistente de educacao financeira do servidor.
+4. Analise consentida de dados financeiros e ofertas.
+
+## 13. Inteligencia de Fontes Publicas
+
+### Direcao
+
+Conectar fontes oficiais, como portal da transparencia municipal, para produzir sinais complementares de existencia, vinculo, atualizacao cadastral e analise agregada da folha quando os dados estiverem legal e tecnicamente disponiveis.
+
+Ordem de integracao:
+
+1. API oficial;
+2. arquivo ou dado aberto estruturado;
+3. integracao especifica fornecida pelo municipio;
+4. leitura automatizada de pagina apenas como ultimo recurso.
+
+Regras:
+
+- fonte publica nao substitui o arquivo oficial da folha;
+- dado encontrado deve guardar fonte, data, referencia e snapshot;
+- divergencia deve gerar sinal para conferencia, nao bloqueio automatico definitivo;
+- disponibilidade publica nao significa uso irrestrito;
+- analise individual exige finalidade, minimizacao e controle de acesso;
+- nao criar score financeiro secreto a partir de remuneracao publica.
+
+## 14. Consignado Integrado a Compras e Pix
+
+### Ideia
+
+Permitir que o servidor escolha pagar uma compra com credito consignado no ponto de venda. O comercio recebe via Pix, enquanto uma instituicao financeira parceira formaliza o credito e recebe as parcelas pela folha.
+
+Fluxo futuro:
+
+1. servidor escolhe o produto ou servico;
+2. comercio inicia a solicitacao de pagamento com consignado;
+3. Margem Clara consulta elegibilidade e margem autorizada;
+4. parceiros financeiros apresentam propostas comparaveis;
+5. servidor confere parcela, prazo, juros, CET e total;
+6. servidor autoriza e assina o contrato;
+7. instituicao financeira liquida o comercio via Pix;
+8. contrato segue para insercao, retorno e desconto em folha.
+
+Papel inicial do Margem Clara:
+
+- orquestrador tecnologico e de regras;
+- nao originar credito por conta propria;
+- nao custodiar ou movimentar recursos;
+- integrar instituicoes financeiras e de pagamento habilitadas;
+- preservar consentimento, rastreabilidade e comparabilidade das ofertas.
+
+Casos obrigatorios antes de lancar:
+
+- cancelamento e devolucao da compra;
+- produto ou servico nao entregue;
+- estorno total ou parcial;
+- falha no Pix;
+- credito assinado sem liquidacao do comercio;
+- compra liquidada com falha no contrato;
+- fraude de identidade;
+- desfazimento do contrato e liberacao de margem;
+- responsabilidade e remuneracao de cada participante.
+
+Classificacao: Futuro estrategico/Pesquisa regulatoria e comercial.
+
+## 15. Sequenciamento Confirmado
+
+### Agora
+
+- congelar novas telas da demo, salvo correcao essencial;
+- concluir inventario do dominio;
+- modelar produtos e descontos facultativos;
+- atualizar modelo de dados e arquitetura alvo;
+- iniciar backend, banco, identidade, permissoes e auditoria.
+
+### Proximo
+
+- motor de margem e folha para os tres produtos essenciais;
+- motor generico de descontos facultativos;
+- APIs e webhooks;
+- conectores de fontes publicas;
+- primeiros copilotos assistivos por perfil.
+
+### Futuro
+
+- Open Finance por parceiro habilitado;
+- marketplace responsavel de ofertas;
+- consignado integrado ao comercio;
+- liquidacao do estabelecimento via Pix;
+- educacao financeira baseada em dados consentidos.

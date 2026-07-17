@@ -282,6 +282,36 @@ Servidor/matricula:
 5. Homologar a operacao real:
    testes de permissao, concorrencia, arquivos, seguranca, LGPD e recuperacao.
 
+## Decisoes Estrategicas de Produto
+
+- O Margem Clara deve atender consignacoes e descontos facultativos, nao apenas emprestimos.
+- Emprestimo consignado, cartao consignado e cartao beneficio sao produtos essenciais da V1 real.
+- Cartoes exigem modelo proprio de limite, reserva, lancamentos, fatura, saldo, estorno e liberacao de margem.
+- O dominio deve generalizar bancos e financeiras para consignatarias ou prestadores conveniados de varias categorias.
+- O motor deve suportar parcela fixa, recorrencia, percentual, valor variavel, lancamento eventual, parcela unica e reserva de limite.
+- Plano de saude, seguro, previdencia, associacao, sindicato, comercio e servicos devem entrar por produtos configuraveis.
+- IA sera planejada para servidor, gestor/RH e consignataria, com atuacao assistiva, explicavel e auditavel.
+- Fonte publica municipal sera evidencia complementar e nunca substituira o arquivo oficial da folha.
+- Consignado integrado a compras com liquidacao via Pix e uma frente futura, dependente de parceiros financeiros e de pagamento habilitados.
+- A arquitetura deve preservar essas frentes futuras sem inclui-las prematuramente no primeiro backend operacional.
+- O documento `ideias-e-decisoes-produto.md` e a memoria oficial das hipoteses, guardrails e sequenciamento estrategico.
+
+## Fundacao da Versao Real
+
+- `inventario-dominio-v2.md` consolida a linguagem, agregados, estados e invariantes do dominio ampliado.
+- `modelo-dados-v2.md` define o modelo logico evolutivo para emprestimos, cartoes e descontos facultativos.
+- `arquitetura-backend-v1.md` define monolito modular, isolamento por convenio, transacoes criticas e o primeiro fluxo vertical real.
+- O nome canonico da entidade externa sera `party`, substituindo o conceito estreito de `lender` no backend real.
+- Contrato de credito, instrumento de cartao e autorizacao de desconto serao estruturas diferentes, ligadas pelo mesmo catalogo de produtos e motor de margem.
+- A proxima entrega tecnica e o scaffold do backend com identidade, escopo, auditoria e migracoes do primeiro incremento.
+- O scaffold executavel foi iniciado em `backend/` com NestJS, TypeScript, Prisma e PostgreSQL como banco alvo.
+- A configuracao falha ao iniciar quando variaveis obrigatorias estao invalidas e nao contem segredo versionado.
+- O health check responde em `/api/v1/health` e propaga identificador de correlacao.
+- O controle inicial de escopo nega acesso a outro convenio, outra parte ou permissao ausente.
+- O esquema inicial inclui organizacao, convenio, politica versionada, parte conveniada, produto, credenciamento, pessoa, matricula, usuarios, permissoes, auditoria e outbox.
+- O CI deve compilar, testar e validar o esquema do backend antes de publicar a demo estatica.
+- Proximo incremento: autenticacao real, persistencia da auditoria e primeira migracao PostgreSQL aplicada em ambiente local/homologacao.
+
 ## Cuidados de Arquitetura
 
 - O MVP estatico serve para validar regra e experiencia, nao para producao.

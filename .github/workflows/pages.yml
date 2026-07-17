@@ -27,11 +27,32 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+          run_install: false
+
       - name: Check public repository security
         run: node tools/security-check.js
 
       - name: Check static integrity
         run: node tools/static-check.js
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Check backend foundation
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/margem_clara_ci
+        run: |
+          pnpm typecheck
+          pnpm test
+          pnpm prisma:validate
+          pnpm prisma:generate
+          pnpm build
 
       - name: Install browser test runtime
         run: |

@@ -1212,6 +1212,74 @@ function checkDocumentationBasics() {
         "Auditoria deve permitir gerar evidencia controlada de bloqueio de credenciamento",
       ],
     },
+    {
+      file: "ideias-e-decisoes-produto.md",
+      snippets: [
+        "Visao Estrategica Ampliada",
+        "Emprestimo consignado, cartao consignado e cartao beneficio sao produtos essenciais",
+        "IA para a consignataria ou prestador",
+        "Inteligencia de Fontes Publicas",
+        "Consignado Integrado a Compras e Pix",
+      ],
+    },
+    {
+      file: "inventario-dominio-v2.md",
+      snippets: [
+        "Parte Conveniada e Credenciamento",
+        "Cartoes",
+        "Descontos Facultativos",
+        "Ciclo de Folha",
+        "Eventos de Dominio",
+      ],
+    },
+    {
+      file: "modelo-dados-v2.md",
+      snippets: [
+        "parties",
+        "margin_accounts",
+        "credit_contracts",
+        "deduction_authorizations",
+        "card_accounts",
+        "payroll_entries",
+        "reconciliations",
+      ],
+    },
+    {
+      file: "arquitetura-backend-v1.md",
+      snippets: [
+        "monolito modular",
+        "Transacoes Criticas",
+        "Primeiro Fluxo Vertical Real",
+        "duas reservas concorrentes nao ultrapassam a margem",
+        "Gate para Iniciar o Scaffold",
+      ],
+    },
+    {
+      file: "backend/package.json",
+      snippets: [
+        "@margem-clara/backend",
+        "prisma:validate",
+        "pnpm typecheck && pnpm test",
+      ],
+    },
+    {
+      file: "backend/prisma/schema.prisma",
+      snippets: [
+        "model Agreement",
+        "model Accreditation",
+        "model Enrollment",
+        "model AuditEvent",
+        "model OutboxEvent",
+      ],
+    },
+    {
+      file: "backend/src/platform/access-control/agreement-scope.ts",
+      snippets: [
+        "requireAgreementScope",
+        "AccessDeniedError",
+        "membership.partyId === requiredPartyId",
+      ],
+    },
   ];
 
   docs.forEach(({ file, snippets }) => {
