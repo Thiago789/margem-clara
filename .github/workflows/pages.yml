@@ -48,10 +48,10 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/margem_clara_ci
         run: |
-          pnpm typecheck
-          pnpm test
           pnpm prisma:validate
           pnpm prisma:generate
+          pnpm typecheck
+          pnpm test
           pnpm build
 
       - name: Install browser test runtime
