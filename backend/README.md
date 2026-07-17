@@ -6,11 +6,32 @@ Fundacao executavel da versao operacional do Margem Clara.
 
 - Node.js 20.19 ou superior;
 - pnpm 11;
-- PostgreSQL para migracoes e testes de integracao futuros.
+- Docker Desktop com Compose para o PostgreSQL local.
 
 ## Configuracao
 
-Crie um `.env` local a partir de `.env.example`. Nunca versione credenciais ou dados reais.
+Crie um `.env` local a partir de `.env.example`, gere uma senha local longa e use o mesmo valor em `POSTGRES_PASSWORD` e na senha da `DATABASE_URL`. Nunca versione credenciais ou dados reais.
+
+O PostgreSQL fica exposto apenas em `127.0.0.1`. O volume `postgres-data` preserva os dados entre reinicios do container.
+
+## Banco local
+
+Suba o banco e aplique as migracoes existentes:
+
+```text
+pnpm db:setup
+```
+
+Comandos separados para operacao e diagnostico:
+
+```text
+pnpm db:up
+pnpm db:status
+pnpm db:logs
+pnpm db:down
+```
+
+`db:down` para o ambiente sem apagar o volume. A exclusao do volume deve ser uma decisao manual e consciente.
 
 ## Comandos
 
