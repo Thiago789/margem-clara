@@ -13,6 +13,17 @@ export interface ResolvedAgreementScope {
   permissions: ReadonlySet<string>;
 }
 
+export function requirePermission(
+  actor: AuthenticatedActor | null,
+  permission: string,
+): MembershipScope {
+  if (!actor) throw new AccessDeniedError();
+
+  const membership = actor.memberships.find((candidate) => hasPermission(candidate, permission));
+  if (!membership) throw new AccessDeniedError();
+  return membership;
+}
+
 export function requireAgreementScope(
   actor: AuthenticatedActor | null,
   agreementId: string,
@@ -44,7 +55,8 @@ function membershipAllows(
   permission: string,
   requiredPartyId?: string,
 ): boolean {
-  if (membership.agreementId !== agreementId || !membership.permissions.has(permission)) {
+  const agreementMatches = membership.agreementId === null || membership.agreementId === agreementId;
+  if (!agreementMatches || !hasPermission(membership, permission)) {
     return false;
   }
 
@@ -52,5 +64,9 @@ function membershipAllows(
     return true;
   }
 
-  return membership.partyId === requiredPartyId;
+  return membership.partyId === null || membership.partyId === requiredPartyId;
+}
+
+function hasPermission(membership: MembershipScope, permission: string): boolean {
+  return membership.permissions.has("*") || membership.permissions.has(permission);
 }

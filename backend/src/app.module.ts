@@ -6,6 +6,7 @@ import { CorrelationMiddleware } from "./platform/request-context/correlation.mi
 import { DatabaseModule } from "./platform/database/database.module.js";
 import { AuthModule } from "./platform/auth/auth.module.js";
 import { AuditModule } from "./platform/audit/audit.module.js";
+import { AccessControlModule } from "./platform/access-control/access-control.module.js";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuditModule } from "./platform/audit/audit.module.js";
     }),
     DatabaseModule,
     AuditModule,
+    AccessControlModule,
     AuthModule,
     HealthModule,
   ],

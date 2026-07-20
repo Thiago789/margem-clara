@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AccessDeniedError, requireAgreementScope } from "./agreement-scope.js";
+import { AccessDeniedError, requireAgreementScope, requirePermission } from "./agreement-scope.js";
 import type { AuthenticatedActor } from "../request-context/request-context.js";
 
 const actor: AuthenticatedActor = {
@@ -34,5 +34,40 @@ describe("requireAgreementScope", () => {
 
   it("denies a permission that was not granted", () => {
     expect(() => requireAgreementScope(actor, "agreement-a", "audit:read")).toThrow(AccessDeniedError);
+  });
+
+  it("allows a global wildcard membership across agreements and parties", () => {
+    const platformAdmin: AuthenticatedActor = {
+      userId: "admin-1",
+      role: "platform_admin",
+      memberships: [{ agreementId: null, partyId: null, permissions: new Set(["*"]) }],
+    };
+
+    expect(requireAgreementScope(platformAdmin, "agreement-b", "audit:read", "party-b")).toMatchObject({
+      agreementId: "agreement-b",
+      partyId: null,
+    });
+  });
+
+  it("allows an agreement manager to reach any party only inside its agreement", () => {
+    const manager: AuthenticatedActor = {
+      userId: "manager-1",
+      role: "agreement_manager",
+      memberships: [
+        { agreementId: "agreement-a", partyId: null, permissions: new Set(["accreditation:write"]) },
+      ],
+    };
+
+    expect(() =>
+      requireAgreementScope(manager, "agreement-a", "accreditation:write", "party-b"),
+    ).not.toThrow();
+    expect(() => requireAgreementScope(manager, "agreement-b", "accreditation:write")).toThrow(
+      AccessDeniedError,
+    );
+  });
+
+  it("checks global permissions without requiring an agreement", () => {
+    expect(requirePermission(actor, "margin:read")).toBe(actor.memberships[0]);
+    expect(() => requirePermission(actor, "users:write")).toThrow(AccessDeniedError);
   });
 });

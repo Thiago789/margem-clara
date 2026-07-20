@@ -5,10 +5,18 @@ import { AuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import { LookupHasher } from "./lookup-hasher.js";
 import { SessionGuard } from "./session.guard.js";
+import { BootstrapAdminService } from "./bootstrap-admin.service.js";
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, LookupHasher, PasswordHasher, SessionGuard, SessionTokenService],
-  exports: [AuthService, PasswordHasher, SessionGuard, SessionTokenService],
+  providers: [
+    AuthService,
+    BootstrapAdminService,
+    LookupHasher,
+    PasswordHasher,
+    SessionGuard,
+    SessionTokenService,
+  ],
+  exports: [AuthService, BootstrapAdminService, PasswordHasher, SessionGuard, SessionTokenService],
 })
 export class AuthModule {}

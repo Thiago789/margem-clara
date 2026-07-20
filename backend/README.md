@@ -81,4 +81,30 @@ Content-Type: application/json
 {"email":"gestora@example.test","password":"senha-local"}
 ```
 
-O token nunca e retornado no JSON. O cliente recebe apenas o cookie de sessao. Ainda nao existe usuario inicial automatico; a criacao controlada do primeiro administrador sera tratada junto ao modulo de usuarios e convenios.
+O token nunca e retornado no JSON. O cliente recebe apenas o cookie de sessao. Nenhum usuario inicial e criado automaticamente.
+
+## Primeiro administrador
+
+O primeiro administrador e criado somente por comando no ambiente do servidor. O processo exige banco vazio, senha com pelo menos 16 caracteres e cria uma associacao global com permissao curinga. Nao existe endpoint publico de bootstrap.
+
+No PowerShell, defina temporariamente `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` e execute:
+
+```text
+pnpm admin:bootstrap
+```
+
+O comando e recusado assim que existir qualquer usuario. A senha nao e exibida nem gravada em arquivo pelo comando.
+
+## Autorizacao
+
+Endpoints de dominio devem usar o decorator `Authorize`. Ele combina sessao obrigatoria com permissao explicita e pode resolver o escopo pelos parametros da rota:
+
+```text
+@Authorize("margin:read", { agreementParam: "agreementId" })
+@Authorize("accreditation:write", { agreementParam: "agreementId", partyParam: "partyId" })
+```
+
+- associacao global com `*`: acesso administrativo da plataforma;
+- associacao de convenio sem parte: acesso permitido dentro daquele convenio;
+- associacao com parte: acesso restrito a consignataria correspondente;
+- negacao de acesso: resposta `403` e evento persistente de auditoria.
