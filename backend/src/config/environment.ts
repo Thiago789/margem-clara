@@ -5,12 +5,19 @@ const booleanText = z
   .default("false")
   .transform((value) => value === "true");
 
+const encryptionKey = z.string().refine(
+  (value) => /^[A-Za-z0-9_-]{43}$/.test(value) && Buffer.from(value, "base64url").length === 32,
+  "must be a base64url-encoded 256-bit key",
+);
+
 export const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3333),
   SERVICE_NAME: z.string().trim().min(1).default("margem-clara-api"),
   DATABASE_URL: z.string().url().startsWith("postgresql://"),
   AUTH_LOOKUP_SECRET: z.string().min(32),
+  DATA_ENCRYPTION_KEY: encryptionKey,
+  DATA_LOOKUP_SECRET: z.string().min(32),
   SESSION_TTL_SECONDS: z.coerce.number().int().min(300).max(86_400).default(28_800),
   AUTH_FAILURE_WINDOW_SECONDS: z.coerce.number().int().min(60).max(3_600).default(900),
   AUTH_MAX_FAILURES_PER_EMAIL: z.coerce.number().int().min(3).max(20).default(5),

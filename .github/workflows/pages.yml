@@ -48,6 +48,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/margem_clara_ci
           AUTH_LOOKUP_SECRET: ci-only-auth-lookup-secret-at-least-32-characters
+          DATA_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+          DATA_LOOKUP_SECRET: ci-only-data-lookup-secret-at-least-32-characters
         run: |
           pnpm prisma:validate
           pnpm prisma:generate

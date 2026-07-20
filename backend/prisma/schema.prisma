@@ -210,28 +210,28 @@ model Person {
 }
 
 model Enrollment {
-  id                  String       @id @default(uuid()) @db.Uuid
-  agreementId         String       @map("agreement_id") @db.Uuid
-  agreement           Agreement    @relation(fields: [agreementId], references: [id])
-  personId            String       @map("person_id") @db.Uuid
-  person              Person       @relation(fields: [personId], references: [id])
-  enrollmentNumber    String       @map("enrollment_number")
-  enrollmentLookupKey String       @map("enrollment_lookup_key")
-  functionalStatus    String       @map("functional_status")
-  employmentType      String?      @map("employment_type")
-  admissionDate       DateTime?    @map("admission_date") @db.Date
-  terminationDate     DateTime?    @map("termination_date") @db.Date
-  payrollGroup        String?      @map("payroll_group")
-  department          String?
-  costCenter          String?      @map("cost_center")
-  baseSalary          Decimal      @default(0) @map("base_salary") @db.Decimal(18, 2)
-  mandatoryDeductions Decimal      @default(0) @map("mandatory_deductions") @db.Decimal(18, 2)
-  marginBase          Decimal      @default(0) @map("margin_base") @db.Decimal(18, 2)
-  sourceUpdatedAt     DateTime?    @map("source_updated_at") @db.Timestamptz(6)
-  status              RecordStatus @default(ACTIVE)
-  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  version             Int          @default(1)
+  id                        String       @id @default(uuid()) @db.Uuid
+  agreementId               String       @map("agreement_id") @db.Uuid
+  agreement                 Agreement    @relation(fields: [agreementId], references: [id])
+  personId                  String       @map("person_id") @db.Uuid
+  person                    Person       @relation(fields: [personId], references: [id])
+  enrollmentNumberEncrypted String       @map("enrollment_number_encrypted")
+  enrollmentLookupKey       String       @map("enrollment_lookup_key")
+  functionalStatus          String       @map("functional_status")
+  employmentType            String?      @map("employment_type")
+  admissionDate             DateTime?    @map("admission_date") @db.Date
+  terminationDate           DateTime?    @map("termination_date") @db.Date
+  payrollGroup              String?      @map("payroll_group")
+  department                String?
+  costCenter                String?      @map("cost_center")
+  baseSalary                Decimal      @default(0) @map("base_salary") @db.Decimal(18, 2)
+  mandatoryDeductions       Decimal      @default(0) @map("mandatory_deductions") @db.Decimal(18, 2)
+  marginBase                Decimal      @default(0) @map("margin_base") @db.Decimal(18, 2)
+  sourceUpdatedAt           DateTime?    @map("source_updated_at") @db.Timestamptz(6)
+  status                    RecordStatus @default(ACTIVE)
+  createdAt                 DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version                   Int          @default(1)
 
   @@unique([agreementId, enrollmentLookupKey])
   @@index([agreementId, personId, status])

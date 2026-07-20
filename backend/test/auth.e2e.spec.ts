@@ -31,6 +31,8 @@ describe("auth endpoints", () => {
     process.env.NODE_ENV = "test";
     process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/margem_clara_test";
     process.env.AUTH_LOOKUP_SECRET = "test-only-auth-lookup-secret-at-least-32-characters";
+    process.env.DATA_ENCRYPTION_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    process.env.DATA_LOOKUP_SECRET = "test-only-data-lookup-secret-at-least-32-characters";
 
     const { AppModule } = await import("../src/app.module.js");
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })

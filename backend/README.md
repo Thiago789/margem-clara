@@ -127,3 +127,9 @@ O primeiro modulo de dominio real esta disponivel em `/api/v1/agreements` e exig
 - auditar criacao e ativacao.
 
 A politica `OPERATIONAL_RULES` valida autorizacao de consulta, confirmacao por codigo ou imediata, dia de corte, familias de produto, campos contratuais obrigatorios e fonte publica para validacao do servidor.
+
+## Protecao de dados pessoais
+
+CPF, e-mail, telefone e matricula devem ser persistidos somente pelo `DataProtectionService`. O servico usa AES-256-GCM com vetor aleatorio, autenticacao do conteudo e separacao por finalidade do campo. Buscas exatas usam HMAC-SHA-256 separado; o dado original nao e usado como indice.
+
+As chaves `DATA_ENCRYPTION_KEY` e `DATA_LOOKUP_SECRET` sao independentes de `AUTH_LOOKUP_SECRET` e nao devem ser versionadas. Gere a chave de criptografia com 32 bytes aleatorios em base64url e mantenha as chaves em um gerenciador de segredos nos ambientes publicados. A troca de chaves exigira um procedimento versionado de rotacao antes de haver dados reais.

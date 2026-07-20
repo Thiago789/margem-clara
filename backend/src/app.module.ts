@@ -8,6 +8,7 @@ import { AuthModule } from "./platform/auth/auth.module.js";
 import { AuditModule } from "./platform/audit/audit.module.js";
 import { AccessControlModule } from "./platform/access-control/access-control.module.js";
 import { AgreementsModule } from "./agreements/agreements.module.js";
+import { DataProtectionModule } from "./platform/crypto/data-protection.module.js";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AgreementsModule } from "./agreements/agreements.module.js";
       validate: validateEnvironment,
     }),
     DatabaseModule,
+    DataProtectionModule,
     AuditModule,
     AccessControlModule,
     AuthModule,
