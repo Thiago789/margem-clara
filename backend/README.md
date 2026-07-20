@@ -133,3 +133,14 @@ A politica `OPERATIONAL_RULES` valida autorizacao de consulta, confirmacao por c
 CPF, e-mail, telefone e matricula devem ser persistidos somente pelo `DataProtectionService`. O servico usa AES-256-GCM com vetor aleatorio, autenticacao do conteudo e separacao por finalidade do campo. Buscas exatas usam HMAC-SHA-256 separado; o dado original nao e usado como indice.
 
 As chaves `DATA_ENCRYPTION_KEY` e `DATA_LOOKUP_SECRET` sao independentes de `AUTH_LOOKUP_SECRET` e nao devem ser versionadas. Gere a chave de criptografia com 32 bytes aleatorios em base64url e mantenha as chaves em um gerenciador de segredos nos ambientes publicados. A troca de chaves exigira um procedimento versionado de rotacao antes de haver dados reais.
+
+## Servidores e vinculos
+
+O cadastro operacional esta disponivel em `/api/v1/agreements/:agreementId/servants` e exige permissao explicita no convenio:
+
+- `POST /`: cria identidade, vinculo e evidencia de auditoria na mesma transacao;
+- `GET /`: lista no maximo 100 vinculos com CPF e matricula mascarados;
+- `GET /:enrollmentId`: consulta somente dentro do convenio da rota;
+- `POST /lookup`: localiza por CPF ou matricula conhecidos usando indices HMAC.
+
+O CPF tem digitos verificadores validados, a matricula e unica por convenio e valores basicos de folha inconsistentes sao recusados. As respostas nunca incluem texto cifrado, hashes de busca, CPF integral, matricula integral, e-mail ou telefone.
