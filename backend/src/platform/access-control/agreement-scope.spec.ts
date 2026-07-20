@@ -70,4 +70,8 @@ describe("requireAgreementScope", () => {
     expect(requirePermission(actor, "margin:read")).toBe(actor.memberships[0]);
     expect(() => requirePermission(actor, "users:write")).toThrow(AccessDeniedError);
   });
+
+  it("does not treat an agreement membership as a global platform grant", () => {
+    expect(() => requirePermission(actor, "margin:read", true)).toThrow(AccessDeniedError);
+  });
 });

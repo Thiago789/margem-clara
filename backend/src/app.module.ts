@@ -7,6 +7,7 @@ import { DatabaseModule } from "./platform/database/database.module.js";
 import { AuthModule } from "./platform/auth/auth.module.js";
 import { AuditModule } from "./platform/audit/audit.module.js";
 import { AccessControlModule } from "./platform/access-control/access-control.module.js";
+import { AgreementsModule } from "./agreements/agreements.module.js";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AccessControlModule } from "./platform/access-control/access-control.mo
     AuditModule,
     AccessControlModule,
     AuthModule,
+    AgreementsModule,
     HealthModule,
   ],
 })

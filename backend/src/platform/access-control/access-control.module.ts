@@ -5,6 +5,6 @@ import { PermissionGuard } from "./permission.guard.js";
 @Module({
   imports: [AuditModule],
   providers: [PermissionGuard],
-  exports: [PermissionGuard],
+  exports: [AuditModule, PermissionGuard],
 })
 export class AccessControlModule {}

@@ -45,7 +45,7 @@ export class PermissionGuard implements CanActivate {
 
   private authorize(request: ContextualRequest, requirement: PermissionRequirement): void {
     if (!requirement.agreementParam) {
-      requirePermission(request.actor ?? null, requirement.permission);
+      requirePermission(request.actor ?? null, requirement.permission, requirement.globalOnly);
       return;
     }
 

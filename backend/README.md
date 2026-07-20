@@ -93,6 +93,12 @@ No PowerShell, defina temporariamente `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_E
 pnpm admin:bootstrap
 ```
 
+No ambiente local Windows, prefira o assistente com senha mascarada:
+
+```text
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-admin.ps1
+```
+
 O comando e recusado assim que existir qualquer usuario. A senha nao e exibida nem gravada em arquivo pelo comando.
 
 ## Autorizacao
@@ -108,3 +114,16 @@ Endpoints de dominio devem usar o decorator `Authorize`. Ele combina sessao obri
 - associacao de convenio sem parte: acesso permitido dentro daquele convenio;
 - associacao com parte: acesso restrito a consignataria correspondente;
 - negacao de acesso: resposta `403` e evento persistente de auditoria.
+
+## Convenios e politicas
+
+O primeiro modulo de dominio real esta disponivel em `/api/v1/agreements` e exige sessao e permissao:
+
+- criar e listar convenios;
+- consultar convenio dentro do escopo autorizado;
+- criar politica operacional em rascunho com versao sequencial;
+- ativar uma versao, expirando a anterior na mesma transacao;
+- consultar a politica operacional ativa;
+- auditar criacao e ativacao.
+
+A politica `OPERATIONAL_RULES` valida autorizacao de consulta, confirmacao por codigo ou imediata, dia de corte, familias de produto, campos contratuais obrigatorios e fonte publica para validacao do servidor.

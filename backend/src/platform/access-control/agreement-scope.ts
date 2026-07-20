@@ -16,10 +16,14 @@ export interface ResolvedAgreementScope {
 export function requirePermission(
   actor: AuthenticatedActor | null,
   permission: string,
+  globalOnly = false,
 ): MembershipScope {
   if (!actor) throw new AccessDeniedError();
 
-  const membership = actor.memberships.find((candidate) => hasPermission(candidate, permission));
+  const membership = actor.memberships.find(
+    (candidate) =>
+      hasPermission(candidate, permission) && (!globalOnly || candidate.agreementId === null),
+  );
   if (!membership) throw new AccessDeniedError();
   return membership;
 }

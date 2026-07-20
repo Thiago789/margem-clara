@@ -6,6 +6,7 @@ export interface PermissionRequirement {
   permission: string;
   agreementParam?: string;
   partyParam?: string;
+  globalOnly?: boolean;
 }
 
 export function RequirePermission(
