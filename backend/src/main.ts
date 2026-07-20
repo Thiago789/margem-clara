@@ -9,6 +9,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const config = app.get(ConfigService<Environment, true>);
 
+  if (config.get("TRUST_PROXY", { infer: true })) {
+    app.getHttpAdapter().getInstance().set("trust proxy", 1);
+  }
+
   app.setGlobalPrefix("api/v1");
   app.enableShutdownHooks();
   app.useGlobalPipes(

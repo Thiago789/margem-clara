@@ -63,5 +63,22 @@ O primeiro endpoint verifica apenas o processo da API. O segundo consulta o Post
 - tabelas de sessao e tentativas de autenticacao;
 - hash de senha com `scrypt`, salt aleatorio e comparacao em tempo constante;
 - token de sessao opaco com persistencia apenas do hash.
+- login e logout reais em `POST /api/v1/auth/login` e `POST /api/v1/auth/logout`;
+- sessao atual em `GET /api/v1/auth/me`, protegida por guard;
+- cookie `HttpOnly`, `SameSite=Strict` e `Secure` em producao;
+- limite de falhas por identificador de e-mail e IP em janela configuravel;
+- identificadores de tentativas protegidos com HMAC e chave independente;
+- auditoria persistente de login, bloqueio, falha e logout.
 
-Endpoints de login, cookie seguro, guardas de sessao e persistencia de auditoria ainda nao estao implementados. Nenhuma protecao demonstrativa do frontend deve ser considerada seguranca do backend.
+Recuperacao de senha, MFA, rotacao de sessao, administracao de usuarios e autorizacao por permissao em endpoints de dominio ainda nao estao implementados. Nenhuma protecao demonstrativa do frontend deve ser considerada seguranca do backend.
+
+Exemplo de login local, sempre com credenciais ficticias:
+
+```text
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{"email":"gestora@example.test","password":"senha-local"}
+```
+
+O token nunca e retornado no JSON. O cliente recebe apenas o cookie de sessao. Ainda nao existe usuario inicial automatico; a criacao controlada do primeiro administrador sera tratada junto ao modulo de usuarios e convenios.

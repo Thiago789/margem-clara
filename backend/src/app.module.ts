@@ -5,6 +5,7 @@ import { HealthModule } from "./health/health.module.js";
 import { CorrelationMiddleware } from "./platform/request-context/correlation.middleware.js";
 import { DatabaseModule } from "./platform/database/database.module.js";
 import { AuthModule } from "./platform/auth/auth.module.js";
+import { AuditModule } from "./platform/audit/audit.module.js";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from "./platform/auth/auth.module.js";
       validate: validateEnvironment,
     }),
     DatabaseModule,
+    AuditModule,
     AuthModule,
     HealthModule,
   ],

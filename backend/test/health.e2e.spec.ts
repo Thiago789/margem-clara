@@ -12,6 +12,7 @@ describe("health endpoint", () => {
   beforeEach(async () => {
     process.env.NODE_ENV = "test";
     process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/margem_clara_test";
+    process.env.AUTH_LOOKUP_SECRET = "test-only-auth-lookup-secret-at-least-32-characters";
     process.env.SERVICE_NAME = "margem-clara-api-test";
 
     const { AppModule } = await import("../src/app.module.js");
