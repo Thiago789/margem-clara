@@ -1,6 +1,6 @@
 # Estado do Projeto - Margem Clara
 
-Atualizado em: 2026-07-20
+Atualizado em: 2026-07-16
 
 ## Objetivo
 
@@ -26,12 +26,6 @@ O foco imediato passa a ser:
 - preparar a fundacao da versao real com backend, banco, autenticacao e auditoria persistente.
 
 O GitHub Actions deve executar checagem de seguranca, integridade estatica e smoke test da jornada principal antes de liberar a publicacao no GitHub Pages.
-
-### Fundacao operacional V2
-
-A API real ja possui PostgreSQL local, migracoes, readiness do banco e autenticacao persistente. Login, logout e leitura da sessao usam token opaco armazenado apenas como hash, cookie protegido, limite de tentativas e eventos de auditoria. O frontend estatico ainda nao consome essa API e continua exclusivo para demonstracao com dados ficticios.
-
-O proximo incremento da V2 e autorizacao por perfil, convenio e consignataria, seguido pelos cadastros reais de convenio, usuarios, servidores e matriculas.
 
 O MVP ja possui uma base navegavel com:
 
