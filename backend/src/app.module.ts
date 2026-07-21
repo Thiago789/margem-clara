@@ -10,6 +10,7 @@ import { AccessControlModule } from "./platform/access-control/access-control.mo
 import { AgreementsModule } from "./agreements/agreements.module.js";
 import { DataProtectionModule } from "./platform/crypto/data-protection.module.js";
 import { ServantsModule } from "./servants/servants.module.js";
+import { PayrollModule } from "./payroll/payroll.module.js";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ServantsModule } from "./servants/servants.module.js";
     AuthModule,
     AgreementsModule,
     ServantsModule,
+    PayrollModule,
     HealthModule,
   ],
 })

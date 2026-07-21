@@ -144,3 +144,17 @@ O cadastro operacional esta disponivel em `/api/v1/agreements/:agreementId/serva
 - `POST /lookup`: localiza por CPF ou matricula conhecidos usando indices HMAC.
 
 O CPF tem digitos verificadores validados, a matricula e unica por convenio e valores basicos de folha inconsistentes sao recusados. As respostas nunca incluem texto cifrado, hashes de busca, CPF integral, matricula integral, e-mail ou telefone.
+
+## Ciclo e arquivo de margem
+
+O primeiro fluxo de folha esta disponivel em `/api/v1/agreements/:agreementId/payroll-cycles`:
+
+- `POST /`: abre uma competencia e fixa a versao da politica operacional ativa;
+- `GET /`: lista as 36 competencias mais recentes;
+- `POST /:cycleId/margin-files`: recebe CSV multipart de ate 5 MB com `Idempotency-Key`;
+- `GET /:cycleId/files/:fileId`: consulta o staging sem expor a linha bruta;
+- `POST /:cycleId/files/:fileId/publish`: aplica um arquivo integralmente validado.
+
+O layout `MARGIN_V1` usa ponto e virgula. Colunas obrigatorias: `matricula`, `situacao_funcional`, `remuneracao_base`, `descontos_obrigatorios` e `base_margem`. Colunas opcionais: `tipo_vinculo`, `grupo_folha`, `lotacao`, `centro_custo` e `data_atualizacao`.
+
+O arquivo original existe apenas na memoria durante o processamento. Cada linha bruta e persistida criptografada; o staging normalizado nao contem matricula. Arquivo repetido no mesmo ciclo nao e processado novamente, qualquer linha invalida impede publicacao e cada atualizacao publicada gera snapshot antes/depois ligado a competencia e a linha de origem.

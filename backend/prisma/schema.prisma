@@ -71,6 +71,38 @@ enum AuthAttemptOutcome {
   BLOCKED
 }
 
+enum PayrollCycleStatus {
+  OPEN
+  REVIEW
+  PUBLISHED
+  CLOSED
+}
+
+enum PayrollFileType {
+  MARGIN
+  INSERTION
+  RETURN
+}
+
+enum PayrollFileDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum PayrollFileStatus {
+  RECEIVED
+  VALIDATED
+  REJECTED
+  PROCESSING
+  APPLIED
+}
+
+enum PayrollFileRowStatus {
+  VALID
+  INVALID
+  APPLIED
+}
+
 model Organization {
   id             String       @id @default(uuid()) @db.Uuid
   name           String
@@ -86,43 +118,48 @@ model Organization {
 }
 
 model Agreement {
-  id                 String                   @id @default(uuid()) @db.Uuid
-  organizationId     String                   @map("organization_id") @db.Uuid
-  organization       Organization             @relation(fields: [organizationId], references: [id])
-  tenantKey          String                   @unique @map("tenant_key")
+  id                 String                      @id @default(uuid()) @db.Uuid
+  organizationId     String                      @map("organization_id") @db.Uuid
+  organization       Organization                @relation(fields: [organizationId], references: [id])
+  tenantKey          String                      @unique @map("tenant_key")
   code               String
   name               String
-  timezone           String                   @default("America/Fortaleza")
-  payrollFrequency   String                   @default("monthly") @map("payroll_frequency")
-  dataClassification String                   @default("confidential") @map("data_classification")
-  status             RecordStatus             @default(ACTIVE)
+  timezone           String                      @default("America/Fortaleza")
+  payrollFrequency   String                      @default("monthly") @map("payroll_frequency")
+  dataClassification String                      @default("confidential") @map("data_classification")
+  status             RecordStatus                @default(ACTIVE)
   policies           AgreementPolicyVersion[]
   accreditations     Accreditation[]
   enrollments        Enrollment[]
   memberships        Membership[]
   auditEvents        AuditEvent[]
   outboxEvents       OutboxEvent[]
-  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
-  version            Int                      @default(1)
+  payrollCycles      PayrollCycle[]
+  payrollFiles       PayrollFile[]
+  payrollFileRows    PayrollFileRow[]
+  payrollSnapshots   EnrollmentPayrollSnapshot[]
+  createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version            Int                         @default(1)
 
   @@unique([organizationId, code])
   @@map("agreements")
 }
 
 model AgreementPolicyVersion {
-  id               String       @id @default(uuid()) @db.Uuid
-  agreementId      String       @map("agreement_id") @db.Uuid
-  agreement        Agreement    @relation(fields: [agreementId], references: [id])
-  policyType       String       @map("policy_type")
-  versionNumber    Int          @map("version_number")
+  id               String         @id @default(uuid()) @db.Uuid
+  agreementId      String         @map("agreement_id") @db.Uuid
+  agreement        Agreement      @relation(fields: [agreementId], references: [id])
+  policyType       String         @map("policy_type")
+  versionNumber    Int            @map("version_number")
   payload          Json
-  validFrom        DateTime     @map("valid_from") @db.Timestamptz(6)
-  validUntil       DateTime?    @map("valid_until") @db.Timestamptz(6)
-  status           PolicyStatus @default(DRAFT)
-  approvedByUserId String?      @map("approved_by_user_id") @db.Uuid
-  approvedAt       DateTime?    @map("approved_at") @db.Timestamptz(6)
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  validFrom        DateTime       @map("valid_from") @db.Timestamptz(6)
+  validUntil       DateTime?      @map("valid_until") @db.Timestamptz(6)
+  status           PolicyStatus   @default(DRAFT)
+  approvedByUserId String?        @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime?      @map("approved_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  payrollCycles    PayrollCycle[]
 
   @@unique([agreementId, policyType, versionNumber])
   @@index([agreementId, policyType, status])
@@ -210,32 +247,134 @@ model Person {
 }
 
 model Enrollment {
-  id                        String       @id @default(uuid()) @db.Uuid
-  agreementId               String       @map("agreement_id") @db.Uuid
-  agreement                 Agreement    @relation(fields: [agreementId], references: [id])
-  personId                  String       @map("person_id") @db.Uuid
-  person                    Person       @relation(fields: [personId], references: [id])
-  enrollmentNumberEncrypted String       @map("enrollment_number_encrypted")
-  enrollmentLookupKey       String       @map("enrollment_lookup_key")
-  functionalStatus          String       @map("functional_status")
-  employmentType            String?      @map("employment_type")
-  admissionDate             DateTime?    @map("admission_date") @db.Date
-  terminationDate           DateTime?    @map("termination_date") @db.Date
-  payrollGroup              String?      @map("payroll_group")
+  id                        String                      @id @default(uuid()) @db.Uuid
+  agreementId               String                      @map("agreement_id") @db.Uuid
+  agreement                 Agreement                   @relation(fields: [agreementId], references: [id])
+  personId                  String                      @map("person_id") @db.Uuid
+  person                    Person                      @relation(fields: [personId], references: [id])
+  enrollmentNumberEncrypted String                      @map("enrollment_number_encrypted")
+  enrollmentLookupKey       String                      @map("enrollment_lookup_key")
+  functionalStatus          String                      @map("functional_status")
+  employmentType            String?                     @map("employment_type")
+  admissionDate             DateTime?                   @map("admission_date") @db.Date
+  terminationDate           DateTime?                   @map("termination_date") @db.Date
+  payrollGroup              String?                     @map("payroll_group")
   department                String?
-  costCenter                String?      @map("cost_center")
-  baseSalary                Decimal      @default(0) @map("base_salary") @db.Decimal(18, 2)
-  mandatoryDeductions       Decimal      @default(0) @map("mandatory_deductions") @db.Decimal(18, 2)
-  marginBase                Decimal      @default(0) @map("margin_base") @db.Decimal(18, 2)
-  sourceUpdatedAt           DateTime?    @map("source_updated_at") @db.Timestamptz(6)
-  status                    RecordStatus @default(ACTIVE)
-  createdAt                 DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                 DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  version                   Int          @default(1)
+  costCenter                String?                     @map("cost_center")
+  baseSalary                Decimal                     @default(0) @map("base_salary") @db.Decimal(18, 2)
+  mandatoryDeductions       Decimal                     @default(0) @map("mandatory_deductions") @db.Decimal(18, 2)
+  marginBase                Decimal                     @default(0) @map("margin_base") @db.Decimal(18, 2)
+  sourceUpdatedAt           DateTime?                   @map("source_updated_at") @db.Timestamptz(6)
+  status                    RecordStatus                @default(ACTIVE)
+  createdAt                 DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version                   Int                         @default(1)
+  payrollFileRows           PayrollFileRow[]
+  payrollSnapshots          EnrollmentPayrollSnapshot[]
 
   @@unique([agreementId, enrollmentLookupKey])
   @@index([agreementId, personId, status])
   @@map("enrollments")
+}
+
+model PayrollCycle {
+  id              String                      @id @default(uuid()) @db.Uuid
+  agreementId     String                      @map("agreement_id") @db.Uuid
+  agreement       Agreement                   @relation(fields: [agreementId], references: [id])
+  competency      DateTime                    @db.Date
+  cutoffAt        DateTime                    @map("cutoff_at") @db.Timestamptz(6)
+  insertionDueAt  DateTime?                   @map("insertion_due_at") @db.Timestamptz(6)
+  returnDueAt     DateTime?                   @map("return_due_at") @db.Timestamptz(6)
+  status          PayrollCycleStatus          @default(OPEN)
+  policyVersionId String?                     @map("policy_version_id") @db.Uuid
+  policyVersion   AgreementPolicyVersion?     @relation(fields: [policyVersionId], references: [id])
+  closedByUserId  String?                     @map("closed_by_user_id") @db.Uuid
+  closedAt        DateTime?                   @map("closed_at") @db.Timestamptz(6)
+  files           PayrollFile[]
+  snapshots       EnrollmentPayrollSnapshot[]
+  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version         Int                         @default(1)
+
+  @@unique([agreementId, competency])
+  @@index([agreementId, status])
+  @@map("payroll_cycles")
+}
+
+model PayrollFile {
+  id                String               @id @default(uuid()) @db.Uuid
+  agreementId       String               @map("agreement_id") @db.Uuid
+  agreement         Agreement            @relation(fields: [agreementId], references: [id])
+  payrollCycleId    String               @map("payroll_cycle_id") @db.Uuid
+  payrollCycle      PayrollCycle         @relation(fields: [payrollCycleId], references: [id])
+  fileType          PayrollFileType      @map("file_type")
+  direction         PayrollFileDirection
+  environment       EnvironmentKind
+  layoutVersion     String               @map("layout_version")
+  protocolNumber    String               @map("protocol_number")
+  originalFileName  String               @map("original_file_name")
+  contentHash       String               @map("content_hash")
+  sizeBytes         BigInt               @map("size_bytes")
+  mediaType         String               @map("media_type")
+  status            PayrollFileStatus    @default(RECEIVED)
+  totalRows         Int                  @default(0) @map("total_rows")
+  validRows         Int                  @default(0) @map("valid_rows")
+  invalidRows       Int                  @default(0) @map("invalid_rows")
+  totalAmount       Decimal              @default(0) @map("total_amount") @db.Decimal(18, 2)
+  idempotencyKey    String               @map("idempotency_key")
+  uploadedByUserId  String               @map("uploaded_by_user_id") @db.Uuid
+  processedByUserId String?              @map("processed_by_user_id") @db.Uuid
+  rows              PayrollFileRow[]
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  processedAt       DateTime?            @map("processed_at") @db.Timestamptz(6)
+
+  @@unique([agreementId, protocolNumber])
+  @@unique([agreementId, idempotencyKey])
+  @@unique([agreementId, payrollCycleId, fileType, contentHash])
+  @@index([agreementId, payrollCycleId, status])
+  @@map("payroll_files")
+}
+
+model PayrollFileRow {
+  id                    String                     @id @default(uuid()) @db.Uuid
+  agreementId           String                     @map("agreement_id") @db.Uuid
+  agreement             Agreement                  @relation(fields: [agreementId], references: [id])
+  payrollFileId         String                     @map("payroll_file_id") @db.Uuid
+  payrollFile           PayrollFile                @relation(fields: [payrollFileId], references: [id])
+  rowNumber             Int                        @map("row_number")
+  enrollmentId          String?                    @map("enrollment_id") @db.Uuid
+  enrollment            Enrollment?                @relation(fields: [enrollmentId], references: [id])
+  externalReferenceHash String?                    @map("external_reference_hash")
+  amount                Decimal?                   @db.Decimal(18, 2)
+  status                PayrollFileRowStatus
+  rawDataEncrypted      String                     @map("raw_data_encrypted")
+  normalizedData        Json?                      @map("normalized_data")
+  errors                Json
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  payrollSnapshot       EnrollmentPayrollSnapshot?
+
+  @@unique([payrollFileId, rowNumber])
+  @@index([agreementId, enrollmentId, status])
+  @@map("payroll_file_rows")
+}
+
+model EnrollmentPayrollSnapshot {
+  id              String         @id @default(uuid()) @db.Uuid
+  agreementId     String         @map("agreement_id") @db.Uuid
+  agreement       Agreement      @relation(fields: [agreementId], references: [id])
+  payrollCycleId  String         @map("payroll_cycle_id") @db.Uuid
+  payrollCycle    PayrollCycle   @relation(fields: [payrollCycleId], references: [id])
+  enrollmentId    String         @map("enrollment_id") @db.Uuid
+  enrollment      Enrollment     @relation(fields: [enrollmentId], references: [id])
+  sourceFileRowId String         @unique @map("source_file_row_id") @db.Uuid
+  sourceFileRow   PayrollFileRow @relation(fields: [sourceFileRowId], references: [id])
+  beforeData      Json           @map("before_data")
+  afterData       Json           @map("after_data")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([payrollCycleId, enrollmentId])
+  @@index([agreementId, enrollmentId, createdAt])
+  @@map("enrollment_payroll_snapshots")
 }
 
 model User {

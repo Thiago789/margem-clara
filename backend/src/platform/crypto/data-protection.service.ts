@@ -7,7 +7,8 @@ export type DataProtectionPurpose =
   | "person.cpf"
   | "person.email"
   | "person.phone"
-  | "enrollment.number";
+  | "enrollment.number"
+  | "payroll.margin_row";
 
 export class InvalidProtectedValueError extends Error {
   constructor() {
