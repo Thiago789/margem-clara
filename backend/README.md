@@ -158,3 +158,14 @@ O primeiro fluxo de folha esta disponivel em `/api/v1/agreements/:agreementId/pa
 O layout `MARGIN_V1` usa ponto e virgula. Colunas obrigatorias: `matricula`, `situacao_funcional`, `remuneracao_base`, `descontos_obrigatorios` e `base_margem`. Colunas opcionais: `tipo_vinculo`, `grupo_folha`, `lotacao`, `centro_custo` e `data_atualizacao`.
 
 O arquivo original existe apenas na memoria durante o processamento. Cada linha bruta e persistida criptografada; o staging normalizado nao contem matricula. Arquivo repetido no mesmo ciclo nao e processado novamente, qualquer linha invalida impede publicacao e cada atualizacao publicada gera snapshot antes/depois ligado a competencia e a linha de origem.
+
+## Calculo de margem
+
+A politica operacional pode definir grupos de margem separados ou compartilhados, percentual com quatro casas decimais, familias de produto, rubrica da folha e situacoes funcionais elegiveis. Toda familia habilitada deve pertencer a exatamente um grupo. Remover ou renomear um grupo ativo exige migracao formal para que saldos antigos nao coexistam silenciosamente com uma nova margem.
+
+Depois da publicacao do arquivo de margem:
+
+- `POST /api/v1/agreements/:agreementId/payroll-cycles/:cycleId/margins/calculate`: calcula todas as matriculas da competencia com a politica fixada no ciclo;
+- `GET /api/v1/agreements/:agreementId/servants/:enrollmentId/margins`: consulta os saldos atuais, a explicacao do snapshot vigente e os ultimos movimentos.
+
+A formula e `disponivel = max(base * percentual - consumido - reservado - bloqueado, 0)`. O calculo usa centavos inteiros e arredondamento comercial, registra o eventual deficit na explicacao, e nunca produz margem disponivel negativa. Cada resultado gera snapshot imutavel e movimento de recalculo, inclusive quando o saldo nao muda. Repetir o comando da mesma competencia e idempotente; uma competencia antiga nao pode substituir o saldo de uma competencia mais recente.

@@ -103,6 +103,22 @@ enum PayrollFileRowStatus {
   APPLIED
 }
 
+enum MarginMovementType {
+  RECALCULATION
+  RESERVATION
+  RELEASE
+  CONSUMPTION
+  BLOCK
+  UNBLOCK
+  REVERSAL
+}
+
+enum MarginMovementDirection {
+  INCREASE
+  DECREASE
+  NO_CHANGE
+}
+
 model Organization {
   id             String       @id @default(uuid()) @db.Uuid
   name           String
@@ -138,6 +154,10 @@ model Agreement {
   payrollFiles       PayrollFile[]
   payrollFileRows    PayrollFileRow[]
   payrollSnapshots   EnrollmentPayrollSnapshot[]
+  marginGroups       MarginGroup[]
+  marginAccounts     MarginAccount[]
+  marginSnapshots    MarginSnapshot[]
+  marginMovements    MarginMovement[]
   createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
   version            Int                         @default(1)
@@ -147,19 +167,20 @@ model Agreement {
 }
 
 model AgreementPolicyVersion {
-  id               String         @id @default(uuid()) @db.Uuid
-  agreementId      String         @map("agreement_id") @db.Uuid
-  agreement        Agreement      @relation(fields: [agreementId], references: [id])
-  policyType       String         @map("policy_type")
-  versionNumber    Int            @map("version_number")
+  id               String           @id @default(uuid()) @db.Uuid
+  agreementId      String           @map("agreement_id") @db.Uuid
+  agreement        Agreement        @relation(fields: [agreementId], references: [id])
+  policyType       String           @map("policy_type")
+  versionNumber    Int              @map("version_number")
   payload          Json
-  validFrom        DateTime       @map("valid_from") @db.Timestamptz(6)
-  validUntil       DateTime?      @map("valid_until") @db.Timestamptz(6)
-  status           PolicyStatus   @default(DRAFT)
-  approvedByUserId String?        @map("approved_by_user_id") @db.Uuid
-  approvedAt       DateTime?      @map("approved_at") @db.Timestamptz(6)
-  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  validFrom        DateTime         @map("valid_from") @db.Timestamptz(6)
+  validUntil       DateTime?        @map("valid_until") @db.Timestamptz(6)
+  status           PolicyStatus     @default(DRAFT)
+  approvedByUserId String?          @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime?        @map("approved_at") @db.Timestamptz(6)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   payrollCycles    PayrollCycle[]
+  marginSnapshots  MarginSnapshot[]
 
   @@unique([agreementId, policyType, versionNumber])
   @@index([agreementId, policyType, status])
@@ -271,6 +292,9 @@ model Enrollment {
   version                   Int                         @default(1)
   payrollFileRows           PayrollFileRow[]
   payrollSnapshots          EnrollmentPayrollSnapshot[]
+  marginAccounts            MarginAccount[]
+  marginSnapshots           MarginSnapshot[]
+  marginMovements           MarginMovement[]
 
   @@unique([agreementId, enrollmentLookupKey])
   @@index([agreementId, personId, status])
@@ -292,6 +316,7 @@ model PayrollCycle {
   closedAt        DateTime?                   @map("closed_at") @db.Timestamptz(6)
   files           PayrollFile[]
   snapshots       EnrollmentPayrollSnapshot[]
+  marginSnapshots MarginSnapshot[]
   createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
   version         Int                         @default(1)
@@ -330,7 +355,7 @@ model PayrollFile {
 
   @@unique([agreementId, protocolNumber])
   @@unique([agreementId, idempotencyKey])
-  @@unique([agreementId, payrollCycleId, fileType, contentHash])
+  @@unique([agreementId, payrollCycleId, fileType, contentHash], map: "payroll_files_cycle_type_hash_key")
   @@index([agreementId, payrollCycleId, status])
   @@map("payroll_files")
 }
@@ -373,8 +398,108 @@ model EnrollmentPayrollSnapshot {
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([payrollCycleId, enrollmentId])
-  @@index([agreementId, enrollmentId, createdAt])
+  @@index([agreementId, enrollmentId, createdAt], map: "enrollment_payroll_snapshots_lookup_idx")
   @@map("enrollment_payroll_snapshots")
+}
+
+model MarginGroup {
+  id          String           @id @default(uuid()) @db.Uuid
+  agreementId String           @map("agreement_id") @db.Uuid
+  agreement   Agreement        @relation(fields: [agreementId], references: [id])
+  code        String
+  name        String
+  status      RecordStatus     @default(ACTIVE)
+  accounts    MarginAccount[]
+  snapshots   MarginSnapshot[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([agreementId, code])
+  @@map("margin_groups")
+}
+
+model MarginAccount {
+  id                String           @id @default(uuid()) @db.Uuid
+  agreementId       String           @map("agreement_id") @db.Uuid
+  agreement         Agreement        @relation(fields: [agreementId], references: [id])
+  enrollmentId      String           @map("enrollment_id") @db.Uuid
+  enrollment        Enrollment       @relation(fields: [enrollmentId], references: [id])
+  marginGroupId     String           @map("margin_group_id") @db.Uuid
+  marginGroup       MarginGroup      @relation(fields: [marginGroupId], references: [id])
+  currentSnapshotId String?          @unique @map("current_snapshot_id") @db.Uuid
+  currentSnapshot   MarginSnapshot?  @relation("CurrentMarginSnapshot", fields: [currentSnapshotId], references: [id])
+  totalAmount       Decimal          @default(0) @map("total_amount") @db.Decimal(18, 2)
+  consumedAmount    Decimal          @default(0) @map("consumed_amount") @db.Decimal(18, 2)
+  reservedAmount    Decimal          @default(0) @map("reserved_amount") @db.Decimal(18, 2)
+  blockedAmount     Decimal          @default(0) @map("blocked_amount") @db.Decimal(18, 2)
+  availableAmount   Decimal          @default(0) @map("available_amount") @db.Decimal(18, 2)
+  status            RecordStatus     @default(ACTIVE)
+  lockVersion       Int              @default(1) @map("lock_version")
+  snapshots         MarginSnapshot[] @relation("AccountSnapshots")
+  movements         MarginMovement[]
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([agreementId, enrollmentId, marginGroupId])
+  @@index([agreementId, enrollmentId, status])
+  @@map("margin_accounts")
+}
+
+model MarginSnapshot {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  agreementId        String                 @map("agreement_id") @db.Uuid
+  agreement          Agreement              @relation(fields: [agreementId], references: [id])
+  payrollCycleId     String                 @map("payroll_cycle_id") @db.Uuid
+  payrollCycle       PayrollCycle           @relation(fields: [payrollCycleId], references: [id])
+  enrollmentId       String                 @map("enrollment_id") @db.Uuid
+  enrollment         Enrollment             @relation(fields: [enrollmentId], references: [id])
+  marginGroupId      String                 @map("margin_group_id") @db.Uuid
+  marginGroup        MarginGroup            @relation(fields: [marginGroupId], references: [id])
+  marginAccountId    String                 @map("margin_account_id") @db.Uuid
+  marginAccount      MarginAccount          @relation("AccountSnapshots", fields: [marginAccountId], references: [id])
+  currentForAccount  MarginAccount?         @relation("CurrentMarginSnapshot")
+  policyVersionId    String                 @map("policy_version_id") @db.Uuid
+  policyVersion      AgreementPolicyVersion @relation(fields: [policyVersionId], references: [id])
+  calculationBase    Decimal                @map("calculation_base") @db.Decimal(18, 2)
+  percentage         Decimal                @db.Decimal(7, 4)
+  totalAmount        Decimal                @map("total_amount") @db.Decimal(18, 2)
+  consumedAmount     Decimal                @map("consumed_amount") @db.Decimal(18, 2)
+  reservedAmount     Decimal                @map("reserved_amount") @db.Decimal(18, 2)
+  blockedAmount      Decimal                @map("blocked_amount") @db.Decimal(18, 2)
+  availableAmount    Decimal                @map("available_amount") @db.Decimal(18, 2)
+  calculationVersion Int                    @map("calculation_version")
+  explanation        Json
+  publishedAt        DateTime               @map("published_at") @db.Timestamptz(6)
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([payrollCycleId, enrollmentId, marginGroupId], map: "margin_snapshots_cycle_enrollment_group_key")
+  @@index([agreementId, enrollmentId, createdAt])
+  @@map("margin_snapshots")
+}
+
+model MarginMovement {
+  id              String                  @id @default(uuid()) @db.Uuid
+  agreementId     String                  @map("agreement_id") @db.Uuid
+  agreement       Agreement               @relation(fields: [agreementId], references: [id])
+  marginAccountId String                  @map("margin_account_id") @db.Uuid
+  marginAccount   MarginAccount           @relation(fields: [marginAccountId], references: [id])
+  enrollmentId    String                  @map("enrollment_id") @db.Uuid
+  enrollment      Enrollment              @relation(fields: [enrollmentId], references: [id])
+  movementType    MarginMovementType      @map("movement_type")
+  direction       MarginMovementDirection
+  amount          Decimal                 @db.Decimal(18, 2)
+  balanceBefore   Decimal                 @map("balance_before") @db.Decimal(18, 2)
+  balanceAfter    Decimal                 @map("balance_after") @db.Decimal(18, 2)
+  sourceType      String                  @map("source_type")
+  sourceId        String                  @map("source_id") @db.Uuid
+  idempotencyKey  String                  @map("idempotency_key")
+  correlationId   String                  @map("correlation_id") @db.Uuid
+  actorUserId     String?                 @map("actor_user_id") @db.Uuid
+  reason          String
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([agreementId, idempotencyKey])
+  @@index([agreementId, marginAccountId, createdAt])
+  @@map("margin_movements")
 }
 
 model User {

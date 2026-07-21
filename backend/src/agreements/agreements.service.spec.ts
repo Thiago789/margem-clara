@@ -91,7 +91,10 @@ describe("AgreementsService", () => {
     );
 
     expect(transaction.agreementPolicyVersion.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ versionNumber: 3, payload: validPolicy }),
+      data: expect.objectContaining({
+        versionNumber: 3,
+        payload: { ...validPolicy, eligibleFunctionalStatuses: ["ACTIVE"] },
+      }),
     });
     expect(result).toMatchObject({ id: "policy-3", versionNumber: 3 });
   });
