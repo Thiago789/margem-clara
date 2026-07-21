@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.spec.ts", "test/**/*.spec.ts"],
-    maxWorkers: 2,
+    fileParallelism: false,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
