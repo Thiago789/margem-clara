@@ -8,7 +8,8 @@ export type DataProtectionPurpose =
   | "person.email"
   | "person.phone"
   | "enrollment.number"
-  | "payroll.margin_row";
+  | "payroll.margin_row"
+  | "reservation.confirmation_code";
 
 export class InvalidProtectedValueError extends Error {
   constructor() {

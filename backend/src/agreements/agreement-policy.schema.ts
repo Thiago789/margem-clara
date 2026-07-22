@@ -45,6 +45,9 @@ export const operationalRulesSchema = z
   .object({
     marginConsultationAuthorization: z.enum(["REQUIRED", "NOT_REQUIRED"]),
     reservationConfirmation: z.enum(["CODE_REQUIRED", "IMMEDIATE"]),
+    reservationValidityMinutes: z.number().int().min(5).max(10_080).default(1_440),
+    confirmationCodeValidityMinutes: z.number().int().min(3).max(30).default(10),
+    confirmationMaxAttempts: z.number().int().min(3).max(10).default(5),
     cutoffDay: z.number().int().min(1).max(31),
     enabledProductFamilies: z.array(productFamily).min(1).max(4),
     eligibleFunctionalStatuses: z

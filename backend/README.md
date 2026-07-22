@@ -169,3 +169,17 @@ Depois da publicacao do arquivo de margem:
 - `GET /api/v1/agreements/:agreementId/servants/:enrollmentId/margins`: consulta os saldos atuais, a explicacao do snapshot vigente e os ultimos movimentos.
 
 A formula e `disponivel = max(base * percentual - consumido - reservado - bloqueado, 0)`. O calculo usa centavos inteiros e arredondamento comercial, registra o eventual deficit na explicacao, e nunca produz margem disponivel negativa. Cada resultado gera snapshot imutavel e movimento de recalculo, inclusive quando o saldo nao muda. Repetir o comando da mesma competencia e idempotente; uma competencia antiga nao pode substituir o saldo de uma competencia mais recente.
+
+## Reservas de margem
+
+O fluxo transacional usa `/api/v1/agreements/:agreementId/parties/:partyId/reservations` e exige escopo simultaneo no convenio e na consignataria:
+
+- `POST /`: cria uma reserva com `Idempotency-Key`, matricula, credenciamento e valor;
+- `GET /` e `GET /:reservationId`: consultam projecoes seguras, sem hash ou codigo de confirmacao;
+- `POST /:reservationId/confirm`: confirma uma reserva pendente com codigo de seis digitos;
+- `POST /:reservationId/cancel`: cancela e libera uma reserva ativa;
+- `POST /:reservationId/expire`: expira somente depois do prazo e libera eventual saldo reservado.
+
+A politica configura confirmacao imediata ou por codigo, validade do codigo, limite de tentativas e validade da reserva ativa. A reserva imediata reduz o disponivel na mesma transacao. A reserva com codigo nao bloqueia saldo enquanto estiver pendente e revalida a disponibilidade ao confirmar. O codigo e persistido apenas como HMAC; o valor cifrado segue pela outbox para a futura integracao de entrega. Somente credenciamentos de homologacao recebem o codigo na resposta para viabilizar testes.
+
+Toda ativacao e liberacao usa controle otimista da versao da conta, movimento financeiro idempotente, auditoria e evento de outbox. Ao liberar uma reserva, o disponivel e recalculado pela formula completa para nao criar margem artificial quando houver deficit.

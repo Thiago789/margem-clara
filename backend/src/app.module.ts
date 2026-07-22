@@ -12,6 +12,7 @@ import { DataProtectionModule } from "./platform/crypto/data-protection.module.j
 import { ServantsModule } from "./servants/servants.module.js";
 import { PayrollModule } from "./payroll/payroll.module.js";
 import { MarginsModule } from "./margins/margins.module.js";
+import { ReservationsModule } from "./reservations/reservations.module.js";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { MarginsModule } from "./margins/margins.module.js";
     ServantsModule,
     PayrollModule,
     MarginsModule,
+    ReservationsModule,
     HealthModule,
   ],
 })
