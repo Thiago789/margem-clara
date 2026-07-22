@@ -170,6 +170,19 @@ Depois da publicacao do arquivo de margem:
 
 A formula e `disponivel = max(base * percentual - consumido - reservado - bloqueado, 0)`. O calculo usa centavos inteiros e arredondamento comercial, registra o eventual deficit na explicacao, e nunca produz margem disponivel negativa. Cada resultado gera snapshot imutavel e movimento de recalculo, inclusive quando o saldo nao muda. Repetir o comando da mesma competencia e idempotente; uma competencia antiga nao pode substituir o saldo de uma competencia mais recente.
 
+## Insercao e retorno da folha
+
+Depois da margem publicada, o ciclo possui o fluxo operacional completo de descontos:
+
+- `POST /:cycleId/insertion-files`: gera `INSERTION_V1` somente com contratos ativos, elegiveis na competencia e ativados ate a data de corte;
+- `GET /:cycleId/insertion-files/:fileId/download`: baixa o CSV e informa o SHA-256 no cabecalho da resposta;
+- `POST /:cycleId/return-files`: recebe e valida `RETURN_V1`, vinculando cada linha a uma instrucao realmente enviada;
+- `POST /:cycleId/return-files/:fileId/apply`: concilia integralmente o staging validado e fecha a competencia quando nao restar instrucao pendente.
+
+O layout de insercao leva consignataria, matricula, contrato, rubrica, valor, competencia, parcela, prazo, operacao e produto. A matricula existe apenas na linha cifrada e no CSV autorizado; nao integra o staging normalizado.
+
+O retorno classifica cada desconto como `FULL`, `PARTIAL` ou `REJECTED`. Apenas `FULL` avanca a parcela. Parcial e rejeitado exigem motivo e permanecem registrados sem alterar silenciosamente o contrato. A ultima parcela integral de um contrato fixo liquida o contrato e libera sua margem pela formula completa. Restricoes unicas por instrucao e por linha impedem conciliacao duplicada.
+
 ## Reservas de margem
 
 O fluxo transacional usa `/api/v1/agreements/:agreementId/parties/:partyId/reservations` e exige escopo simultaneo no convenio e na consignataria:
@@ -193,3 +206,4 @@ O contrato registra tipo da operacao (`NEW`, `REFINANCING`, `PORTABILITY` ou `DE
 A conversao aceita apenas reserva confirmada, ativa e dentro da validade. Produtos parcelados exigem prazo e primeiro vencimento; produtos de credito exigem valor contratado; a politica fixada na reserva pode exigir campos adicionais. Refinanciamento exige contrato de origem, enquanto portabilidade e compra de divida exigem contrato e credor de origem.
 
 Na mesma transacao, o valor da parcela sai de `reserved_amount` e entra em `consumed_amount`. O disponivel nao muda porque o compromisso total permanece igual. A operacao usa versao otimista da conta e da reserva, cria movimento `CONSUMPTION`, marca a reserva como `CONVERTED`, registra auditoria e publica `contract.activated` na outbox.
+

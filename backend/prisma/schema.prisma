@@ -103,6 +103,17 @@ enum PayrollFileRowStatus {
   APPLIED
 }
 
+enum PayrollInstructionStatus {
+  GENERATED
+  RECONCILED
+}
+
+enum PayrollDiscountOutcome {
+  FULL
+  PARTIAL
+  REJECTED
+}
+
 enum MarginMovementType {
   RECALCULATION
   RESERVATION
@@ -161,35 +172,37 @@ model Organization {
 }
 
 model Agreement {
-  id                 String                      @id @default(uuid()) @db.Uuid
-  organizationId     String                      @map("organization_id") @db.Uuid
-  organization       Organization                @relation(fields: [organizationId], references: [id])
-  tenantKey          String                      @unique @map("tenant_key")
-  code               String
-  name               String
-  timezone           String                      @default("America/Fortaleza")
-  payrollFrequency   String                      @default("monthly") @map("payroll_frequency")
-  dataClassification String                      @default("confidential") @map("data_classification")
-  status             RecordStatus                @default(ACTIVE)
-  policies           AgreementPolicyVersion[]
-  accreditations     Accreditation[]
-  enrollments        Enrollment[]
-  memberships        Membership[]
-  auditEvents        AuditEvent[]
-  outboxEvents       OutboxEvent[]
-  payrollCycles      PayrollCycle[]
-  payrollFiles       PayrollFile[]
-  payrollFileRows    PayrollFileRow[]
-  payrollSnapshots   EnrollmentPayrollSnapshot[]
-  marginGroups       MarginGroup[]
-  marginAccounts     MarginAccount[]
-  marginSnapshots    MarginSnapshot[]
-  marginMovements    MarginMovement[]
-  marginReservations MarginReservation[]
-  contracts          Contract[]
-  createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
-  version            Int                         @default(1)
+  id                    String                      @id @default(uuid()) @db.Uuid
+  organizationId        String                      @map("organization_id") @db.Uuid
+  organization          Organization                @relation(fields: [organizationId], references: [id])
+  tenantKey             String                      @unique @map("tenant_key")
+  code                  String
+  name                  String
+  timezone              String                      @default("America/Fortaleza")
+  payrollFrequency      String                      @default("monthly") @map("payroll_frequency")
+  dataClassification    String                      @default("confidential") @map("data_classification")
+  status                RecordStatus                @default(ACTIVE)
+  policies              AgreementPolicyVersion[]
+  accreditations        Accreditation[]
+  enrollments           Enrollment[]
+  memberships           Membership[]
+  auditEvents           AuditEvent[]
+  outboxEvents          OutboxEvent[]
+  payrollCycles         PayrollCycle[]
+  payrollFiles          PayrollFile[]
+  payrollFileRows       PayrollFileRow[]
+  payrollSnapshots      EnrollmentPayrollSnapshot[]
+  marginGroups          MarginGroup[]
+  marginAccounts        MarginAccount[]
+  marginSnapshots       MarginSnapshot[]
+  marginMovements       MarginMovement[]
+  marginReservations    MarginReservation[]
+  contracts             Contract[]
+  payrollInstructions   PayrollInstruction[]
+  payrollDiscountEvents PayrollDiscountEvent[]
+  createdAt             DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version               Int                         @default(1)
 
   @@unique([organizationId, code])
   @@map("agreements")
@@ -334,6 +347,8 @@ model Enrollment {
   marginMovements           MarginMovement[]
   marginReservations        MarginReservation[]
   contracts                 Contract[]
+  payrollInstructions       PayrollInstruction[]
+  payrollDiscountEvents     PayrollDiscountEvent[]
 
   @@unique([agreementId, enrollmentLookupKey])
   @@index([agreementId, personId, status])
@@ -356,6 +371,8 @@ model PayrollCycle {
   files           PayrollFile[]
   snapshots       EnrollmentPayrollSnapshot[]
   marginSnapshots MarginSnapshot[]
+  instructions    PayrollInstruction[]
+  discountEvents  PayrollDiscountEvent[]
   createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
   version         Int                         @default(1)
@@ -416,6 +433,8 @@ model PayrollFileRow {
   errors                Json
   createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   payrollSnapshot       EnrollmentPayrollSnapshot?
+  payrollInstruction    PayrollInstruction?        @relation("InstructionSourceRow")
+  discountEvent         PayrollDiscountEvent?      @relation("DiscountReturnSourceRow")
 
   @@unique([payrollFileId, rowNumber])
   @@index([agreementId, enrollmentId, status])
@@ -441,17 +460,27 @@ model EnrollmentPayrollSnapshot {
   @@map("enrollment_payroll_snapshots")
 }
 
-model MarginGroup {
-  id          String           @id @default(uuid()) @db.Uuid
-  agreementId String           @map("agreement_id") @db.Uuid
-  agreement   Agreement        @relation(fields: [agreementId], references: [id])
-  code        String
-  name        String
-  status      RecordStatus     @default(ACTIVE)
-  accounts    MarginAccount[]
-  snapshots   MarginSnapshot[]
-  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+model PayrollInstruction {
+  id                String                   @id @default(uuid()) @db.Uuid
+  agreementId       String                   @map("agreement_id") @db.Uuid
+  agreement         Agreement                @relation(fields: [agreementId], references: [id])
+  payrollCycleId    String                   @map("payroll_cycle_id") @db.Uuid
+  payrollCycle      PayrollCycle             @relation(fields: [payrollCycleId], references: [id])
+  contractId        String                   @map("contract_id") @db.Uuid
+  contract          Contract                 @relation(fields: [contractId], references: [id])
+  enrollmentId      String                   @map("enrollment_id") @db.Uuid
+  enrollment        Enrollment               @relation(fields: [enrollmentId], references: [id])
+  sourceFileRowId   String                   @unique @map("source_file_row_id") @db.Uuid
+  sourceFileRow     PayrollFileRow           @relation("InstructionSourceRow", fields: [sourceFileRowId], references: [id])
+  installmentNumber Int?                     @map("installment_number")
+  amount            Decimal                  @db.Decimal(18, 2)
+  status            PayrollInstructionStatus @default(GENERATED)
+  discountEvent     PayrollDiscountEvent?
+  reconciledAt      DateTime?                @map("reconciled_at") @db.Timestamptz(6)
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([payrollCycleId, contractId], map: "payroll_instructions_cycle_contract_key")
+  @@index([agreementId, statu…589 tokens truncated…(6)
 
   @@unique([agreementId, code])
   @@map("margin_groups")
@@ -634,6 +663,8 @@ model Contract {
   createdAt               DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
   version                 Int                    @default(1)
+  payrollInstructions     PayrollInstruction[]
+  payrollDiscountEvents   PayrollDiscountEvent[]
 
   @@unique([agreementId, idempotencyKey], map: "contracts_idempotency_key")
   @@unique([agreementId, partyId, contractNumber], map: "contracts_party_number_key")
@@ -791,3 +822,4 @@ model OutboxEvent {
   @@index([agreementId, aggregateType, aggregateId])
   @@map("outbox_events")
 }
+

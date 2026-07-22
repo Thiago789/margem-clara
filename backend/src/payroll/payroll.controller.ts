@@ -8,9 +8,12 @@ import {
   ParseUUIDPipe,
   Post,
   Req,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseInterceptors,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Authorize } from "../platform/access-control/authorize.decorator.js";
 import {
@@ -19,7 +22,9 @@ import {
 } from "../platform/request-context/request-context.js";
 import {
   CreatePayrollCycleDto,
+  InsertionFileMetadataDto,
   MarginFileMetadataDto,
+  ReturnFileMetadataDto,
   type UploadedMarginFile,
 } from "./payroll.dto.js";
 import { PayrollService } from "./payroll.service.js";
@@ -36,6 +41,59 @@ export class PayrollController {
     @Req() request: ContextualRequest,
   ) {
     return this.payroll.createCycle(agreementId, input, contextFromRequest(request));
+  }
+
+  @Post(":cycleId/insertion-files")
+  @Authorize("payroll:approve", { agreementParam: "agreementId" })
+  generateInsertionFile(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+    @Body() metadata: InsertionFileMetadataDto,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Req() request: ContextualRequest,
+  ) {
+    return this.payroll.generateInsertionFile(agreementId, cycleId, metadata, idempotencyKey, contextFromRequest(request));
+  }
+
+  @Get(":cycleId/insertion-files/:fileId/download")
+  @Authorize("payroll:read", { agreementParam: "agreementId" })
+  async downloadInsertionFile(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+    @Param("fileId", ParseUUIDPipe) fileId: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const download = await this.payroll.downloadInsertionFile(agreementId, cycleId, fileId);
+    response.setHeader("Content-Type", download.mediaType);
+    response.setHeader("Content-Disposition", `attachment; filename="${download.fileName}"`);
+    response.setHeader("X-Content-SHA256", download.contentHash);
+    return new StreamableFile(download.buffer);
+  }
+
+  @Post(":cycleId/return-files")
+  @Authorize("payroll:write", { agreementParam: "agreementId" })
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5 * 1024 * 1024, files: 1 } }))
+  uploadReturnFile(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+    @Body() metadata: ReturnFileMetadataDto,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @UploadedFile() file: UploadedMarginFile | undefined,
+    @Req() request: ContextualRequest,
+  ) {
+    if (!file) throw new BadRequestException("Arquivo CSV obrigatorio");
+    return this.payroll.uploadReturnFile(agreementId, cycleId, metadata, idempotencyKey, file, contextFromRequest(request));
+  }
+
+  @Post(":cycleId/return-files/:fileId/apply")
+  @Authorize("payroll:approve", { agreementParam: "agreementId" })
+  applyReturnFile(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+    @Param("fileId", ParseUUIDPipe) fileId: string,
+    @Req() request: ContextualRequest,
+  ) {
+    return this.payroll.applyReturnFile(agreementId, cycleId, fileId, contextFromRequest(request));
   }
 
   @Get()
@@ -92,3 +150,4 @@ export class PayrollController {
     );
   }
 }
+

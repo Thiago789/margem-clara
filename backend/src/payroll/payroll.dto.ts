@@ -28,9 +28,30 @@ export class MarginFileMetadataDto {
   description = "Arquivo de margem";
 }
 
+export class InsertionFileMetadataDto {
+  @IsIn(["INSERTION_V1"])
+  layoutVersion!: "INSERTION_V1";
+
+  @IsIn(["HOMOLOGATION", "PRODUCTION"])
+  environment!: "HOMOLOGATION" | "PRODUCTION";
+}
+
+export class ReturnFileMetadataDto {
+  @IsIn(["RETURN_V1"])
+  layoutVersion!: "RETURN_V1";
+
+  @IsIn(["HOMOLOGATION", "PRODUCTION"])
+  environment!: "HOMOLOGATION" | "PRODUCTION";
+
+  @IsString()
+  @MaxLength(200)
+  description = "Arquivo retorno da folha";
+}
+
 export interface UploadedMarginFile {
   buffer: Buffer;
   originalname: string;
   mimetype: string;
   size: number;
 }
+
