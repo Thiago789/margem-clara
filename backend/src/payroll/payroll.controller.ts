@@ -34,7 +34,7 @@ export class PayrollController {
   constructor(private readonly payroll: PayrollService) {}
 
   @Post()
-  @Authorize("payroll:write", { agreementParam: "agreementId" })
+  @Authorize("payroll:write", { agreementParam: "agreementId", agreementWideOnly: true })
   createCycle(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Body() input: CreatePayrollCycleDto,
@@ -44,7 +44,7 @@ export class PayrollController {
   }
 
   @Post(":cycleId/insertion-files")
-  @Authorize("payroll:approve", { agreementParam: "agreementId" })
+  @Authorize("payroll:approve", { agreementParam: "agreementId", agreementWideOnly: true })
   generateInsertionFile(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Param("cycleId", ParseUUIDPipe) cycleId: string,
@@ -56,7 +56,7 @@ export class PayrollController {
   }
 
   @Get(":cycleId/insertion-files/:fileId/download")
-  @Authorize("payroll:read", { agreementParam: "agreementId" })
+  @Authorize("payroll:read", { agreementParam: "agreementId", agreementWideOnly: true })
   async downloadInsertionFile(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Param("cycleId", ParseUUIDPipe) cycleId: string,
@@ -71,7 +71,7 @@ export class PayrollController {
   }
 
   @Post(":cycleId/return-files")
-  @Authorize("payroll:write", { agreementParam: "agreementId" })
+  @Authorize("payroll:write", { agreementParam: "agreementId", agreementWideOnly: true })
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5 * 1024 * 1024, files: 1 } }))
   uploadReturnFile(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
@@ -86,7 +86,7 @@ export class PayrollController {
   }
 
   @Post(":cycleId/return-files/:fileId/apply")
-  @Authorize("payroll:approve", { agreementParam: "agreementId" })
+  @Authorize("payroll:approve", { agreementParam: "agreementId", agreementWideOnly: true })
   applyReturnFile(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Param("cycleId", ParseUUIDPipe) cycleId: string,
@@ -97,13 +97,31 @@ export class PayrollController {
   }
 
   @Get()
-  @Authorize("payroll:read", { agreementParam: "agreementId" })
+  @Authorize("payroll:read", { agreementParam: "agreementId", agreementWideOnly: true })
   listCycles(@Param("agreementId", ParseUUIDPipe) agreementId: string) {
     return this.payroll.listCycles(agreementId);
   }
 
+  @Get(":cycleId/files")
+  @Authorize("payroll:read", { agreementParam: "agreementId", agreementWideOnly: true })
+  listFiles(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+  ) {
+    return this.payroll.listFiles(agreementId, cycleId);
+  }
+
+  @Get(":cycleId/operations")
+  @Authorize("payroll:read", { agreementParam: "agreementId", agreementWideOnly: true })
+  getOperations(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+  ) {
+    return this.payroll.getOperations(agreementId, cycleId);
+  }
+
   @Post(":cycleId/margin-files")
-  @Authorize("payroll:write", { agreementParam: "agreementId" })
+  @Authorize("payroll:write", { agreementParam: "agreementId", agreementWideOnly: true })
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5 * 1024 * 1024, files: 1 } }))
   uploadMarginFile(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
@@ -125,7 +143,7 @@ export class PayrollController {
   }
 
   @Get(":cycleId/files/:fileId")
-  @Authorize("payroll:read", { agreementParam: "agreementId" })
+  @Authorize("payroll:read", { agreementParam: "agreementId", agreementWideOnly: true })
   getFile(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Param("cycleId", ParseUUIDPipe) cycleId: string,
@@ -135,7 +153,7 @@ export class PayrollController {
   }
 
   @Post(":cycleId/files/:fileId/publish")
-  @Authorize("payroll:approve", { agreementParam: "agreementId" })
+  @Authorize("payroll:approve", { agreementParam: "agreementId", agreementWideOnly: true })
   publishMarginFile(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Param("cycleId", ParseUUIDPipe) cycleId: string,

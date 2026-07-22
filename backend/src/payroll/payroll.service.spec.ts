@@ -43,6 +43,10 @@ const csv = Buffer.from(
   "matricula;situacao_funcional;remuneracao_base;descontos_obrigatorios;base_margem\nMAT-123;ACTIVE;5.000,00;900,00;4.100,00",
 );
 
+function decimal(value: string) {
+  return { toString: () => value };
+}
+
 function setup() {
   const transaction = {
     agreement: { findUnique: vi.fn().mockResolvedValue({ id: "agreement-1", status: "ACTIVE" }) },
@@ -242,4 +246,69 @@ describe("PayrollService", () => {
     ).rejects.toBeInstanceOf(ConflictException);
     expect(transaction.enrollment.update).not.toHaveBeenCalled();
   });
+
+  it("builds a safe operational projection without enrollment identifiers", async () => {
+    const party = { id: "party-1", tradeName: "Banco Teste", legalName: "Banco Teste SA" };
+    const product = { id: "product-1", code: "LOAN", name: "Emprestimo", family: "PAYROLL_LOAN" };
+    const contract = { id: "contract-1", contractNumber: "CT-001", party, product };
+    const prisma = {
+      payrollCycle: { findFirst: vi.fn().mockResolvedValue(cycle) },
+      payrollFile: { findMany: vi.fn().mockResolvedValue([]) },
+      payrollInstruction: {
+        aggregate: vi.fn().mockResolvedValue({ _count: { _all: 3 }, _sum: { amount: decimal("600.00") } }),
+        count: vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(2),
+        findMany: vi.fn().mockResolvedValue([{
+          id: "instruction-1",
+          contractId: contract.id,
+          installmentNumber: 2,
+          amount: decimal("200.00"),
+          contract,
+        }]),
+      },
+      payrollDiscountEvent: {
+        count: vi.fn()
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(0),
+        aggregate: vi.fn().mockResolvedValue({ _sum: { discountedAmount: decimal("280.00") } }),
+        findMany: vi.fn()
+          .mockResolvedValueOnce([{
+            installmentNumber: 12,
+            contract: { termInstallments: 12, product: { chargeMode: "FIXED_INSTALLMENTS" } },
+          }])
+          .mockResolvedValueOnce([{
+            id: "event-1",
+            contractId: contract.id,
+            contract,
+            outcome: "PARTIAL",
+            installmentNumber: 1,
+            expectedAmount: decimal("200.00"),
+            discountedAmount: decimal("80.00"),
+            reason: "Margem insuficiente",
+            processedAt: new Date("2026-07-31T12:00:00.000Z"),
+          }]),
+      },
+    } as unknown as PrismaService;
+    const service = new PayrollService(prisma, {} as DataProtectionService);
+
+    const result = await service.getOperations("agreement-1", "cycle-1");
+    const serialized = JSON.stringify(result);
+
+    expect(result.summary).toMatchObject({
+      instructed: 3,
+      pending: 1,
+      reconciled: 2,
+      full: 1,
+      partial: 1,
+      settledContracts: 1,
+      instructedAmount: "600.00",
+      discountedAmount: "280.00",
+    });
+    expect(result.pendingInstructions[0]).toMatchObject({ contractNumber: "CT-001", amount: "200.00" });
+    expect(result.exceptions[0]).toMatchObject({ outcome: "PARTIAL", reason: "Margem insuficiente" });
+    expect(serialized).not.toContain("enrollmentId");
+    expect(serialized).not.toContain("matricula");
+    expect(serialized).not.toContain("rawData");
+  });
 });
+

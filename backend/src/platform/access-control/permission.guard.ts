@@ -57,6 +57,7 @@ export class PermissionGuard implements CanActivate {
       agreementId,
       requirement.permission,
       requirement.partyParam ? partyId ?? "" : undefined,
+      requirement.agreementWideOnly ?? false,
     );
   }
 }
@@ -66,3 +67,4 @@ function readParam(request: ContextualRequest, name: string | undefined): string
   const value = request.params[name];
   return typeof value === "string" && value.length > 0 ? value : null;
 }
+

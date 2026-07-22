@@ -147,6 +147,151 @@ export class PayrollService {
     return cycles.map((cycle) => ({ ...this.toCycleView(cycle), fileCount: cycle._count.files }));
   }
 
+  async listFiles(agreementId: string, cycleId: string) {
+    const cycle = await this.prisma.payrollCycle.findFirst({
+      where: { id: cycleId, agreementId },
+      select: { id: true },
+    });
+    if (!cycle) throw new NotFoundException("Ciclo de folha nao encontrado");
+    const files = await this.prisma.payrollFile.findMany({
+      where: { agreementId, payrollCycleId: cycleId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return files.map((file) => ({
+      ...this.toFileView(file),
+      fileType: file.fileType,
+      direction: file.direction,
+    }));
+  }
+
+  async getOperations(agreementId: string, cycleId: string) {
+    const cycle = await this.prisma.payrollCycle.findFirst({ where: { id: cycleId, agreementId } });
+    if (!cycle) throw new NotFoundException("Ciclo de folha nao encontrado");
+
+    const instructionWhere = { agreementId, payrollCycleId: cycleId } as const;
+    const eventWhere = { agreementId, payrollCycleId: cycleId } as const;
+    const [
+      files,
+      instructionTotals,
+      pendingCount,
+      reconciledCount,
+      fullCount,
+      partialCount,
+      rejectedCount,
+      discountTotals,
+      settlementEvents,
+      pendingInstructions,
+      exceptions,
+    ] = await Promise.all([
+      this.prisma.payrollFile.findMany({
+        where: { agreementId, payrollCycleId: cycleId },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      this.prisma.payrollInstruction.aggregate({
+        where: instructionWhere,
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+      this.prisma.payrollInstruction.count({ where: { ...instructionWhere, status: "GENERATED" } }),
+      this.prisma.payrollInstruction.count({ where: { ...instructionWhere, status: "RECONCILED" } }),
+      this.prisma.payrollDiscountEvent.count({ where: { ...eventWhere, outcome: "FULL" } }),
+      this.prisma.payrollDiscountEvent.count({ where: { ...eventWhere, outcome: "PARTIAL" } }),
+      this.prisma.payrollDiscountEvent.count({ where: { ...eventWhere, outcome: "REJECTED" } }),
+      this.prisma.payrollDiscountEvent.aggregate({ where: eventWhere, _sum: { discountedAmount: true } }),
+      this.prisma.payrollDiscountEvent.findMany({
+        where: { ...eventWhere, outcome: "FULL" },
+        select: {
+          installmentNumber: true,
+          contract: {
+            select: {
+              termInstallments: true,
+              product: { select: { chargeMode: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.payrollInstruction.findMany({
+        where: { ...instructionWhere, status: "GENERATED" },
+        include: { contract: { include: { party: true, product: true } } },
+        orderBy: { createdAt: "asc" },
+        take: 100,
+      }),
+      this.prisma.payrollDiscountEvent.findMany({
+        where: { ...eventWhere, outcome: { in: ["PARTIAL", "REJECTED"] } },
+        include: { contract: { include: { party: true, product: true } } },
+        orderBy: { processedAt: "desc" },
+        take: 100,
+      }),
+    ]);
+
+    const settledCount = settlementEvents.filter((event) =>
+      event.contract.product.chargeMode === "FIXED_INSTALLMENTS"
+      && event.installmentNumber !== null
+      && event.contract.termInstallments !== null
+      && event.installmentNumber >= event.contract.termInstallments,
+    ).length;
+
+    return {
+      cycle: this.toCycleView(cycle),
+      summary: {
+        instructed: instructionTotals._count._all,
+        pending: pendingCount,
+        reconciled: reconciledCount,
+        full: fullCount,
+        partial: partialCount,
+        rejected: rejectedCount,
+        settledContracts: settledCount,
+        instructedAmount: instructionTotals._sum.amount?.toString() ?? "0.00",
+        discountedAmount: discountTotals._sum.discountedAmount?.toString() ?? "0.00",
+      },
+      files: files.map((file) => ({
+        ...this.toFileView(file),
+        fileType: file.fileType,
+        direction: file.direction,
+      })),
+      pendingInstructions: pendingInstructions.map((instruction) => ({
+        id: instruction.id,
+        contractId: instruction.contractId,
+        contractNumber: instruction.contract.contractNumber,
+        installmentNumber: instruction.installmentNumber,
+        amount: instruction.amount.toString(),
+        party: {
+          id: instruction.contract.party.id,
+          name: instruction.contract.party.tradeName ?? instruction.contract.party.legalName,
+        },
+        product: {
+          id: instruction.contract.product.id,
+          code: instruction.contract.product.code,
+          name: instruction.contract.product.name,
+          family: instruction.contract.product.family,
+        },
+      })),
+      exceptions: exceptions.map((event) => ({
+        id: event.id,
+        contractId: event.contractId,
+        contractNumber: event.contract.contractNumber,
+        outcome: event.outcome,
+        installmentNumber: event.installmentNumber,
+        expectedAmount: event.expectedAmount.toString(),
+        discountedAmount: event.discountedAmount.toString(),
+        reason: event.reason,
+        processedAt: event.processedAt.toISOString(),
+        party: {
+          id: event.contract.party.id,
+          name: event.contract.party.tradeName ?? event.contract.party.legalName,
+        },
+        product: {
+          id: event.contract.product.id,
+          code: event.contract.product.code,
+          name: event.contract.product.name,
+          family: event.contract.product.family,
+        },
+      })),
+    };
+  }
+
   async uploadMarginFile(
     agreementId: string,
     cycleId: string,
@@ -352,130 +497,7 @@ export class PayrollService {
       if (existing) throw new ConflictException("Ciclo ja possui arquivo de insercao gerado");
       const policy = operationalRulesSchema.safeParse(cycle.policyVersion.payload);
       if (!policy.success || !policy.data.marginGroups?.length) {
-        throw new ConflictException("Politica do ciclo nao possui rubricas de folha validas");
-      }
-      const rubricByFamily = new Map<string, string>();
-      for (const group of policy.data.marginGroups) {
-        if (!group.payrollRubricCode) continue;
-        for (const family of group.productFamilies) rubricByFamily.set(family, group.payrollRubricCode);
-      }
-
-      const contracts = await transaction.contract.findMany({
-        where: {
-          agreementId,
-          status: "ACTIVE",
-          activatedAt: { lte: cycle.cutoffAt },
-          OR: [{ firstCompetency: null }, { firstCompetency: { lte: cycle.competency } }],
-        },
-        include: { party: true, product: true, enrollment: true },
-        orderBy: [{ partyId: "asc" }, { contractNumber: "asc" }],
-      });
-      const cycleCompetency = cycle.competency.toISOString().slice(0, 7);
-      const candidates = contracts.filter((contract) => {
-        const firstCompetency = contract.firstCompetency?.toISOString().slice(0, 7)
-          ?? contract.firstDueDate?.toISOString().slice(0, 7)
-          ?? cycleCompetency;
-        const hasRemainingCharge = contract.product.chargeMode !== "FIXED_INSTALLMENTS"
-          || contract.termInstallments === null
-          || contract.currentInstallment < contract.termInstallments;
-        return firstCompetency <= cycleCompetency && hasRemainingCharge;
-      });
-      if (candidates.length === 0) throw new ConflictException("Nenhum contrato elegivel para insercao no ciclo");
-      const generated = candidates.map((contract) => {
-        const rubric = rubricByFamily.get(contract.product.family);
-        if (!rubric) throw new ConflictException(`Produto ${contract.product.code} sem rubrica configurada`);
-        const installmentNumber = contract.product.chargeMode === "FIXED_INSTALLMENTS"
-          ? contract.currentInstallment + 1
-          : null;
-        const raw = {
-          consignataria_documento: contract.party.documentNumber.replace(/\D/g, ""),
-          matricula: this.protection.decrypt(contract.enrollment.enrollmentNumberEncrypted, "enrollment.number"),
-          contrato: contract.contractNumber,
-          rubrica: rubric,
-          valor: contract.installmentAmount.toString(),
-          competencia: cycleCompetency,
-          parcela: installmentNumber,
-          total_parcelas: contract.termInstallments,
-          tipo_operacao: contract.operationType,
-          produto: contract.product.code,
-        };
-        return { contract, installmentNumber, raw };
-      });
-      const buffer = buildInsertionCsv(generated.map(({ raw }) => Object.values(raw)));
-      const contentHash = createHash("sha256").update(buffer).digest("hex");
-      const competency = cycle.competency.toISOString().slice(0, 7).replace("-", "");
-      const protocolNumber = `IN-${competency}-${contentHash.slice(0, 12).toUpperCase()}`;
-      const totalAmount = generated.reduce((sum, item) => sum + cents(item.contract.installmentAmount.toString()), 0n);
-      const file = await transaction.payrollFile.create({
-        data: {
-          agreementId,
-          payrollCycleId: cycleId,
-          fileType: "INSERTION",
-          direction: "OUTBOUND",
-          environment: metadata.environment,
-          layoutVersion: metadata.layoutVersion,
-          protocolNumber,
-          originalFileName: `insercao-${competency}.csv`,
-          contentHash,
-          sizeBytes: BigInt(buffer.length),
-          mediaType: "text/csv",
-          status: "VALIDATED",
-          totalRows: generated.length,
-          validRows: generated.length,
-          invalidRows: 0,
-          totalAmount: decimalFromCents(totalAmount),
-          idempotencyKey,
-          uploadedByUserId: context.actor!.userId,
-        },
-      });
-      for (const [index, item] of generated.entries()) {
-        const row = await transaction.payrollFileRow.create({
-          data: {
-            agreementId,
-            payrollFileId: file.id,
-            rowNumber: index + 2,
-            enrollmentId: item.contract.enrollmentId,
-            amount: item.contract.installmentAmount,
-            status: "VALID",
-            rawDataEncrypted: this.protection.encrypt(JSON.stringify(item.raw), "payroll.insertion_row"),
-            normalizedData: {
-              contractId: item.contract.id,
-              installmentNumber: item.installmentNumber,
-              rubricCode: item.raw.rubrica,
-            },
-            errors: [],
-          },
-        });
-        await transaction.payrollInstruction.create({
-          data: {
-            agreementId,
-            payrollCycleId: cycleId,
-            contractId: item.contract.id,
-            enrollmentId: item.contract.enrollmentId,
-            sourceFileRowId: row.id,
-            installmentNumber: item.installmentNumber,
-            amount: item.contract.installmentAmount,
-          },
-        });
-      }
-      await transaction.auditEvent.create({
-        data: {
-          agreementId,
-          actorUserId: context.actor?.userId ?? null,
-          actorRole: context.actor?.role ?? null,
-          action: "payroll_insertion_file.generate",
-          outcome: "success",
-          entityType: "payroll_file",
-          entityId: file.id,
-          correlationId: context.correlationId,
-          newData: { protocolNumber, competency, contractCount: generated.length, cutoffAt: cycle.cutoffAt.toISOString() },
-          ipAddress: context.ipAddress,
-          userAgent: context.userAgent,
-        },
-      });
-      await transaction.outboxEvent.create({ data: {
-        agreementId, aggregateType: "payroll_file", aggregateId: file.id,
-        eventTyp…56 tokens truncated…n { ...this.toFileView(file), duplicate: false };
+        throw new ConflictException("Politica do ciclo nao possui rubricas de folha va…1443 tokens truncated…n { ...this.toFileView(file), duplicate: false };
     }, { isolationLevel: "Serializable" });
   }
 

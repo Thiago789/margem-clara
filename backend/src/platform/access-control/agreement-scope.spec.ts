@@ -36,6 +36,12 @@ describe("requireAgreementScope", () => {
     expect(() => requireAgreementScope(actor, "agreement-a", "audit:read")).toThrow(AccessDeniedError);
   });
 
+  it("denies a party-scoped membership when agreement-wide access is required", () => {
+    expect(() =>
+      requireAgreementScope(actor, "agreement-a", "margin:read", undefined, true),
+    ).toThrow(AccessDeniedError);
+  });
+
   it("allows a global wildcard membership across agreements and parties", () => {
     const platformAdmin: AuthenticatedActor = {
       userId: "admin-1",
@@ -64,6 +70,9 @@ describe("requireAgreementScope", () => {
     expect(() => requireAgreementScope(manager, "agreement-b", "accreditation:write")).toThrow(
       AccessDeniedError,
     );
+    expect(() =>
+      requireAgreementScope(manager, "agreement-a", "accreditation:write", undefined, true),
+    ).not.toThrow();
   });
 
   it("checks global permissions without requiring an agreement", () => {
@@ -75,3 +84,4 @@ describe("requireAgreementScope", () => {
     expect(() => requirePermission(actor, "margin:read", true)).toThrow(AccessDeniedError);
   });
 });
+

@@ -7,6 +7,7 @@ export interface PermissionRequirement {
   agreementParam?: string;
   partyParam?: string;
   globalOnly?: boolean;
+  agreementWideOnly?: boolean;
 }
 
 export function RequirePermission(
@@ -15,3 +16,4 @@ export function RequirePermission(
 ): MethodDecorator & ClassDecorator {
   return SetMetadata(PERMISSION_REQUIREMENT, { permission, ...scope });
 }
+

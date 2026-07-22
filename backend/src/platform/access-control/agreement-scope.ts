@@ -33,13 +33,14 @@ export function requireAgreementScope(
   agreementId: string,
   permission: string,
   requiredPartyId?: string,
+  agreementWideOnly = false,
 ): ResolvedAgreementScope {
   if (!actor) {
     throw new AccessDeniedError();
   }
 
   const membership = actor.memberships.find((candidate) =>
-    membershipAllows(candidate, agreementId, permission, requiredPartyId),
+    membershipAllows(candidate, agreementId, permission, requiredPartyId, agreementWideOnly),
   );
 
   if (!membership) {
@@ -58,9 +59,14 @@ function membershipAllows(
   agreementId: string,
   permission: string,
   requiredPartyId?: string,
+  agreementWideOnly = false,
 ): boolean {
   const agreementMatches = membership.agreementId === null || membership.agreementId === agreementId;
   if (!agreementMatches || !hasPermission(membership, permission)) {
+    return false;
+  }
+
+  if (agreementWideOnly && membership.partyId !== null) {
     return false;
   }
 
@@ -74,3 +80,4 @@ function membershipAllows(
 function hasPermission(membership: MembershipScope, permission: string): boolean {
   return membership.permissions.has("*") || membership.permissions.has(permission);
 }
+

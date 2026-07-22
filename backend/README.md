@@ -178,10 +178,14 @@ Depois da margem publicada, o ciclo possui o fluxo operacional completo de desco
 - `GET /:cycleId/insertion-files/:fileId/download`: baixa o CSV e informa o SHA-256 no cabecalho da resposta;
 - `POST /:cycleId/return-files`: recebe e valida `RETURN_V1`, vinculando cada linha a uma instrucao realmente enviada;
 - `POST /:cycleId/return-files/:fileId/apply`: concilia integralmente o staging validado e fecha a competencia quando nao restar instrucao pendente.
+- `GET /:cycleId/files`: lista os protocolos e estados dos arquivos da competencia;
+- `GET /:cycleId/operations`: consolida valores, pendencias, excecoes e liquidacoes para acompanhamento operacional.
 
 O layout de insercao leva consignataria, matricula, contrato, rubrica, valor, competencia, parcela, prazo, operacao e produto. A matricula existe apenas na linha cifrada e no CSV autorizado; nao integra o staging normalizado.
 
 O retorno classifica cada desconto como `FULL`, `PARTIAL` ou `REJECTED`. Apenas `FULL` avanca a parcela. Parcial e rejeitado exigem motivo e permanecem registrados sem alterar silenciosamente o contrato. A ultima parcela integral de um contrato fixo liquida o contrato e libera sua margem pela formula completa. Restricoes unicas por instrucao e por linha impedem conciliacao duplicada.
+
+Todas as rotas de folha exigem, alem da permissao correspondente, uma associacao ampla ao convenio. Uma associacao restrita a consignataria e recusada mesmo que receba acidentalmente uma permissao de folha. A projecao operacional nao retorna CPF, matricula, identificador de vinculo nem linha bruta.
 
 ## Reservas de margem
 

@@ -301,6 +301,7 @@ Servidor/matricula:
 - Consignado integrado a compras com liquidacao via Pix e uma frente futura, dependente de parceiros financeiros e de pagamento habilitados.
 - A arquitetura deve preservar essas frentes futuras sem inclui-las prematuramente no primeiro backend operacional.
 - O backend real ja gera insercao pela data de corte, vincula o retorno ao que foi efetivamente enviado, registra desconto integral/parcial/rejeitado e liquida automaticamente a ultima parcela fixa.
+- A competencia real possui projecao operacional de arquivos, pendencias, excecoes e liquidacoes; rotas de folha recusam associacoes restritas a uma consignataria.
 - O documento `ideias-e-decisoes-produto.md` e a memoria oficial das hipoteses, guardrails e sequenciamento estrategico.
 
 ## Fundacao da Versao Real

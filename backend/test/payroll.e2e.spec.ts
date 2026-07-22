@@ -29,6 +29,8 @@ describe("payroll endpoints", () => {
   const payroll = {
     createCycle: vi.fn(),
     listCycles: vi.fn(),
+    listFiles: vi.fn(),
+    getOperations: vi.fn(),
     uploadMarginFile: vi.fn(),
     getFile: vi.fn(),
     publishMarginFile: vi.fn(),
@@ -109,4 +111,41 @@ describe("payroll endpoints", () => {
       expect.objectContaining({ action: "access.denied", entityId: "payroll:approve" }),
     );
   });
+
+  it("returns the operational cycle view to an agreement-wide manager", async () => {
+    auth.authenticate.mockResolvedValue(actor);
+    payroll.getOperations.mockResolvedValue({ summary: { pending: 2 }, files: [] });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/agreements/${agreementId}/payroll-cycles/${cycleId}/operations`)
+      .set("Cookie", "mc_session=session-value")
+      .expect(200)
+      .expect(({ body }) => expect(body.summary.pending).toBe(2));
+
+    expect(payroll.getOperations).toHaveBeenCalledWith(agreementId, cycleId);
+  });
+
+  it("denies the agreement-wide cycle view to a party-scoped membership", async () => {
+    auth.authenticate.mockResolvedValue({
+      ...actor,
+      role: "consignee_operator",
+      memberships: [{
+        agreementId,
+        partyId: "0d9e33ea-838a-4dbd-a1d6-c78cd4b7847d",
+        permissions: new Set(["payroll:read"]),
+      }],
+    });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/agreements/${agreementId}/payroll-cycles/${cycleId}/operations`)
+      .set("Cookie", "mc_session=session-value")
+      .expect(403);
+
+    expect(payroll.getOperations).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ action: "access.denied", entityId: "payroll:read" }),
+    );
+  });
 });
+
