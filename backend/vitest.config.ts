@@ -5,6 +5,7 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.spec.ts", "test/**/*.spec.ts"],
     fileParallelism: false,
+    hookTimeout: 30_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

@@ -13,6 +13,7 @@ import { ServantsModule } from "./servants/servants.module.js";
 import { PayrollModule } from "./payroll/payroll.module.js";
 import { MarginsModule } from "./margins/margins.module.js";
 import { ReservationsModule } from "./reservations/reservations.module.js";
+import { ContractsModule } from "./contracts/contracts.module.js";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { ReservationsModule } from "./reservations/reservations.module.js";
     PayrollModule,
     MarginsModule,
     ReservationsModule,
+    ContractsModule,
     HealthModule,
   ],
 })

@@ -132,6 +132,20 @@ enum ReservationConfirmationMode {
   IMMEDIATE
 }
 
+enum ContractOperationType {
+  NEW
+  REFINANCING
+  PORTABILITY
+  DEBT_PURCHASE
+}
+
+enum ContractStatus {
+  ACTIVE
+  SUSPENDED
+  SETTLED
+  CANCELLED
+}
+
 model Organization {
   id             String       @id @default(uuid()) @db.Uuid
   name           String
@@ -172,6 +186,7 @@ model Agreement {
   marginSnapshots    MarginSnapshot[]
   marginMovements    MarginMovement[]
   marginReservations MarginReservation[]
+  contracts          Contract[]
   createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
   version            Int                         @default(1)
@@ -196,6 +211,7 @@ model AgreementPolicyVersion {
   payrollCycles      PayrollCycle[]
   marginSnapshots    MarginSnapshot[]
   marginReservations MarginReservation[]
+  contracts          Contract[]
 
   @@unique([agreementId, policyType, versionNumber])
   @@index([agreementId, policyType, status])
@@ -216,6 +232,7 @@ model Party {
   accreditations       Accreditation[]
   memberships          Membership[]
   marginReservations   MarginReservation[]
+  contracts            Contract[]
   createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
   version              Int                 @default(1)
@@ -235,6 +252,7 @@ model Product {
   status                 RecordStatus        @default(ACTIVE)
   accreditations         Accreditation[]
   marginReservations     MarginReservation[]
+  contracts              Contract[]
   createdAt              DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -261,6 +279,7 @@ model Accreditation {
   updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
   version            Int                 @default(1)
   marginReservations MarginReservation[]
+  contracts          Contract[]
 
   @@unique([agreementId, partyId, productId, environment, validFrom])
   @@index([agreementId, partyId, status])
@@ -314,6 +333,7 @@ model Enrollment {
   marginSnapshots           MarginSnapshot[]
   marginMovements           MarginMovement[]
   marginReservations        MarginReservation[]
+  contracts                 Contract[]
 
   @@unique([agreementId, enrollmentLookupKey])
   @@index([agreementId, personId, status])
@@ -457,6 +477,7 @@ model MarginAccount {
   snapshots         MarginSnapshot[]    @relation("AccountSnapshots")
   movements         MarginMovement[]
   reservations      MarginReservation[]
+  contracts         Contract[]
   updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([agreementId, enrollmentId, marginGroupId])
@@ -553,6 +574,8 @@ model MarginReservation {
   cancelledBy           User?                       @relation("ReservationCancelledBy", fields: [cancelledByUserId], references: [id])
   cancellationReason    String?                     @map("cancellation_reason")
   expiredAt             DateTime?                   @map("expired_at") @db.Timestamptz(6)
+  convertedAt           DateTime?                   @map("converted_at") @db.Timestamptz(6)
+  contract              Contract?
   idempotencyKey        String                      @map("idempotency_key")
   externalReference     String?                     @map("external_reference")
   createdByUserId       String                      @map("created_by_user_id") @db.Uuid
@@ -565,6 +588,59 @@ model MarginReservation {
   @@index([agreementId, partyId, status, createdAt], map: "margin_reservations_party_status_idx")
   @@index([marginAccountId, status, expiresAt], map: "margin_reservations_account_status_idx")
   @@map("margin_reservations")
+}
+
+model Contract {
+  id                      String                 @id @default(uuid()) @db.Uuid
+  agreementId             String                 @map("agreement_id") @db.Uuid
+  agreement               Agreement              @relation(fields: [agreementId], references: [id])
+  partyId                 String                 @map("party_id") @db.Uuid
+  party                   Party                  @relation(fields: [partyId], references: [id])
+  accreditationId         String                 @map("accreditation_id") @db.Uuid
+  accreditation           Accreditation          @relation(fields: [accreditationId], references: [id])
+  productId               String                 @map("product_id") @db.Uuid
+  product                 Product                @relation(fields: [productId], references: [id])
+  enrollmentId            String                 @map("enrollment_id") @db.Uuid
+  enrollment              Enrollment             @relation(fields: [enrollmentId], references: [id])
+  marginAccountId         String                 @map("margin_account_id") @db.Uuid
+  marginAccount           MarginAccount          @relation(fields: [marginAccountId], references: [id])
+  policyVersionId         String                 @map("policy_version_id") @db.Uuid
+  policyVersion           AgreementPolicyVersion @relation(fields: [policyVersionId], references: [id])
+  reservationId           String                 @unique @map("reservation_id") @db.Uuid
+  reservation             MarginReservation      @relation(fields: [reservationId], references: [id])
+  contractNumber          String                 @map("contract_number")
+  operationType           ContractOperationType  @map("operation_type")
+  status                  ContractStatus         @default(ACTIVE)
+  contractValue           Decimal?               @map("contract_value") @db.Decimal(18, 2)
+  installmentAmount       Decimal                @map("installment_amount") @db.Decimal(18, 2)
+  termInstallments        Int?                   @map("term_installments")
+  currentInstallment      Int                    @default(0) @map("current_installment")
+  cetAnnual               Decimal?               @map("cet_annual") @db.Decimal(9, 6)
+  cetMonthly              Decimal?               @map("cet_monthly") @db.Decimal(9, 6)
+  firstDueDate            DateTime?              @map("first_due_date") @db.Date
+  firstCompetency         DateTime?              @map("first_competency") @db.Date
+  outstandingBalance      Decimal?               @map("outstanding_balance") @db.Decimal(18, 2)
+  originContractReference String?                @map("origin_contract_reference")
+  originCreditorName      String?                @map("origin_creditor_name")
+  debtPurchaseAmount      Decimal?               @map("debt_purchase_amount") @db.Decimal(18, 2)
+  externalReference       String?                @map("external_reference")
+  idempotencyKey          String                 @map("idempotency_key")
+  activatedAt             DateTime               @map("activated_at") @db.Timestamptz(6)
+  suspendedAt             DateTime?              @map("suspended_at") @db.Timestamptz(6)
+  settledAt               DateTime?              @map("settled_at") @db.Timestamptz(6)
+  cancelledAt             DateTime?              @map("cancelled_at") @db.Timestamptz(6)
+  createdByUserId         String                 @map("created_by_user_id") @db.Uuid
+  createdBy               User                   @relation("ContractCreatedBy", fields: [createdByUserId], references: [id])
+  createdAt               DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version                 Int                    @default(1)
+
+  @@unique([agreementId, idempotencyKey], map: "contracts_idempotency_key")
+  @@unique([agreementId, partyId, contractNumber], map: "contracts_party_number_key")
+  @@index([agreementId, partyId, status, createdAt], map: "contracts_party_status_idx")
+  @@index([marginAccountId, status], map: "contracts_margin_account_status_idx")
+  @@index([enrollmentId, status], map: "contracts_enrollment_status_idx")
+  @@map("contracts")
 }
 
 model User {
@@ -580,6 +656,7 @@ model User {
   createdReservations   MarginReservation[] @relation("ReservationCreatedBy")
   confirmedReservations MarginReservation[] @relation("ReservationConfirmedBy")
   cancelledReservations MarginReservation[] @relation("ReservationCancelledBy")
+  createdContracts      Contract[]          @relation("ContractCreatedBy")
   createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
   version               Int                 @default(1)

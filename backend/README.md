@@ -183,3 +183,13 @@ O fluxo transacional usa `/api/v1/agreements/:agreementId/parties/:partyId/reser
 A politica configura confirmacao imediata ou por codigo, validade do codigo, limite de tentativas e validade da reserva ativa. A reserva imediata reduz o disponivel na mesma transacao. A reserva com codigo nao bloqueia saldo enquanto estiver pendente e revalida a disponibilidade ao confirmar. O codigo e persistido apenas como HMAC; o valor cifrado segue pela outbox para a futura integracao de entrega. Somente credenciamentos de homologacao recebem o codigo na resposta para viabilizar testes.
 
 Toda ativacao e liberacao usa controle otimista da versao da conta, movimento financeiro idempotente, auditoria e evento de outbox. Ao liberar uma reserva, o disponivel e recalculado pela formula completa para nao criar margem artificial quando houver deficit.
+
+## Contratos
+
+Uma reserva ativa pode ser convertida em contrato por `POST /api/v1/agreements/:agreementId/parties/:partyId/contracts`. A rota exige `Idempotency-Key` e permissao dentro da mesma consignataria. `GET /` e `GET /:contractId` disponibilizam a consulta segura dos contratos daquele escopo.
+
+O contrato registra tipo da operacao (`NEW`, `REFINANCING`, `PORTABILITY` ou `DEBT_PURCHASE`), produto, credenciamento, politica, valor contratado, valor da parcela, prazo, parcela atual, CET, primeira competencia e primeiro vencimento. Campos de contrato e credor de origem, saldo e valor de compra da divida permitem evoluir refinanciamento, portabilidade e compra de divida sem alterar o nucleo. Prazo e vencimento permanecem opcionais para produtos nao parcelados, como cartoes e descontos recorrentes.
+
+A conversao aceita apenas reserva confirmada, ativa e dentro da validade. Produtos parcelados exigem prazo e primeiro vencimento; produtos de credito exigem valor contratado; a politica fixada na reserva pode exigir campos adicionais. Refinanciamento exige contrato de origem, enquanto portabilidade e compra de divida exigem contrato e credor de origem.
+
+Na mesma transacao, o valor da parcela sai de `reserved_amount` e entra em `consumed_amount`. O disponivel nao muda porque o compromisso total permanece igual. A operacao usa versao otimista da conta e da reserva, cria movimento `CONSUMPTION`, marca a reserva como `CONVERTED`, registra auditoria e publica `contract.activated` na outbox.
