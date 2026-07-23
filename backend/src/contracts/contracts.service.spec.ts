@@ -221,4 +221,19 @@ describe("ContractsService", () => {
     expect(result).toMatchObject({ id: "contract-1", duplicate: true });
     expect(transaction.marginReservation.findFirst).not.toHaveBeenCalled();
   });
+
+  it("rejects an idempotency key reused for different contract data", async () => {
+    const { service, transaction } = setup();
+    transaction.contract.findUnique.mockResolvedValue(contract());
+
+    await expect(service.create(
+      "agreement-1",
+      "party-1",
+      { ...validInput, contractNumber: "CT-002" },
+      "contract-request-1",
+      context,
+    )).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.marginReservation.findFirst).not.toHaveBeenCalled();
+  });
 });

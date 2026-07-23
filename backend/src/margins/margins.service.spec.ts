@@ -83,7 +83,7 @@ function setup(options: { existingSnapshots?: number; functionalStatus?: string 
     marginAccount: {
       findUnique: vi.fn().mockResolvedValue(account),
       create: vi.fn(),
-      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     marginMovement: { create: vi.fn().mockResolvedValue({}) },
     auditEvent: { create: vi.fn().mockResolvedValue({}) },
@@ -126,9 +126,9 @@ describe("MarginsService", () => {
         balanceAfter: "1000.00",
       }),
     });
-    expect(transaction.marginAccount.update).toHaveBeenCalledWith({
-      where: { id: "account-1" },
-      data: expect.objectContaining({ currentSnapshotId: "snapshot-1", lockVersion: 3 }),
+    expect(transaction.marginAccount.updateMany).toHaveBeenCalledWith({
+      where: { id: "account-1", lockVersion: 2 },
+      data: expect.objectContaining({ currentSnapshotId: "snapshot-1", lockVersion: { increment: 1 } }),
     });
     expect(result).toEqual({
       payrollCycleId: "cycle-1",
@@ -145,7 +145,7 @@ describe("MarginsService", () => {
 
     expect(result.duplicate).toBe(true);
     expect(transaction.marginGroup.upsert).not.toHaveBeenCalled();
-    expect(transaction.marginAccount.update).not.toHaveBeenCalled();
+    expect(transaction.marginAccount.updateMany).not.toHaveBeenCalled();
   });
 
   it("sets an ineligible functional status to zero margin", async () => {
@@ -181,5 +181,14 @@ describe("MarginsService", () => {
       ConflictException,
     );
     expect(transaction.marginSnapshot.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a concurrent account update instead of overwriting a newer balance", async () => {
+    const { service, transaction } = setup();
+    transaction.marginAccount.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.calculate("agreement-1", "cycle-1", context)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
   });
 });

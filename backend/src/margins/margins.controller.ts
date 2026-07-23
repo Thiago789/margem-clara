@@ -11,7 +11,7 @@ export class MarginsController {
   constructor(private readonly margins: MarginsService) {}
 
   @Post("agreements/:agreementId/payroll-cycles/:cycleId/margins/calculate")
-  @Authorize("margins:calculate", { agreementParam: "agreementId" })
+  @Authorize("margins:calculate", { agreementParam: "agreementId", agreementWideOnly: true })
   calculate(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Param("cycleId", ParseUUIDPipe) cycleId: string,
@@ -21,7 +21,7 @@ export class MarginsController {
   }
 
   @Get("agreements/:agreementId/servants/:enrollmentId/margins")
-  @Authorize("margins:read", { agreementParam: "agreementId" })
+  @Authorize("margins:read", { agreementParam: "agreementId", agreementWideOnly: true })
   getEnrollmentMargins(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Param("enrollmentId", ParseUUIDPipe) enrollmentId: string,

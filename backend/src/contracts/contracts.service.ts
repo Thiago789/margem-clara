@@ -63,6 +63,36 @@ function parseCompetency(value: string | undefined): Date | null {
   return value ? parseDate(`${value}-01`, "Primeira competencia") : null;
 }
 
+function sameOptionalDecimal(
+  stored: { toString(): string } | null,
+  requested: string | null,
+): boolean {
+  return stored === null ? requested === null : requested !== null && Number(stored.toString()) === Number(requested);
+}
+
+function matchesContractRequest(existing: ContractViewSource, partyId: string, input: CreateContractDto): boolean {
+  const contractValue = input.contractValue ? normalizeMoney(input.contractValue) : null;
+  const outstandingBalance = input.outstandingBalance
+    ? normalizeMoney(input.outstandingBalance)
+    : contractValue;
+  const debtPurchaseAmount = input.debtPurchaseAmount ? normalizeMoney(input.debtPurchaseAmount) : null;
+  return existing.partyId === partyId
+    && existing.reservationId === input.reservationId
+    && existing.contractNumber === input.contractNumber.trim().toUpperCase()
+    && existing.operationType === input.operationType
+    && sameOptionalDecimal(existing.contractValue, contractValue)
+    && existing.termInstallments === (input.termInstallments ?? null)
+    && sameOptionalDecimal(existing.cetAnnual, input.cetAnnual ?? null)
+    && sameOptionalDecimal(existing.cetMonthly, input.cetMonthly ?? null)
+    && existing.firstDueDate?.toISOString().slice(0, 10) === input.firstDueDate
+    && existing.firstCompetency?.toISOString().slice(0, 7) === input.firstCompetency
+    && sameOptionalDecimal(existing.outstandingBalance, outstandingBalance)
+    && existing.originContractReference === (input.originContractReference?.trim() || null)
+    && existing.originCreditorName === (input.originCreditorName?.trim() || null)
+    && sameOptionalDecimal(existing.debtPurchaseAmount, debtPurchaseAmount)
+    && existing.externalReference === (input.externalReference?.trim() || null);
+}
+
 @Injectable()
 export class ContractsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -88,7 +118,9 @@ export class ContractsService {
             where: { agreementId_idempotencyKey: { agreementId, idempotencyKey: key } },
           });
           if (existing) {
-            if (existing.partyId !== partyId) throw new ConflictException("Chave idempotente ja utilizada");
+            if (!matchesContractRequest(existing, partyId, input)) {
+              throw new ConflictException("Chave idempotente reutilizada com dados diferentes");
+            }
             return { ...this.view(existing), duplicate: true };
           }
 
@@ -257,7 +289,9 @@ export class ContractsService {
         const existing = await this.prisma.contract.findUnique({
           where: { agreementId_idempotencyKey: { agreementId, idempotencyKey: key } },
         });
-        if (existing?.partyId === partyId) return { ...this.view(existing), duplicate: true };
+        if (existing && matchesContractRequest(existing, partyId, input)) {
+          return { ...this.view(existing), duplicate: true };
+        }
         throw new ConflictException("Contrato, reserva ou chave idempotente ja utilizada");
       }
       if (isPrismaCode(error, "P2034")) {

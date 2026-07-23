@@ -12,7 +12,7 @@ export class ServantsController {
   constructor(private readonly servants: ServantsService) {}
 
   @Post()
-  @Authorize("servants:write", { agreementParam: "agreementId" })
+  @Authorize("servants:write", { agreementParam: "agreementId", agreementWideOnly: true })
   create(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Body() input: CreateServantDto,
@@ -22,7 +22,7 @@ export class ServantsController {
   }
 
   @Get()
-  @Authorize("servants:read", { agreementParam: "agreementId" })
+  @Authorize("servants:read", { agreementParam: "agreementId", agreementWideOnly: true })
   list(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Query() query: ServantListQueryDto,
@@ -40,7 +40,7 @@ export class ServantsController {
   }
 
   @Get(":enrollmentId")
-  @Authorize("servants:read", { agreementParam: "agreementId" })
+  @Authorize("servants:read", { agreementParam: "agreementId", agreementWideOnly: true })
   get(
     @Param("agreementId", ParseUUIDPipe) agreementId: string,
     @Param("enrollmentId", ParseUUIDPipe) enrollmentId: string,

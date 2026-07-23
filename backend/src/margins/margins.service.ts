@@ -9,6 +9,10 @@ function isUniqueConflict(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
+function isRetryableConflict(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2034";
+}
+
 const publishedPayrollDataSchema = normalizedMarginRowSchema.omit({ enrollmentNumber: true });
 
 @Injectable()
@@ -163,8 +167,8 @@ export class MarginsService {
                   reason: `Calculo da competencia ${cycle.competency.toISOString().slice(0, 7)}`,
                 },
               });
-              await transaction.marginAccount.update({
-                where: { id: account.id },
+              const updated = await transaction.marginAccount.updateMany({
+                where: { id: account.id, lockVersion: account.lockVersion },
                 data: {
                   currentSnapshotId: snapshot.id,
                   totalAmount: calculation.totalAmount,
@@ -172,9 +176,12 @@ export class MarginsService {
                   reservedAmount: calculation.reservedAmount,
                   blockedAmount: calculation.blockedAmount,
                   availableAmount: calculation.availableAmount,
-                  lockVersion: calculationVersion,
+                  lockVersion: { increment: 1 },
                 },
               });
+              if (updated.count !== 1) {
+                throw new ConflictException("Margem foi alterada durante o calculo");
+              }
               snapshotCount += 1;
             }
           }
@@ -216,6 +223,9 @@ export class MarginsService {
         if (count > 0) {
           return { payrollCycleId: cycleId, status: "CALCULATED", snapshotCount: count, duplicate: true };
         }
+      }
+      if (isRetryableConflict(error)) {
+        throw new ConflictException("Concorrencia detectada durante o calculo; tente novamente");
       }
       throw error;
     }

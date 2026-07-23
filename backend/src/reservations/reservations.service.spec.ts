@@ -163,6 +163,19 @@ describe("ReservationsService", () => {
     expect(result).toMatchObject({ status: "PENDING_CONFIRMATION", homologationConfirmationCode: "123456" });
   });
 
+  it("rejects an idempotency key reused for a different reservation", async () => {
+    const { service, transaction } = setup();
+    transaction.marginReservation.findUnique.mockResolvedValue(reservation());
+
+    await expect(service.create(
+      "agreement-1",
+      "party-1",
+      { enrollmentId: "enrollment-1", accreditationId: "accreditation-1", amount: "250.00" },
+      "request-0001",
+      context,
+    )).rejects.toBeInstanceOf(ConflictException);
+  });
+
   it("never exposes a confirmation code for a production accreditation", async () => {
     const { service, transaction } = setup("CODE_REQUIRED");
     transaction.accreditation.findFirst.mockResolvedValue({

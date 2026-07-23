@@ -115,4 +115,18 @@ describe("servant endpoints", () => {
 
     expect(servants.create).not.toHaveBeenCalled();
   });
+
+  it("denies the full servant list to a party-scoped membership", async () => {
+    auth.authenticate.mockResolvedValue({
+      ...actor,
+      memberships: [{ agreementId, partyId: "party-1", permissions: new Set(["servants:read"]) }],
+    });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/agreements/${agreementId}/servants`)
+      .set("Cookie", "mc_session=session-value")
+      .expect(403);
+
+    expect(servants.list).not.toHaveBeenCalled();
+  });
 });

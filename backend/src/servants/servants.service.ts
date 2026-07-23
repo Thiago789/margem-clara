@@ -222,7 +222,20 @@ export class ServantsService {
       include: { person: true },
     });
     if (!row) throw new NotFoundException("Servidor nao encontrado");
-    return this.toView(row);
+    return this.toLookupView(row);
+  }
+
+  private toLookupView(row: EnrollmentWithPerson) {
+    const view = this.toView(row);
+    return {
+      id: view.id,
+      agreementId: view.agreementId,
+      person: view.person,
+      enrollmentNumberMasked: view.enrollmentNumberMasked,
+      functionalStatus: view.functionalStatus,
+      employmentType: view.employmentType,
+      status: view.status,
+    };
   }
 
   private toView(row: EnrollmentWithPerson) {

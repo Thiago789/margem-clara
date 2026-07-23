@@ -90,4 +90,18 @@ describe("margin endpoints", () => {
       expect.objectContaining({ action: "access.denied", entityId: "margins:calculate" }),
     );
   });
+
+  it("denies agreement-wide margin data to a party-scoped membership", async () => {
+    auth.authenticate.mockResolvedValue({
+      ...actor,
+      memberships: [{ agreementId, partyId: "party-1", permissions: new Set(["margins:read"]) }],
+    });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/agreements/${agreementId}/servants/${enrollmentId}/margins`)
+      .set("Cookie", "mc_session=session-value")
+      .expect(403);
+
+    expect(margins.getEnrollmentMargins).not.toHaveBeenCalled();
+  });
 });

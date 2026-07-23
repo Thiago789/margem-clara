@@ -55,6 +55,19 @@ function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
 }
 
+function matchesReservationRequest(
+  existing: Pick<ReservationViewSource, "partyId" | "enrollmentId" | "accreditationId" | "amount" | "externalReference">,
+  partyId: string,
+  input: CreateReservationDto,
+  amount: string,
+): boolean {
+  return existing.partyId === partyId
+    && existing.enrollmentId === input.enrollmentId
+    && existing.accreditationId === input.accreditationId
+    && compareMoney(existing.amount.toString(), amount) === 0
+    && existing.externalReference === (input.externalReference?.trim() || null);
+}
+
 @Injectable()
 export class ReservationsService {
   constructor(
@@ -85,7 +98,9 @@ export class ReservationsService {
             where: { agreementId_idempotencyKey: { agreementId, idempotencyKey: key } },
           });
           if (existing) {
-            if (existing.partyId !== partyId) throw new ConflictException("Chave idempotente ja utilizada");
+            if (!matchesReservationRequest(existing, partyId, input, amount)) {
+              throw new ConflictException("Chave idempotente reutilizada com dados diferentes");
+            }
             return { ...this.view(existing), duplicate: true };
           }
 
@@ -225,7 +240,10 @@ export class ReservationsService {
         const existing = await this.prisma.marginReservation.findUnique({
           where: { agreementId_idempotencyKey: { agreementId, idempotencyKey: key } },
         });
-        if (existing?.partyId === partyId) return { ...this.view(existing), duplicate: true };
+        if (existing && matchesReservationRequest(existing, partyId, input, amount)) {
+          return { ...this.view(existing), duplicate: true };
+        }
+        if (existing) throw new ConflictException("Chave idempotente reutilizada com dados diferentes");
       }
       if (isPrismaCode(error, "P2034")) {
         throw new ConflictException("Concorrencia detectada; repita com a mesma chave idempotente");
@@ -358,224 +376,98 @@ export class ReservationsService {
     target: "CANCELLED" | "EXPIRED",
     reason: string,
     context: RequestContext,
-    requireExpired = false,
-  ) {
-    return this.serializableTransaction(
-      async (transaction) => {
-        const reservation = await transaction.marginReservation.findFirst({
-          where: { id: reservationId, agreementId, partyId },
-          include: { marginAccount: true },
-        });
-        if (!reservation) throw new NotFoundException("Reserva nao encontrada");
-        if (reservation.status === target) return { ...this.view(reservation), duplicate: true };
-        if (!['PENDING_CONFIRMATION', 'ACTIVE'].includes(reservation.status)) {
-          throw new ConflictException("Reserva nao permite esta transicao");
-        }
-        const now = new Date();
-        const deadline = reservation.status === "ACTIVE" ? reservation.expiresAt : reservation.confirmationExpiresAt;
-        if (requireExpired && (!deadline || deadline > now)) {
-          throw new ConflictException("Reserva ainda nao atingiu o prazo de expiracao");
-        }
-        if (reservation.status === "ACTIVE") {
-          await this.releaseBalance(transaction, reservation.marginAccount, reservation.amount.toString(), reservation.id, context);
-        }
-        const updated = await transaction.marginReservation.update({
-          where: { id: reservation.id },
-          data: target === "CANCELLED"
-            ? {
-                status: target,
-                cancelledAt: now,
-                cancelledByUserId: context.actor?.userId ?? null,
-                cancellationReason: reason,
-                confirmationCodeHash: null,
-                lockVersion: { increment: 1 },
-              }
-            : {
-                status: target,
-                expiredAt: now,
-                confirmationCodeHash: null,
-                lockVersion: { increment: 1 },
-              },
-        });
-        await this.lifecycleEvent(transaction, context, updated, target === "CANCELLED" ? "reservation.cancelled" : "reservation.expired");
-        await this.audit(transaction, context, {
-          agreementId,
-          partyId,
-          action: target === "CANCELLED" ? "reservation.cancel" : "reservation.expire",
-          outcome: "success",
-          reservationId,
-          data: { amount: updated.amount.toString(), previousStatus: reservation.status, status: target, reason },
-        });
-        return { ...this.view(updated), duplicate: false };
-      },
-    );
+.v◊ŒÌ¢Gß≤⁄Óù∆≠yŸ;
   }
 
-  private async serializableTransaction<T>(
-    operation: (transaction: Prisma.TransactionClient) => Promise<T>,
-  ): Promise<T> {
-    try {
-      return await this.prisma.$transaction(operation, { isolationLevel: "Serializable" });
-    } catch (error) {
-      if (isPrismaCode(error, "P2034")) {
-        throw new ConflictException("Concorrencia detectada; repita a operacao");
-      }
-      throw error;
+  async get(agreementId: string, enrollmentId: string) {
+    const row = await this.prisma.enrollment.findFirst({
+      where: { id: enrollmentId, agreementId },
+      include: { person: true },
+    });
+    if (!row) throw new NotFoundException("Servidor nao encontrado");
+    return this.toView(row);
+  }
+
+  async lookup(agreementId: string, input: ServantLookupDto) {
+    if (!input.cpf && !input.enrollmentNumber) {
+      throw new BadRequestException("Informe CPF ou matricula");
     }
-  }
 
-  private async reserveBalance(
-    transaction: Prisma.TransactionClient,
-    account: { id: string; enrollmentId: string; agreementId: string; availableAmount: { toString(): string }; lockVersion: number },
-    amount: string,
-    reservationId: string,
-    context: RequestContext,
-  ) {
-    const before = account.availableAmount.toString();
-    if (compareMoney(amount, before) > 0) throw new ConflictException("Margem disponivel insuficiente");
-    const updated = await transaction.marginAccount.updateMany({
-      where: { id: account.id, lockVersion: account.lockVersion, status: "ACTIVE", availableAmount: { gte: amount } },
-      data: { reservedAmount: { increment: amount }, availableAmount: { decrement: amount }, lockVersion: { increment: 1 } },
-    });
-    if (updated.count !== 1) throw new ConflictException("Saldo de margem foi alterado por outra operacao");
-    await transaction.marginMovement.create({
-      data: {
-        agreementId: account.agreementId,
-        marginAccountId: account.id,
-        enrollmentId: account.enrollmentId,
-        movementType: "RESERVATION",
-        direction: "DECREASE",
-        amount,
-        balanceBefore: before,
-        balanceAfter: subtractMoney(before, amount),
-        sourceType: "MARGIN_RESERVATION",
-        sourceId: reservationId,
-        idempotencyKey: `reservation:${reservationId}:activate`,
-        correlationId: context.correlationId,
-        actorUserId: context.actor?.userId ?? null,
-        reason: "Ativacao de reserva de margem",
+    const cpf = input.cpf ? normalizeCpf(input.cpf) : undefined;
+    if (cpf && !isValidCpf(cpf)) throw new BadRequestException("CPF invalido");
+    const enrollmentNumber = input.enrollmentNumber
+      ? normalizeEnrollmentNumber(input.enrollmentNumber)
+      : undefined;
+
+    const row = await this.prisma.enrollment.findFirst({
+      where: {
+        agreementId,
+        ...(enrollmentNumber
+          ? {
+              enrollmentLookupKey: this.protection.lookupHash(
+                enrollmentNumber,
+                "enrollment.number",
+              ),
+            }
+          : {}),
+        ...(cpf
+          ? { person: { cpfLookupHash: this.protection.lookupHash(cpf, "person.cpf") } }
+          : {}),
       },
+      include: { person: true },
     });
+    if (!row) throw new NotFoundException("Servidor nao encontrado");
+    return this.toLookupView(row);
   }
 
-  private async releaseBalance(
-    transaction: Prisma.TransactionClient,
-    account: {
-      id: string;
-      enrollmentId: string;
-      agreementId: string;
-      totalAmount: { toString(): string };
-      consumedAmount: { toString(): string };
-      availableAmount: { toString(): string };
-      reservedAmount: { toString(): string };
-      blockedAmount: { toString(): string };
-      lockVersion: number;
-    },
-    amount: string,
-    reservationId: string,
-    context: RequestContext,
-  ) {
-    const before = account.availableAmount.toString();
-    if (compareMoney(amount, account.reservedAmount.toString()) > 0) {
-      throw new ConflictException("Saldo reservado inconsistente");
-    }
-    const remainingReserved = subtractMoney(account.reservedAmount.toString(), amount);
-    const after = availableMoney(
-      account.totalAmount.toString(),
-      account.consumedAmount.toString(),
-      remainingReserved,
-      account.blockedAmount.toString(),
-    );
-    const updated = await transaction.marginAccount.updateMany({
-      where: { id: account.id, lockVersion: account.lockVersion, status: "ACTIVE", reservedAmount: { gte: amount } },
-      data: { reservedAmount: { decrement: amount }, availableAmount: after, lockVersion: { increment: 1 } },
-    });
-    if (updated.count !== 1) throw new ConflictException("Saldo de margem foi alterado por outra operacao");
-    await transaction.marginMovement.create({
-      data: {
-        agreementId: account.agreementId,
-        marginAccountId: account.id,
-        enrollmentId: account.enrollmentId,
-        movementType: "RELEASE",
-        direction: compareMoney(after, before) > 0 ? "INCREASE" : "NO_CHANGE",
-        amount,
-        balanceBefore: before,
-        balanceAfter: after,
-        sourceType: "MARGIN_RESERVATION",
-        sourceId: reservationId,
-        idempotencyKey: `reservation:${reservationId}:release`,
-        correlationId: context.correlationId,
-        actorUserId: context.actor?.userId ?? null,
-        reason: "Liberacao de reserva de margem",
-      },
-    });
-  }
-
-  private lifecycleEvent(
-    transaction: Prisma.TransactionClient,
-    context: RequestContext,
-    reservation: { id: string; agreementId: string; status: string; amount: { toString(): string } },
-    eventType: string,
-  ) {
-    return transaction.outboxEvent.create({
-      data: {
-        agreementId: reservation.agreementId,
-        aggregateType: "margin_reservation",
-        aggregateId: reservation.id,
-        eventType,
-        payload: { reservationId: reservation.id, status: reservation.status, amount: reservation.amount.toString() },
-        correlationId: context.correlationId,
-      },
-    });
-  }
-
-  private audit(
-    transaction: Prisma.TransactionClient,
-    context: RequestContext,
-    input: { agreementId: string; partyId: string; action: string; outcome: string; reservationId: string; data: Record<string, unknown> },
-  ) {
-    return transaction.auditEvent.create({
-      data: {
-        agreementId: input.agreementId,
-        actorUserId: context.actor?.userId ?? null,
-        actorRole: context.actor?.role ?? null,
-        actorPartyId: input.partyId,
-        action: input.action,
-        outcome: input.outcome,
-        entityType: "margin_reservation",
-        entityId: input.reservationId,
-        correlationId: context.correlationId,
-        newData: input.data as Prisma.InputJsonValue,
-        ipAddress: context.ipAddress,
-        userAgent: context.userAgent,
-      },
-    });
-  }
-
-  private view(reservation: ReservationViewSource) {
+  private toLookupView(row: EnrollmentWithPerson) {
+    const view = this.toView(row);
     return {
-      id: reservation.id,
-      agreementId: reservation.agreementId,
-      partyId: reservation.partyId,
-      accreditationId: reservation.accreditationId,
-      productId: reservation.productId,
-      enrollmentId: reservation.enrollmentId,
-      marginAccountId: reservation.marginAccountId,
-      policyVersionId: reservation.policyVersionId,
-      amount: reservation.amount.toString(),
-      status: reservation.status,
-      confirmationMode: reservation.confirmationMode,
-      confirmationAttempts: reservation.confirmationAttempts,
-      confirmationExpiresAt: reservation.confirmationExpiresAt?.toISOString() ?? null,
-      expiresAt: reservation.expiresAt?.toISOString() ?? null,
-      confirmedAt: reservation.confirmedAt?.toISOString() ?? null,
-      cancelledAt: reservation.cancelledAt?.toISOString() ?? null,
-      cancellationReason: reservation.cancellationReason,
-      expiredAt: reservation.expiredAt?.toISOString() ?? null,
-      externalReference: reservation.externalReference,
-      createdAt: reservation.createdAt.toISOString(),
-      ...(reservation.product ? { product: { id: reservation.product.id, code: reservation.product.code, name: reservation.product.name, family: reservation.product.family } } : {}),
-      ...(reservation.marginAccount?.marginGroup ? { marginGroup: { id: reservation.marginAccount.marginGroup.id, code: reservation.marginAccount.marginGroup.code, name: reservation.marginAccount.marginGroup.name } } : {}),
+      id: view.id,
+      agreementId: view.agreementId,
+      person: view.person,
+      enrollmentNumberMasked: view.enrollmentNumberMasked,
+      functionalStatus: view.functionalStatus,
+      employmentType: view.employmentType,
+      status: view.status,
+    };
+  }
+
+  private toView(row: EnrollmentWithPerson) {
+    const cpf = this.protection.decrypt(row.person.cpfEncrypted, "person.cpf");
+    const enrollmentNumber = this.protection.decrypt(
+      row.enrollmentNumberEncrypted,
+      "enrollment.number",
+    );
+    return {
+      id: row.id,
+      agreementId: row.agreementId,
+      person: {
+        id: row.person.id,
+        fullName: row.person.fullName,
+        socialName: row.person.socialName,
+        cpfMasked: maskCpf(cpf),
+        birthDate: row.person.birthDate.toISOString().slice(0, 10),
+        status: row.person.status,
+        emailRegistered: row.person.emailEncrypted !== null,
+        phoneRegistered: row.person.phoneEncrypted !== null,
+      },
+      enrollmentNumberMasked: maskEnrollmentNumber(enrollmentNumber),
+      functionalStatus: row.functionalStatus,
+      employmentType: row.employmentType,
+      admissionDate: row.admissionDate?.toISOString().slice(0, 10) ?? null,
+      terminationDate: row.terminationDate?.toISOString().slice(0, 10) ?? null,
+      payrollGroup: row.payrollGroup,
+      department: row.department,
+      costCenter: row.costCenter,
+      baseSalary: row.baseSalary.toString(),
+      mandatoryDeductions: row.mandatoryDeductions.toString(),
+      marginBase: row.marginBase.toString(),
+      sourceUpdatedAt: row.sourceUpdatedAt?.toISOString() ?? null,
+      status: row.status,
+      version: row.version,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
     };
   }
 }

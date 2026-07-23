@@ -178,6 +178,82 @@ describe("PayrollService", () => {
     expect(transaction.payrollFileRow.createMany).not.toHaveBeenCalled();
   });
 
+  it("rejects an idempotency key reused for different file content", async () => {
+    const { service, prisma, transaction } = setup();
+    prisma.payrollFile.findFirst.mockResolvedValue({
+      ...storedFile,
+      idempotencyKey: "margin-2026-07-001",
+      fileType: "MARGIN",
+      contentHash: "different-content",
+    });
+
+    await expect(service.uploadMarginFile(
+      "agreement-1",
+      "cycle-1",
+      { layoutVersion: "MARGIN_V1", environment: "HOMOLOGATION", description: "Reuso incorreto" },
+      "margin-2026-07-001",
+      { buffer: csv, originalname: "margem.csv", mimetype: "text/csv", size: csv.length },
+      context,
+    )).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.payrollFile.create).not.toHaveBeenCalled();
+  });
+
+  it("excludes contracts with unresolved payroll exceptions from insertion", async () => {
+    const transaction = {
+      payrollCycle: { findFirst: vi.fn().mockResolvedValue({
+        ...cycle,
+        status: "PUBLISHED",
+        policyVersion: {
+          id: "policy-1",
+          payload: {
+            marginConsultationAuthorization: "NOT_REQUIRED",
+            reservationConfirmation: "IMMEDIATE",
+            reservationValidityMinutes: 1440,
+            confirmationCodeValidityMinutes: 10,
+            confirmationMaxAttempts: 5,
+            cutoffDay: 20,
+            enabledProductFamilies: ["PAYROLL_LOAN"],
+            eligibleFunctionalStatuses: ["ACTIVE"],
+            requiredContractFields: ["CET"],
+            publicServantValidation: { enabled: false },
+            marginGroups: [{
+              code: "LOAN",
+              name: "Emprestimo",
+              percentage: 35,
+              sharingMode: "SEPARATE",
+              productFamilies: ["PAYROLL_LOAN"],
+              payrollRubricCode: "9001",
+            }],
+          },
+        },
+      }) },
+      payrollFile: { findFirst: vi.fn().mockResolvedValue(null) },
+      contract: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const prisma = {
+      payrollFile: { findFirst: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn(async (callback: (client: typeof transaction) => Promise<unknown>) => callback(transaction)),
+    } as unknown as PrismaService;
+    const service = new PayrollService(prisma, {} as DataProtectionService);
+
+    await expect(service.generateInsertionFile(
+      "agreement-1",
+      "cycle-1",
+      { layoutVersion: "INSERTION_V1", environment: "HOMOLOGATION" },
+      "insertion-2026-07-001",
+      context,
+    )).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.contract.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        payrollDiscountEvents: {
+          none: { exceptionStatus: { in: ["OPEN", "IN_REVIEW"] } },
+        },
+      }),
+    }));
+  });
+
   it("creates a before/after snapshot before applying a validated row", async () => {
     const { service, transaction } = setup();
     transaction.payrollFile.findFirst.mockResolvedValue({
@@ -418,4 +494,3 @@ describe("PayrollService", () => {
     )).rejects.toBeInstanceOf(ConflictException);
   });
 });
-

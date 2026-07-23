@@ -177,7 +177,7 @@ describe("ServantsService", () => {
   it("uses protected exact indexes when locating a servant", async () => {
     const { service, prisma } = setup();
 
-    await service.lookup("agreement-1", { cpf: "529.982.247-25", enrollmentNumber: "mat-123" });
+    const result = await service.lookup("agreement-1", { cpf: "529.982.247-25", enrollmentNumber: "mat-123" });
 
     expect(prisma.enrollment.findFirst).toHaveBeenCalledWith({
       where: {
@@ -187,5 +187,10 @@ describe("ServantsService", () => {
       },
       include: { person: true },
     });
+    expect(result).not.toHaveProperty("baseSalary");
+    expect(result).not.toHaveProperty("mandatoryDeductions");
+    expect(result).not.toHaveProperty("marginBase");
+    expect(result).not.toHaveProperty("department");
+    expect(result).not.toHaveProperty("costCenter");
   });
 });

@@ -56,6 +56,34 @@ function assertIdempotencyKey(value: string | undefined): asserts value is strin
   }
 }
 
+function assertMatchingFileRequest(
+  existing: {
+    idempotencyKey: string;
+    payrollCycleId: string;
+    fileType: string;
+    environment: string;
+    layoutVersion: string;
+    contentHash: string;
+  },
+  expected: {
+    idempotencyKey: string;
+    payrollCycleId: string;
+    fileType: string;
+    environment: string;
+    layoutVersion: string;
+    contentHash?: string;
+  },
+): void {
+  if (existing.idempotencyKey !== expected.idempotencyKey) return;
+  if (existing.payrollCycleId !== expected.payrollCycleId
+    || existing.fileType !== expected.fileType
+    || existing.environment !== expected.environment
+    || existing.layoutVersion !== expected.layoutVersion
+    || (expected.contentHash !== undefined && existing.contentHash !== expected.contentHash)) {
+    throw new ConflictException("Chave idempotente reutilizada com conteudo diferente");
+  }
+}
+
 function safeCsvFile(file: UploadedMarginFile): string {
   const name = basename(file.originalname.replace(/\\/g, "/"))
     .replace(/[\u0000-\u001f\u007f]/g, "_")
@@ -356,548 +384,4 @@ export class PayrollService {
       const acknowledgedAt = new Date();
       const protectedNote = this.protection.encrypt(note, "payroll.exception_note");
       const claimed = await transaction.payrollDiscountEvent.updateMany({
-        where: { id: event.id, exceptionStatus: "OPEN", reviewVersion: event.reviewVersion },
-        data: {
-          exceptionStatus: "IN_REVIEW",
-          acknowledgedByUserId: context.actor!.userId,
-          acknowledgedAt,
-          reviewNoteEncrypted: protectedNote,
-          reviewVersion: { increment: 1 },
-        },
-      });
-      if (claimed.count !== 1) throw new ConflictException("Excecao foi assumida por outro operador");
-      await transaction.auditEvent.create({ data: {
-        agreementId,
-        actorUserId: context.actor?.userId ?? null,
-        actorRole: context.actor?.role ?? null,
-        action: "payroll_exception.acknowledge",
-        outcome: "success",
-        entityType: "payroll_discount_event",
-        entityId: event.id,
-        correlationId: context.correlationId,
-        previousData: { exceptionStatus: "OPEN", reviewVersion: event.reviewVersion },
-        newData: { exceptionStatus: "IN_REVIEW", outcome: event.outcome },
-        ipAddress: context.ipAddress,
-        userAgent: context.userAgent,
-      } });
-      await transaction.outboxEvent.create({ data: {
-        agreementId,
-        aggregateType: "payroll_discount_event",
-        aggregateId: event.id,
-        eventType: "payroll.exception_acknowledged",
-        payload: { payrollCycleId: cycleId, contractId: event.contractId, outcome: event.outcome },
-        correlationId: context.correlationId,
-      } });
-      const updated = await transaction.payrollDiscountEvent.findUnique({
-        where: { id: event.id },
-        include: {
-          acknowledgedBy: { select: { id: true, name: true } },
-          contract: { include: { party: true, product: true } },
-        },
-      });
-      if (!updated) throw new ConflictException("Excecao nao esta mais disponivel");
-      return {
-        ...this.exceptionView(updated),
-        duplicate: false,
-      };
-    }, { isolationLevel: "Serializable" });
-  }
-
-  async uploadMarginFile(
-    agreementId: string,
-    cycleId: string,
-    metadata: MarginFileMetadataDto,
-    idempotencyKey: string | undefined,
-    file: UploadedMarginFile,
-    context: RequestContext,
-  ) {
-    if (!idempotencyKey || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
-      throw new BadRequestException("Idempotency-Key obrigatoria e invalida");
-    }
-    const safeFileName = basename(file.originalname.replace(/\\/g, "/"))
-      .replace(/[\u0000-\u001f\u007f]/g, "_")
-      .slice(0, 255);
-    if (!safeFileName.toLowerCase().endsWith(".csv")) {
-      throw new BadRequestException("Somente arquivos CSV sao aceitos");
-    }
-    if (file.size === 0 || file.size > 5 * 1024 * 1024) {
-      throw new BadRequestException("Arquivo vazio ou acima de 5 MB");
-    }
-    const allowedMediaTypes = new Set(["text/csv", "text/plain", "application/vnd.ms-excel"]);
-    if (!allowedMediaTypes.has(file.mimetype)) throw new BadRequestException("Tipo de arquivo invalido");
-
-    const cycle = await this.prisma.payrollCycle.findFirst({
-      where: { id: cycleId, agreementId },
-    });
-    if (!cycle) throw new NotFoundException("Ciclo de folha nao encontrado");
-    if (!(["OPEN", "REVIEW"] as string[]).includes(cycle.status)) {
-      throw new ConflictException("Ciclo nao aceita novos arquivos de margem");
-    }
-
-    const contentHash = createHash("sha256").update(file.buffer).digest("hex");
-    const existing = await this.prisma.payrollFile.findFirst({
-      where: {
-        agreementId,
-        OR: [
-          { idempotencyKey },
-          { payrollCycleId: cycleId, fileType: "MARGIN", contentHash },
-        ],
-      },
-    });
-    if (existing) return { ...this.toFileView(existing), duplicate: true };
-
-    const parsedRows = parseMarginFile(file.buffer);
-    const enrollmentHashes = parsedRows
-      .map((row) => row.normalizedData?.enrollmentNumber)
-      .filter((value): value is string => Boolean(value))
-      .map((value) => this.protection.lookupHash(value, "enrollment.number"));
-    const enrollments = await this.prisma.enrollment.findMany({
-      where: { agreementId, enrollmentLookupKey: { in: [...new Set(enrollmentHashes)] } },
-      select: { id: true, enrollmentLookupKey: true },
-    });
-    const enrollmentByHash = new Map(
-      enrollments.map((enrollment) => [enrollment.enrollmentLookupKey, enrollment.id]),
-    );
-    const seen = new Set<string>();
-    let totalAmount = 0n;
-    const stagedRows = parsedRows.map((row) => {
-      const errors = [...row.errors];
-      const enrollmentNumber = row.normalizedData?.enrollmentNumber ??
-        normalizeEnrollmentNumber(row.rawData.matricula ?? "");
-      const lookupHash = enrollmentNumber
-        ? this.protection.lookupHash(enrollmentNumber, "enrollment.number")
-        : null;
-      let enrollmentId = lookupHash ? enrollmentByHash.get(lookupHash) ?? null : null;
-      if (lookupHash && seen.has(lookupHash)) errors.push("matricula: duplicada no arquivo");
-      if (lookupHash) seen.add(lookupHash);
-      if (row.normalizedData && !enrollmentId) errors.push("matricula: nao cadastrada no convenio");
-      if (errors.length) enrollmentId = null;
-
-      let normalizedData: Omit<NormalizedMarginRow, "enrollmentNumber"> | null = null;
-      if (row.normalizedData && errors.length === 0) {
-        const { enrollmentNumber: _ignored, ...safeData } = row.normalizedData;
-        normalizedData = safeData;
-        totalAmount += cents(row.normalizedData.marginBase);
-      }
-      return {
-        agreementId,
-        rowNumber: row.rowNumber,
-        enrollmentId,
-        externalReferenceHash: lookupHash,
-        amount: normalizedData?.marginBase ?? null,
-        status: errors.length ? ("INVALID" as const) : ("VALID" as const),
-        rawDataEncrypted: this.protection.encrypt(
-          JSON.stringify(row.rawData),
-          "payroll.margin_row",
-        ),
-        normalizedData,
-        errors,
-      };
-    });
-    const invalidRows = stageâ€¦3093 tokens truncatedâ€¦here: { agreementId, OR: [{ idempotencyKey }, { payrollCycleId: cycleId, fileType: "RETURN", contentHash }] },
-    });
-    if (duplicate) return { ...this.toFileView(duplicate), duplicate: true };
-
-    const parsedRows = parseReturnFile(file.buffer);
-    const instructions = await this.prisma.payrollInstruction.findMany({
-      where: { payrollCycleId: cycleId },
-      include: { contract: { include: { party: true } } },
-    });
-    const instructionByKey = new Map(instructions.map((item) => [
-      `${item.contract.party.documentNumber.replace(/\D/g, "")}|${item.contract.contractNumber}`,
-      item,
-    ]));
-    let totalAmount = 0n;
-    const seen = new Set<string>();
-    const staged = parsedRows.map((row) => {
-      const errors = [...row.errors];
-      const data = row.normalizedData;
-      const key = data ? `${data.partyDocument}|${data.contractNumber}` : "";
-      const instruction = data ? instructionByKey.get(key) : undefined;
-      if (data?.competency !== cycle.competency.toISOString().slice(0, 7)) errors.push("competencia: diferente do ciclo");
-      if (key && seen.has(key)) errors.push("contrato: duplicado no arquivo");
-      if (key) seen.add(key);
-      if (data && !instruction) errors.push("contrato: nao consta no arquivo de insercao do ciclo");
-      if (instruction?.status === "RECONCILED") errors.push("contrato: instrucao ja conciliada");
-      if (data && instruction && data.installmentNumber !== instruction.installmentNumber) errors.push("parcela: diferente da instrucao enviada");
-      if (data && instruction && compareMoney(data.expectedAmount, instruction.amount.toString()) !== 0) errors.push("valor_previsto: diferente da instrucao enviada");
-      if (data && errors.length === 0) totalAmount += cents(data.discountedAmount);
-      return {
-        agreementId,
-        rowNumber: row.rowNumber,
-        enrollmentId: errors.length ? null : instruction!.enrollmentId,
-        amount: errors.length ? null : data!.discountedAmount,
-        status: errors.length ? ("INVALID" as const) : ("VALID" as const),
-        rawDataEncrypted: this.protection.encrypt(JSON.stringify(row.rawData), "payroll.return_row"),
-        normalizedData: errors.length ? null : { ...data!, instructionId: instruction!.id },
-        errors,
-      };
-    });
-    const invalidRows = staged.filter((row) => row.status === "INVALID").length;
-    const competency = cycle.competency.toISOString().slice(0, 7).replace("-", "");
-    const protocolNumber = `RT-${competency}-${contentHash.slice(0, 12).toUpperCase()}`;
-    const stored = await this.prisma.$transaction(async (transaction) => {
-      const payrollFile = await transaction.payrollFile.create({
-        data: {
-          agreementId, payrollCycleId: cycleId, fileType: "RETURN", direction: "INBOUND",
-          environment: metadata.environment, layoutVersion: metadata.layoutVersion, protocolNumber,
-          originalFileName: safeFileName, contentHash, sizeBytes: BigInt(file.size), mediaType: file.mimetype,
-          status: invalidRows ? "REJECTED" : "VALIDATED", totalRows: staged.length,
-          validRows: staged.length - invalidRows, invalidRows, totalAmount: decimalFromCents(totalAmount),
-          idempotencyKey, uploadedByUserId: context.actor!.userId,
-        },
-      });
-      await transaction.payrollFileRow.createMany({ data: staged.map(({ normalizedData, ...row }) => ({ ...row, payrollFileId: payrollFile.id, ...(normalizedData ? { normalizedData } : {}) })) });
-      await transaction.auditEvent.create({ data: {
-        agreementId, actorUserId: context.actor?.userId ?? null, actorRole: context.actor?.role ?? null,
-        action: "payroll_return_file.stage", outcome: invalidRows ? "rejected" : "success",
-        entityType: "payroll_file", entityId: payrollFile.id, correlationId: context.correlationId,
-        newData: { protocolNumber, totalRows: staged.length, invalidRows, description: metadata.description },
-        ipAddress: context.ipAddress, userAgent: context.userAgent,
-      } });
-      return payrollFile;
-    }, { isolationLevel: "Serializable" });
-    return { ...this.toFileView(stored), duplicate: false };
-  }
-
-  async applyReturnFile(agreementId: string, cycleId: string, fileId: string, context: RequestContext) {
-    return this.prisma.$transaction(async (transaction) => {
-      const file = await transaction.payrollFile.findFirst({
-        where: { id: fileId, agreementId, payrollCycleId: cycleId, fileType: "RETURN" },
-        include: { rows: { where: { status: "VALID" }, orderBy: { rowNumber: "asc" } } },
-      });
-      if (!file) throw new NotFoundException("Arquivo retorno nao encontrado");
-      if (file.status === "APPLIED") return { ...this.toFileView(file), duplicate: true };
-      if (file.status !== "VALIDATED" || file.invalidRows > 0) throw new ConflictException("Arquivo retorno nao esta validado");
-      const claimed = await transaction.payrollFile.updateMany({ where: { id: fileId, status: "VALIDATED" }, data: { status: "PROCESSING" } });
-      if (claimed.count !== 1) throw new ConflictException("Arquivo retorno ja esta em processamento");
-      let full = 0;
-      let partial = 0;
-      let rejected = 0;
-      let settled = 0;
-      for (const row of file.rows) {
-        const raw = row.normalizedData as Record<string, unknown> | null;
-        const parsed = normalizedReturnRowSchema.safeParse(raw);
-        const instructionId = typeof raw?.instructionId === "string" ? raw.instructionId : null;
-        if (!parsed.success || !instructionId) throw new ConflictException("Staging do retorno inconsistente");
-        const instruction = await transaction.payrollInstruction.findFirst({
-          where: { id: instructionId, agreementId, payrollCycleId: cycleId, status: "GENERATED" },
-          include: { contract: { include: { product: true, marginAccount: true } } },
-        });
-        if (!instruction) throw new ConflictException("Instrucao de desconto indisponivel");
-        const contract = instruction.contract;
-        if (contract.status !== "ACTIVE") throw new ConflictException("Contrato nao esta ativo");
-        if (instruction.installmentNumber !== null && instruction.installmentNumber !== contract.currentInstallment + 1) {
-          throw new ConflictException("Sequencia de parcelas do contrato foi alterada");
-        }
-        const event = await transaction.payrollDiscountEvent.create({ data: {
-          agreementId, payrollCycleId: cycleId, instructionId: instruction.id, contractId: contract.id,
-          enrollmentId: instruction.enrollmentId, sourceFileRowId: row.id,
-          expectedAmount: parsed.data.expectedAmount, discountedAmount: parsed.data.discountedAmount,
-          outcome: parsed.data.outcome, installmentNumber: parsed.data.installmentNumber, reason: parsed.data.reason,
-          exceptionStatus: parsed.data.outcome === "FULL" ? null : "OPEN",
-        } });
-        if (parsed.data.outcome === "FULL") {
-          full += 1;
-          const decision = decideReconciliation({
-            outcome: parsed.data.outcome,
-            chargeMode: contract.product.chargeMode,
-            currentInstallment: contract.currentInstallment,
-            termInstallments: contract.termInstallments,
-          });
-          await transaction.contract.update({ where: { id: contract.id }, data: {
-            currentInstallment: decision.nextInstallment, status: decision.settlesContract ? "SETTLED" : "ACTIVE",
-            settledAt: decision.settlesContract ? new Date() : null, version: { increment: 1 },
-          } });
-          if (decision.settlesContract) {
-            settled += 1;
-            const account = contract.marginAccount;
-            const consumed = compareMoney(account.consumedAmount.toString(), contract.installmentAmount.toString()) >= 0
-              ? subtractMoney(account.consumedAmount.toString(), contract.installmentAmount.toString())
-              : "0.00";
-            const available = availableMoney(account.totalAmount.toString(), consumed, account.reservedAmount.toString(), account.blockedAmount.toString());
-            const updated = await transaction.marginAccount.updateMany({
-              where: { id: account.id, lockVersion: account.lockVersion },
-              data: { consumedAmount: consumed, availableAmount: available, lockVersion: { increment: 1 } },
-            });
-            if (updated.count !== 1) throw new ConflictException("Margem foi alterada durante a liquidacao");
-            await transaction.marginMovement.create({ data: {
-              agreementId, marginAccountId: account.id, enrollmentId: instruction.enrollmentId,
-              movementType: "RELEASE", direction: compareMoney(available, account.availableAmount.toString()) > 0 ? "INCREASE" : "NO_CHANGE",
-              amount: contract.installmentAmount, balanceBefore: account.availableAmount, balanceAfter: available,
-              sourceType: "payroll_discount_event", sourceId: event.id,
-              idempotencyKey: `payroll-settlement:${event.id}`, correlationId: context.correlationId,
-              actorUserId: context.actor?.userId ?? null, reason: "Liquidacao automatica na ultima parcela descontada",
-            } });
-          }
-        } else if (parsed.data.outcome === "PARTIAL") partial += 1;
-        else rejected += 1;
-        await transaction.payrollInstruction.update({ where: { id: instruction.id }, data: { status: "RECONCILED", reconciledAt: new Date() } });
-      }
-      await transaction.payrollFileRow.updateMany({ where: { payrollFileId: fileId, status: "VALID" }, data: { status: "APPLIED" } });
-      const applied = await transaction.payrollFile.update({ where: { id: fileId }, data: { status: "APPLIED", processedByUserId: context.actor!.userId, processedAt: new Date() } });
-      const pending = await transaction.payrollInstruction.count({ where: { payrollCycleId: cycleId, status: "GENERATED" } });
-      if (pending === 0) await transaction.payrollCycle.update({ where: { id: cycleId }, data: { status: "CLOSED", closedByUserId: context.actor!.userId, closedAt: new Date(), version: { increment: 1 } } });
-      await transaction.auditEvent.create({ data: {
-        agreementId, actorUserId: context.actor?.userId ?? null, actorRole: context.actor?.role ?? null,
-        action: "payroll_return_file.apply", outcome: "success", entityType: "payroll_file", entityId: fileId,
-        correlationId: context.correlationId, newData: { full, partial, rejected, settled, pendingInstructions: pending },
-        ipAddress: context.ipAddress, userAgent: context.userAgent,
-      } });
-      await transaction.outboxEvent.create({ data: {
-        agreementId, aggregateType: "payroll_file", aggregateId: fileId,
-        eventType: "payroll.return_applied",
-        payload: { payrollFileId: fileId, payrollCycleId: cycleId, full, partial, rejected, settled, pendingInstructions: pending },
-        correlationId: context.correlationId,
-      } });
-      return { ...this.toFileView(applied), duplicate: false, reconciliation: { full, partial, rejected, settled, pending } };
-    }, { isolationLevel: "Serializable" });
-  }
-
-  async getFile(agreementId: string, cycleId: string, fileId: string) {
-    const file = await this.prisma.payrollFile.findFirst({
-      where: { id: fileId, agreementId, payrollCycleId: cycleId },
-      include: {
-        rows: {
-          select: {
-            id: true,
-            rowNumber: true,
-            status: true,
-            amount: true,
-            normalizedData: true,
-            errors: true,
-          },
-          orderBy: { rowNumber: "asc" },
-          take: 10_000,
-        },
-      },
-    });
-    if (!file) throw new NotFoundException("Arquivo de folha nao encontrado");
-    return {
-      ...this.toFileView(file),
-      rows: file.rows.map((row) => ({ ...row, amount: row.amount?.toString() ?? null })),
-    };
-  }
-
-  async publishMarginFile(
-    agreementId: string,
-    cycleId: string,
-    fileId: string,
-    context: RequestContext,
-  ) {
-    return this.prisma.$transaction(
-      async (transaction) => {
-        const file = await transaction.payrollFile.findFirst({
-          where: { id: fileId, agreementId, payrollCycleId: cycleId, fileType: "MARGIN" },
-          include: { rows: { where: { status: "VALID" }, orderBy: { rowNumber: "asc" } } },
-        });
-        if (!file) throw new NotFoundException("Arquivo de margem nao encontrado");
-        if (file.status === "APPLIED") return { ...this.toFileView(file), duplicate: true };
-        if (file.status !== "VALIDATED" || file.invalidRows > 0) {
-          throw new ConflictException("Arquivo nao esta validado para publicacao");
-        }
-        const claimed = await transaction.payrollFile.updateMany({
-          where: { id: fileId, status: "VALIDATED" },
-          data: { status: "PROCESSING" },
-        });
-        if (claimed.count !== 1) throw new ConflictException("Arquivo ja esta em processamento");
-
-        for (const row of file.rows) {
-          if (!row.enrollmentId) throw new ConflictException("Linha valida sem matricula vinculada");
-          const parsed = normalizedMarginRowSchema.omit({ enrollmentNumber: true }).safeParse(
-            row.normalizedData,
-          );
-          if (!parsed.success) throw new ConflictException("Staging de margem inconsistente");
-          const current = await transaction.enrollment.findFirst({
-            where: { id: row.enrollmentId, agreementId },
-          });
-          if (!current) throw new ConflictException("Matricula do staging nao esta disponivel");
-          const afterData = parsed.data;
-          await transaction.enrollmentPayrollSnapshot.create({
-            data: {
-              agreementId,
-              payrollCycleId: cycleId,
-              enrollmentId: current.id,
-              sourceFileRowId: row.id,
-              beforeData: {
-                functionalStatus: current.functionalStatus,
-                employmentType: current.employmentType,
-                payrollGroup: current.payrollGroup,
-                department: current.department,
-                costCenter: current.costCenter,
-                baseSalary: current.baseSalary.toString(),
-                mandatoryDeductions: current.mandatoryDeductions.toString(),
-                marginBase: current.marginBase.toString(),
-                sourceUpdatedAt: dateValue(current.sourceUpdatedAt),
-                version: current.version,
-              },
-              afterData,
-            },
-          });
-          await transaction.enrollment.update({
-            where: { id: current.id },
-            data: {
-              functionalStatus: afterData.functionalStatus,
-              employmentType: afterData.employmentType,
-              payrollGroup: afterData.payrollGroup,
-              department: afterData.department,
-              costCenter: afterData.costCenter,
-              baseSalary: afterData.baseSalary,
-              mandatoryDeductions: afterData.mandatoryDeductions,
-              marginBase: afterData.marginBase,
-              sourceUpdatedAt: afterData.sourceUpdatedAt
-                ? new Date(afterData.sourceUpdatedAt)
-                : new Date(),
-              version: { increment: 1 },
-            },
-          });
-        }
-
-        await transaction.payrollFileRow.updateMany({
-          where: { payrollFileId: fileId, status: "VALID" },
-          data: { status: "APPLIED" },
-        });
-        const applied = await transaction.payrollFile.update({
-          where: { id: fileId },
-          data: {
-            status: "APPLIED",
-            processedByUserId: context.actor!.userId,
-            processedAt: new Date(),
-          },
-        });
-        await transaction.payrollCycle.update({
-          where: { id: cycleId },
-          data: { status: "PUBLISHED", version: { increment: 1 } },
-        });
-        await transaction.auditEvent.create({
-          data: {
-            agreementId,
-            actorUserId: context.actor?.userId ?? null,
-            actorRole: context.actor?.role ?? null,
-            action: "payroll_margin_file.publish",
-            outcome: "success",
-            entityType: "payroll_file",
-            entityId: fileId,
-            correlationId: context.correlationId,
-            newData: { protocolNumber: file.protocolNumber, appliedRows: file.validRows },
-            ipAddress: context.ipAddress,
-            userAgent: context.userAgent,
-          },
-        });
-        return { ...this.toFileView(applied), duplicate: false };
-      },
-      { isolationLevel: "Serializable" },
-    );
-  }
-
-  private exceptionView(event: {
-    id: string;
-    contractId: string;
-    outcome: string;
-    installmentNumber: number | null;
-    expectedAmount: { toString(): string };
-    discountedAmount: { toString(): string };
-    reason: string | null;
-    exceptionStatus: string | null;
-    acknowledgedAt: Date | null;
-    acknowledgedBy: { id: string; name: string } | null;
-    reviewNoteEncrypted: string | null;
-    reviewVersion: number;
-    processedAt: Date;
-    contract: {
-      contractNumber: string;
-      party: { id: string; tradeName: string | null; legalName: string };
-      product: { id: string; code: string; name: string; family: string };
-    };
-  }) {
-    return {
-      id: event.id,
-      contractId: event.contractId,
-      contractNumber: event.contract.contractNumber,
-      outcome: event.outcome,
-      installmentNumber: event.installmentNumber,
-      expectedAmount: event.expectedAmount.toString(),
-      discountedAmount: event.discountedAmount.toString(),
-      reason: event.reason,
-      exceptionStatus: event.exceptionStatus,
-      acknowledgedAt: event.acknowledgedAt?.toISOString() ?? null,
-      acknowledgedBy: event.acknowledgedBy,
-      reviewNote: event.reviewNoteEncrypted
-        ? this.protection.decrypt(event.reviewNoteEncrypted, "payroll.exception_note")
-        : null,
-      reviewVersion: event.reviewVersion,
-      processedAt: event.processedAt.toISOString(),
-      party: {
-        id: event.contract.party.id,
-        name: event.contract.party.tradeName ?? event.contract.party.legalName,
-      },
-      product: {
-        id: event.contract.product.id,
-        code: event.contract.product.code,
-        name: event.contract.product.name,
-        family: event.contract.product.family,
-      },
-    };
-  }
-
-  private toCycleView(cycle: {
-    id: string;
-    agreementId: string;
-    competency: Date;
-    cutoffAt: Date;
-    insertionDueAt: Date | null;
-    returnDueAt: Date | null;
-    status: string;
-    policyVersionId: string | null;
-    version: number;
-  }) {
-    return {
-      id: cycle.id,
-      agreementId: cycle.agreementId,
-      competency: cycle.competency.toISOString().slice(0, 7),
-      cutoffAt: cycle.cutoffAt.toISOString(),
-      insertionDueAt: dateValue(cycle.insertionDueAt),
-      returnDueAt: dateValue(cycle.returnDueAt),
-      status: cycle.status,
-      policyVersionId: cycle.policyVersionId,
-      version: cycle.version,
-    };
-  }
-
-  private toFileView(file: {
-    id: string;
-    agreementId: string;
-    payrollCycleId: string;
-    protocolNumber: string;
-    originalFileName: string;
-    layoutVersion: string;
-    environment: string;
-    status: string;
-    totalRows: number;
-    validRows: number;
-    invalidRows: number;
-    totalAmount: { toString(): string };
-    sizeBytes: bigint;
-    createdAt: Date;
-    processedAt: Date | null;
-  }) {
-    return {
-      id: file.id,
-      agreementId: file.agreementId,
-      payrollCycleId: file.payrollCycleId,
-      protocolNumber: file.protocolNumber,
-      originalFileName: file.originalFileName,
-      layoutVersion: file.layoutVersion,
-      environment: file.environment,
-      status: file.status,
-      totalRows: file.totalRows,
-      validRows: file.validRows,
-      invalidRows: file.invalidRows,
-      totalAmount: file.totalAmount.toString(),
-      sizeBytes: file.sizeBytes.toString(),
-      createdAt: file.createdAt.toISOString(),
-      processedAt: dateValue(file.processedAt),
-    };
-  }
-}
-
+        where: { id: event.id, exó^:¶‰žËkºwµçUMM%9ˆôô¤ì(€€€€€¥˜€¡±…¥µ•¹½Õ¹Ð€„ôô€Ä¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰ÉÅÕ¥Ù¼É•Ñ½É¹¼©„•ÍÑ„•´ÁÉ½•ÍÍ…µ•¹Ñ¼ˆ¤ì(€€€€€±•Ð™Õ±°€ô€Àì(€€€€€±•ÐÁ…ÉÑ¥…°€ô€Àì(€€€€€±•ÐÉ•©•Ñ•€ô€Àì(€€€€€±•ÐÍ•ÑÑ±•€ô€Àì(€€€€€™½È€¡½¹ÍÐÉ½Ü½˜™¥±”¹É½ÝÌ¤ì(€€€€€€€½¹ÍÐÉ…Ü€ôÉ½Ü¹¹½Éµ…±¥é•‘…Ñ„…ÌI•½ÉñÍÑÉ¥¹œ°Õ¹­¹½Ý¸øð¹Õ±°ì(€€€€€€€½¹ÍÐÁ…ÉÍ•€ô¹½Éµ…±¥é•‘I•ÑÕÉ¹I½ÝM¡•µ„¹Í…™•A…ÉÍ”¡É…Ü¤ì(€€€€€€€½¹ÍÐ¥¹ÍÑÉÕÑ¥½¹%€ôÑåÁ•½˜É…Üü¹¥¹ÍÑÉÕÑ¥½¹%€ôôô€‰ÍÑÉ¥¹œˆ€üÉ…Ü¹¥¹ÍÑÉÕÑ¥½¹%€è¹Õ±°ì(€€€€€€€¥˜€ …Á…ÉÍ•¹ÍÕ•ÍÌñð€…¥¹ÍÑÉÕÑ¥½¹%¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰MÑ…¥¹œ‘¼É•Ñ½É¹¼¥¹½¹Í¥ÍÑ•¹Ñ”ˆ¤ì(€€€€€€€½¹ÍÐ¥¹ÍÑÉÕÑ¥½¸€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±%¹ÍÑÉÕÑ¥½¸¹™¥¹‘¥ÉÍÐ¡ì(€€€€€€€€€Ý¡•É”èì¥è¥¹ÍÑÉÕÑ¥½¹%°…É••µ•¹Ñ%°Á…åÉ½±±å±•%èå±•%°ÍÑ…ÑÕÌè€‰9IQˆô°(€€€€€€€€€¥¹±Õ‘”èì½¹ÑÉ…Ðèì¥¹±Õ‘”èìÁÉ½‘ÕÐèÑÉÕ”°µ…É¥¹½Õ¹ÐèÑÉÕ”ôôô°(€€€€€€€ô¤ì(€€€€€€€¥˜€ …¥¹ÍÑÉÕÑ¥½¸¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰%¹ÍÑÉÕ…¼‘”‘•Í½¹Ñ¼¥¹‘¥ÍÁ½¹¥Ù•°ˆ¤ì(€€€€€€€½¹ÍÐ½¹ÑÉ…Ð€ô¥¹ÍÑÉÕÑ¥½¸¹½¹ÑÉ…Ðì(€€€€€€€¥˜€¡½¹ÑÉ…Ð¹ÍÑ…ÑÕÌ€„ôô€‰Q%Yˆ¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰½¹ÑÉ…Ñ¼¹…¼•ÍÑ„…Ñ¥Ù¼ˆ¤ì(€€€€€€€¥˜€¡¥¹ÍÑÉÕÑ¥½¸¹¥¹ÍÑ…±±µ•¹Ñ9Õµ‰•È€„ôô¹Õ±°€˜˜¥¹ÍÑÉÕÑ¥½¸¹¥¹ÍÑ…±±µ•¹Ñ9Õµ‰•È€„ôô½¹ÑÉ…Ð¹ÕÉÉ•¹Ñ%¹ÍÑ…±±µ•¹Ð€¬€Ä¤ì(€€€€€€€€€Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰M•ÅÕ•¹¥„‘”Á…É•±…Ì‘¼½¹ÑÉ…Ñ¼™½¤…±Ñ•É…‘„ˆ¤ì(€€€€€€€ô(€€€€€€€½¹ÍÐ•Ù•¹Ð€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±¥Í½Õ¹ÑÙ•¹Ð¹É•…Ñ”¡ì‘…Ñ„èì(€€€€€€€€€…É••µ•¹Ñ%°Á…åÉ½±±å±•%èå±•%°¥¹ÍÑÉÕÑ¥½¹%è¥¹ÍÑÉÕÑ¥½¸¹¥°½¹ÑÉ…Ñ%è½¹ÑÉ…Ð¹¥°(€€€€€€€€€•¹É½±±µ•¹Ñ%è¥¹ÍÑÉÕÑ¥½¸¹•¹É½±±µ•¹Ñ%°Í½ÕÉ•¥±•I½Ý%èÉ½Ü¹¥°(€€€€€€€€€•áÁ•Ñ•‘µ½Õ¹ÐèÁ…ÉÍ•¹‘…Ñ„¹•áÁ•Ñ•‘µ½Õ¹Ð°‘¥Í½Õ¹Ñ•‘µ½Õ¹ÐèÁ…ÉÍ•¹‘…Ñ„¹‘¥Í½Õ¹Ñ•‘µ½Õ¹Ð°(€€€€€€€€€½ÕÑ½µ”èÁ…ÉÍ•¹‘…Ñ„¹½ÕÑ½µ”°¥¹ÍÑ…±±µ•¹Ñ9Õµ‰•ÈèÁ…ÉÍ•¹‘…Ñ„¹¥¹ÍÑ…±±µ•¹Ñ9Õµ‰•È°É•…Í½¸èÁ…ÉÍ•¹‘…Ñ„¹É•…Í½¸°(€€€€€€€€€•á•ÁÑ¥½¹MÑ…ÑÕÌèÁ…ÉÍ•¹‘…Ñ„¹½ÕÑ½µ”€ôôô€‰U10ˆ€ü¹Õ±°€è€‰=A8ˆ°(€€€€€€€ôô¤ì(€€€€€€€¥˜€¡Á…ÉÍ•¹‘…Ñ„¹½ÕÑ½µ”€ôôô€‰U10ˆ¤ì(€€€€€€€€€™Õ±°€¬ô€Äì(€€€€€€€€€½¹ÍÐ‘•¥Í¥½¸€ô‘•¥‘•I•½¹¥±¥…Ñ¥½¸¡ì(€€€€€€€€€€€½ÕÑ½µ”èÁ…ÉÍ•¹‘…Ñ„¹½ÕÑ½µ”°(€€€€€€€€€€€¡…É•5½‘”è½¹ÑÉ…Ð¹ÁÉ½‘ÕÐ¹¡…É•5½‘”°(€€€€€€€€€€€ÕÉÉ•¹Ñ%¹ÍÑ…±±µ•¹Ðè½¹ÑÉ…Ð¹ÕÉÉ•¹Ñ%¹ÍÑ…±±µ•¹Ð°(€€€€€€€€€€€Ñ•Éµ%¹ÍÑ…±±µ•¹ÑÌè½¹ÑÉ…Ð¹Ñ•Éµ%¹ÍÑ…±±µ•¹ÑÌ°(€€€€€€€€€ô¤ì(€€€€€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹½¹ÑÉ…Ð¹ÕÁ‘…Ñ”¡ìÝ¡•É”èì¥è½¹ÑÉ…Ð¹¥ô°‘…Ñ„èì(€€€€€€€€€€€ÕÉÉ•¹Ñ%¹ÍÑ…±±µ•¹Ðè‘•¥Í¥½¸¹¹•áÑ%¹ÍÑ…±±µ•¹Ð°ÍÑ…ÑÕÌè‘•¥Í¥½¸¹Í•ÑÑ±•Í½¹ÑÉ…Ð€ü€‰MQQ1ˆ€è€‰Q%Yˆ°(€€€€€€€€€€€Í•ÑÑ±•‘Ðè‘•¥Í¥½¸¹Í•ÑÑ±•Í½¹ÑÉ…Ð€ü¹•Ü…Ñ” ¤€è¹Õ±°°Ù•ÉÍ¥½¸èì¥¹É•µ•¹Ðè€Äô°(€€€€€€€€€ôô¤ì(€€€€€€€€€¥˜€¡‘•¥Í¥½¸¹Í•ÑÑ±•Í½¹ÑÉ…Ð¤ì(€€€€€€€€€€€Í•ÑÑ±•€¬ô€Äì(€€€€€€€€€€€½¹ÍÐ…½Õ¹Ð€ô½¹ÑÉ…Ð¹µ…É¥¹½Õ¹Ðì(€€€€€€€€€€€½¹ÍÐ½¹ÍÕµ•€ô½µÁ…É•5½¹•ä¡…½Õ¹Ð¹½¹ÍÕµ•‘µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤°½¹ÑÉ…Ð¹¥¹ÍÑ…±±µ•¹Ñµ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤¤€øô€À(€€€€€€€€€€€€€€üÍÕ‰ÑÉ…Ñ5½¹•ä¡…½Õ¹Ð¹½¹ÍÕµ•‘µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤°½¹ÑÉ…Ð¹¥¹ÍÑ…±±µ•¹Ñµ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤¤(€€€€€€€€€€€€€€è€ˆÀ¸ÀÀˆì(€€€€€€€€€€€½¹ÍÐ…Ù…¥±…‰±”€ô…Ù…¥±…‰±•5½¹•ä¡…½Õ¹Ð¹Ñ½Ñ…±µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤°½¹ÍÕµ•°…½Õ¹Ð¹É•Í•ÉÙ•‘µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤°…½Õ¹Ð¹‰±½­•‘µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤¤ì(€€€€€€€€€€€½¹ÍÐÕÁ‘…Ñ•€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹µ…É¥¹½Õ¹Ð¹ÕÁ‘…Ñ•5…¹ä¡ì(€€€€€€€€€€€€€Ý¡•É”èì¥è…½Õ¹Ð¹¥°±½­Y•ÉÍ¥½¸è…½Õ¹Ð¹±½­Y•ÉÍ¥½¸ô°(€€€€€€€€€€€€€‘…Ñ„èì½¹ÍÕµ•‘µ½Õ¹Ðè½¹ÍÕµ•°…Ù…¥±…‰±•µ½Õ¹Ðè…Ù…¥±…‰±”°±½­Y•ÉÍ¥½¸èì¥¹É•µ•¹Ðè€Äôô°(€€€€€€€€€€€ô¤ì(€€€€€€€€€€€¥˜€¡ÕÁ‘…Ñ•¹½Õ¹Ð€„ôô€Ä¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰5…É•´™½¤…±Ñ•É…‘„‘ÕÉ…¹Ñ”„±¥ÅÕ¥‘……¼ˆ¤ì(€€€€€€€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹µ…É¥¹5½Ù•µ•¹Ð¹É•…Ñ”¡ì‘…Ñ„èì(€€€€€€€€€€€€€…É••µ•¹Ñ%°µ…É¥¹½Õ¹Ñ%è…½Õ¹Ð¹¥°•¹É½±±µ•¹Ñ%è¥¹ÍÑÉÕÑ¥½¸¹•¹É½±±µ•¹Ñ%°(€€€€€€€€€€€€€µ½Ù•µ•¹ÑQåÁ”è€‰I1Mˆ°‘¥É•Ñ¥½¸è½µÁ…É•5½¹•ä¡…Ù…¥±…‰±”°…½Õ¹Ð¹…Ù…¥±…‰±•µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤¤€ø€À€ü€‰%9IMˆ€è€‰9=}!9ˆ°(€€€€€€€€€€€€€…µ½Õ¹Ðè½¹ÑÉ…Ð¹¥¹ÍÑ…±±µ•¹Ñµ½Õ¹Ð°‰…±…¹•	•™½É”è…½Õ¹Ð¹…Ù…¥±…‰±•µ½Õ¹Ð°‰…±…¹•™Ñ•Èè…Ù…¥±…‰±”°(€€€€€€€€€€€€€Í½ÕÉ•QåÁ”è€‰Á…åÉ½±±}‘¥Í½Õ¹Ñ}•Ù•¹Ðˆ°Í½ÕÉ•%è•Ù•¹Ð¹¥°(€€€€€€€€€€€€€¥‘•µÁ½Ñ•¹å-•äèÁ…åÉ½±°µÍ•ÑÑ±•µ•¹Ðè‘í•Ù•¹Ð¹¥‘õ€°½ÉÉ•±…Ñ¥½¹%è½¹Ñ•áÐ¹½ÉÉ•±…Ñ¥½¹%°(€€€€€€€€€€€€€…Ñ½ÉUÍ•É%è½¹Ñ•áÐ¹…Ñ½Èü¹ÕÍ•É%€üü¹Õ±°°É•…Í½¸è€‰1¥ÅÕ¥‘……¼…ÕÑ½µ…Ñ¥„¹„Õ±Ñ¥µ„Á…É•±„‘•Í½¹Ñ…‘„ˆ°(€€€€€€€€€€€ôô¤ì(€€€€€€€€€ô(€€€€€€€ô•±Í”¥˜€¡Á…ÉÍ•¹‘…Ñ„¹½ÕÑ½µ”€ôôô€‰AIQ%0ˆ¤Á…ÉÑ¥…°€¬ô€Äì(€€€€€€€•±Í”É•©•Ñ•€¬ô€Äì(€€€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±%¹ÍÑÉÕÑ¥½¸¹ÕÁ‘…Ñ”¡ìÝ¡•É”èì¥è¥¹ÍÑÉÕÑ¥½¸¹¥ô°‘…Ñ„èìÍÑ…ÑÕÌè€‰I=9%1ˆ°É•½¹¥±•‘Ðè¹•Ü…Ñ” ¤ôô¤ì(€€€€€ô(€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±¥±•I½Ü¹ÕÁ‘…Ñ•5…¹ä¡ìÝ¡•É”èìÁ…åÉ½±±¥±•%è™¥±•%°ÍÑ…ÑÕÌè€‰Y1%ˆô°‘…Ñ„èìÍÑ…ÑÕÌè€‰AA1%ˆôô¤ì(€€€€€½¹ÍÐ…ÁÁ±¥•€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±¥±”¹ÕÁ‘…Ñ”¡ìÝ¡•É”èì¥è™¥±•%ô°‘…Ñ„èìÍÑ…ÑÕÌè€‰AA1%ˆ°ÁÉ½•ÍÍ•‘	åUÍ•É%è½¹Ñ•áÐ¹…Ñ½È„¹ÕÍ•É%°ÁÉ½•ÍÍ•‘Ðè¹•Ü…Ñ” ¤ôô¤ì(€€€€€½¹ÍÐÁ•¹‘¥¹œ€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±%¹ÍÑÉÕÑ¥½¸¹½Õ¹Ð¡ìÝ¡•É”èìÁ…åÉ½±±å±•%èå±•%°ÍÑ…ÑÕÌè€‰9IQˆôô¤ì(€€€€€¥˜€¡Á•¹‘¥¹œ€ôôô€À¤…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±å±”¹ÕÁ‘…Ñ”¡ìÝ¡•É”èì¥èå±•%ô°‘…Ñ„èìÍÑ…ÑÕÌè€‰1=Mˆ°±½Í•‘	åUÍ•É%è½¹Ñ•áÐ¹…Ñ½È„¹ÕÍ•É%°±½Í•‘Ðè¹•Ü…Ñ” ¤°Ù•ÉÍ¥½¸èì¥¹É•µ•¹Ðè€Äôôô¤ì(€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹…Õ‘¥ÑÙ•¹Ð¹É•…Ñ”¡ì‘…Ñ„èì(€€€€€€€…É••µ•¹Ñ%°…Ñ½ÉUÍ•É%è½¹Ñ•áÐ¹…Ñ½Èü¹ÕÍ•É%€üü¹Õ±°°…Ñ½ÉI½±”è½¹Ñ•áÐ¹…Ñ½Èü¹É½±”€üü¹Õ±°°(€€€€€€€…Ñ¥½¸è€‰Á…åÉ½±±}É•ÑÕÉ¹}™¥±”¹…ÁÁ±äˆ°½ÕÑ½µ”è€‰ÍÕ•ÍÌˆ°•¹Ñ¥ÑåQåÁ”è€‰Á…åÉ½±±}™¥±”ˆ°•¹Ñ¥Ñå%è™¥±•%°(€€€€€€€½ÉÉ•±…Ñ¥½¹%è½¹Ñ•áÐ¹½ÉÉ•±…Ñ¥½¹%°¹•Ý…Ñ„èì™Õ±°°Á…ÉÑ¥…°°É•©•Ñ•°Í•ÑÑ±•°Á•¹‘¥¹%¹ÍÑÉÕÑ¥½¹ÌèÁ•¹‘¥¹œô°(€€€€€€€¥Á‘‘É•ÍÌè½¹Ñ•áÐ¹¥Á‘‘É•ÍÌ°ÕÍ•É•¹Ðè½¹Ñ•áÐ¹ÕÍ•É•¹Ð°(€€€€€ôô¤ì(€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹½ÕÑ‰½áÙ•¹Ð¹É•…Ñ”¡ì‘…Ñ„èì(€€€€€€€…É••µ•¹Ñ%°…É•…Ñ•QåÁ”è€‰Á…åÉ½±±}™¥±”ˆ°…É•…Ñ•%è™¥±•%°(€€€€€€€•Ù•¹ÑQåÁ”è€‰Á…åÉ½±°¹É•ÑÕÉ¹}…ÁÁ±¥•ˆ°(€€€€€€€Á…å±½…èìÁ…åÉ½±±¥±•%è™¥±•%°Á…åÉ½±±å±•%èå±•%°™Õ±°°Á…ÉÑ¥…°°É•©•Ñ•°Í•ÑÑ±•°Á•¹‘¥¹%¹ÍÑÉÕÑ¥½¹ÌèÁ•¹‘¥¹œô°(€€€€€€€½ÉÉ•±…Ñ¥½¹%è½¹Ñ•áÐ¹½ÉÉ•±…Ñ¥½¹%°(€€€€€ôô¤ì(€€€€€É•ÑÕÉ¸ì€¸¸¹Ñ¡¥Ì¹Ñ½¥±•Y¥•Ü¡…ÁÁ±¥•¤°‘ÕÁ±¥…Ñ”è™…±Í”°É•½¹¥±¥…Ñ¥½¸èì™Õ±°°Á…ÉÑ¥…°°É•©•Ñ•°Í•ÑÑ±•°Á•¹‘¥¹œôôì(€€€ô°ì¥Í½±…Ñ¥½¹1•Ù•°è€‰M•É¥…±¥é…‰±”ˆô¤ì(€ô((€…Íå¹Œ•Ñ¥±”¡…É••µ•¹Ñ%èÍÑÉ¥¹œ°å±•%èÍÑÉ¥¹œ°™¥±•%èÍÑÉ¥¹œ¤ì(€€€½¹ÍÐ™¥±”€ô…Ý…¥ÐÑ¡¥Ì¹ÁÉ¥Íµ„¹Á…åÉ½±±¥±”¹™¥¹‘¥ÉÍÐ¡ì(€€€€€Ý¡•É”èì¥è™¥±•%°…É••µ•¹Ñ%°Á…åÉ½±±å±•%èå±•%ô°(€€€€€¥¹±Õ‘”èì(€€€€€€€É½ÝÌèì(€€€€€€€€€Í•±•Ðèì(€€€€€€€€€€€¥èÑÉÕ”°(€€€€€€€€€€€É½Ý9Õµ‰•ÈèÑÉÕ”°(€€€€€€€€€€€ÍÑ…ÑÕÌèÑÉÕ”°(€€€€€€€€€€€…µ½Õ¹ÐèÑÉÕ”°(€€€€€€€€€€€¹½Éµ…±¥é•‘…Ñ„èÑÉÕ”°(€€€€€€€€€€€•ÉÉ½ÉÌèÑÉÕ”°(€€€€€€€€€ô°(€€€€€€€€€½É‘•É	äèìÉ½Ý9Õµ‰•Èè€‰…ÍŒˆô°(€€€€€€€€€Ñ…­”è€ÄÁ|ÀÀÀ°(€€€€€€€ô°(€€€€€ô°(€€€ô¤ì(€€€¥˜€ …™¥±”¤Ñ¡É½Ü¹•Ü9½Ñ½Õ¹‘á•ÁÑ¥½¸ ‰ÉÅÕ¥Ù¼‘”™½±¡„¹…¼•¹½¹ÑÉ…‘¼ˆ¤ì(€€€É•ÑÕÉ¸ì(€€€€€€¸¸¹Ñ¡¥Ì¹Ñ½¥±•Y¥•Ü¡™¥±”¤°(€€€€€É½ÝÌè™¥±”¹É½ÝÌ¹µ…À ¡É½Ü¤€ôø€¡ì€¸¸¹É½Ü°…µ½Õ¹ÐèÉ½Ü¹…µ½Õ¹Ðü¹Ñ½MÑÉ¥¹œ ¤€üü¹Õ±°ô¤¤°(€€€ôì(€ô((€…Íå¹ŒÁÕ‰±¥Í¡5…É¥¹¥±” (€€€…É••µ•¹Ñ%èÍÑÉ¥¹œ°(€€€å±•%èÍÑÉ¥¹œ°(€€€™¥±•%èÍÑÉ¥¹œ°(€€€½¹Ñ•áÐèI•ÅÕ•ÍÑ½¹Ñ•áÐ°(€€¤ì(€€€É•ÑÕÉ¸Ñ¡¥Ì¹ÁÉ¥Íµ„¸‘ÑÉ…¹Í…Ñ¥½¸ (€€€€€…Íå¹Œ€¡ÑÉ…¹Í…Ñ¥½¸¤€ôøì(€€€€€€€½¹ÍÐ™¥±”€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±¥±”¹™¥¹‘¥ÉÍÐ¡ì(€€€€€€€€€Ý¡•É”èì¥è™¥±•%°…É••µ•¹Ñ%°Á…åÉ½±±å±•%èå±•%°™¥±•QåÁ”è€‰5I%8ˆô°(€€€€€€€€€¥¹±Õ‘”èìÉ½ÝÌèìÝ¡•É”èìÍÑ…ÑÕÌè€‰Y1%ˆô°½É‘•É	äèìÉ½Ý9Õµ‰•Èè€‰…ÍŒˆôôô°(€€€€€€€ô¤ì(€€€€€€€¥˜€ …™¥±”¤Ñ¡É½Ü¹•Ü9½Ñ½Õ¹‘á•ÁÑ¥½¸ ‰ÉÅÕ¥Ù¼‘”µ…É•´¹…¼•¹½¹ÑÉ…‘¼ˆ¤ì(€€€€€€€¥˜€¡™¥±”¹ÍÑ…ÑÕÌ€ôôô€‰AA1%ˆ¤É•ÑÕÉ¸ì€¸¸¹Ñ¡¥Ì¹Ñ½¥±•Y¥•Ü¡™¥±”¤°‘ÕÁ±¥…Ñ”èÑÉÕ”ôì(€€€€€€€¥˜€¡™¥±”¹ÍÑ…ÑÕÌ€„ôô€‰Y1%Qˆñð™¥±”¹¥¹Ù…±¥‘I½ÝÌ€ø€À¤ì(€€€€€€€€€Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰ÉÅÕ¥Ù¼¹…¼•ÍÑ„Ù…±¥‘…‘¼Á…É„ÁÕ‰±¥……¼ˆ¤ì(€€€€€€€ô(€€€€€€€½¹ÍÐ±…¥µ•€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±¥±”¹ÕÁ‘…Ñ•5…¹ä¡ì(€€€€€€€€€Ý¡•É”èì¥è™¥±•%°ÍÑ…ÑÕÌè€‰Y1%Qˆô°(€€€€€€€€€‘…Ñ„èìÍÑ…ÑÕÌè€‰AI=MM%9ˆô°(€€€€€€€ô¤ì(€€€€€€€¥˜€¡±…¥µ•¹½Õ¹Ð€„ôô€Ä¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰ÉÅÕ¥Ù¼©„•ÍÑ„•´ÁÉ½•ÍÍ…µ•¹Ñ¼ˆ¤ì((€€€€€€€™½È€¡½¹ÍÐÉ½Ü½˜™¥±”¹É½ÝÌ¤ì(€€€€€€€€€¥˜€ …É½Ü¹•¹É½±±µ•¹Ñ%¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰1¥¹¡„Ù…±¥‘„Í•´µ…ÑÉ¥Õ±„Ù¥¹Õ±…‘„ˆ¤ì(€€€€€€€€€½¹ÍÐÁ…ÉÍ•€ô¹½Éµ…±¥é•‘5…É¥¹I½ÝM¡•µ„¹½µ¥Ð¡ì•¹É½±±µ•¹Ñ9Õµ‰•ÈèÑÉÕ”ô¤¹Í…™•A…ÉÍ” (€€€€€€€€€€€É½Ü¹¹½Éµ…±¥é•‘…Ñ„°(€€€€€€€€€€¤ì(€€€€€€€€€¥˜€ …Á…ÉÍ•¹ÍÕ•ÍÌ¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰MÑ…¥¹œ‘”µ…É•´¥¹½¹Í¥ÍÑ•¹Ñ”ˆ¤ì(€€€€€€€€€½¹ÍÐÕÉÉ•¹Ð€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹•¹É½±±µ•¹Ð¹™¥¹‘¥ÉÍÐ¡ì(€€€€€€€€€€€Ý¡•É”èì¥èÉ½Ü¹•¹É½±±µ•¹Ñ%°…É••µ•¹Ñ%ô°(€€€€€€€€€ô¤ì(€€€€€€€€€¥˜€ …ÕÉÉ•¹Ð¤Ñ¡É½Ü¹•Ü½¹™±¥Ñá•ÁÑ¥½¸ ‰5…ÑÉ¥Õ±„‘¼ÍÑ…¥¹œ¹…¼•ÍÑ„‘¥ÍÁ½¹¥Ù•°ˆ¤ì(€€€€€€€€€½¹ÍÐ…™Ñ•É…Ñ„€ôÁ…ÉÍ•¹‘…Ñ„ì(€€€€€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹•¹É½±±µ•¹ÑA…åÉ½±±M¹…ÁÍ¡½Ð¹É•…Ñ”¡ì(€€€€€€€€€€€‘…Ñ„èì(€€€€€€€€€€€€€…É••µ•¹Ñ%°(€€€€€€€€€€€€€Á…åÉ½±±å±•%èå±•%°(€€€€€€€€€€€€€•¹É½±±µ•¹Ñ%èÕÉÉ•¹Ð¹¥°(€€€€€€€€€€€€€Í½ÕÉ•¥±•I½Ý%èÉ½Ü¹¥°(€€€€€€€€€€€€€‰•™½É•…Ñ„èì(€€€€€€€€€€€€€€€™Õ¹Ñ¥½¹…±MÑ…ÑÕÌèÕÉÉ•¹Ð¹™Õ¹Ñ¥½¹…±MÑ…ÑÕÌ°(€€€€€€€€€€€€€€€•µÁ±½åµ•¹ÑQåÁ”èÕÉÉ•¹Ð¹•µÁ±½åµ•¹ÑQåÁ”°(€€€€€€€€€€€€€€€Á…åÉ½±±É½ÕÀèÕÉÉ•¹Ð¹Á…åÉ½±±É½ÕÀ°(€€€€€€€€€€€€€€€‘•Á…ÉÑµ•¹ÐèÕÉÉ•¹Ð¹‘•Á…ÉÑµ•¹Ð°(€€€€€€€€€€€€€€€½ÍÑ•¹Ñ•ÈèÕÉÉ•¹Ð¹½ÍÑ•¹Ñ•È°(€€€€€€€€€€€€€€€‰…Í•M…±…ÉäèÕÉÉ•¹Ð¹‰…Í•M…±…Éä¹Ñ½MÑÉ¥¹œ ¤°(€€€€€€€€€€€€€€€µ…¹‘…Ñ½Éå•‘ÕÑ¥½¹ÌèÕÉÉ•¹Ð¹µ…¹‘…Ñ½Éå•‘ÕÑ¥½¹Ì¹Ñ½MÑÉ¥¹œ ¤°(€€€€€€€€€€€€€€€µ…É¥¹	…Í”èÕÉÉ•¹Ð¹µ…É¥¹	…Í”¹Ñ½MÑÉ¥¹œ ¤°(€€€€€€€€€€€€€€€Í½ÕÉ•UÁ‘…Ñ•‘Ðè‘…Ñ•Y…±Õ”¡ÕÉÉ•¹Ð¹Í½ÕÉ•UÁ‘…Ñ•‘Ð¤°(€€€€€€€€€€€€€€€Ù•ÉÍ¥½¸èÕÉÉ•¹Ð¹Ù•ÉÍ¥½¸°(€€€€€€€€€€€€€ô°(€€€€€€€€€€€€€…™Ñ•É…Ñ„°(€€€€€€€€€€€ô°(€€€€€€€€€ô¤ì(€€€€€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹•¹É½±±µ•¹Ð¹ÕÁ‘…Ñ”¡ì(€€€€€€€€€€€Ý¡•É”èì¥èÕÉÉ•¹Ð¹¥ô°(€€€€€€€€€€€‘…Ñ„èì(€€€€€€€€€€€€€™Õ¹Ñ¥½¹…±MÑ…ÑÕÌè…™Ñ•É…Ñ„¹™Õ¹Ñ¥½¹…±MÑ…ÑÕÌ°(€€€€€€€€€€€€€•µÁ±½åµ•¹ÑQåÁ”è…™Ñ•É…Ñ„¹•µÁ±½åµ•¹ÑQåÁ”°(€€€€€€€€€€€€€Á…åÉ½±±É½ÕÀè…™Ñ•É…Ñ„¹Á…åÉ½±±É½ÕÀ°(€€€€€€€€€€€€€‘•Á…ÉÑµ•¹Ðè…™Ñ•É…Ñ„¹‘•Á…ÉÑµ•¹Ð°(€€€€€€€€€€€€€½ÍÑ•¹Ñ•Èè…™Ñ•É…Ñ„¹½ÍÑ•¹Ñ•È°(€€€€€€€€€€€€€‰…Í•M…±…Éäè…™Ñ•É…Ñ„¹‰…Í•M…±…Éä°(€€€€€€€€€€€€€µ…¹‘…Ñ½Éå•‘ÕÑ¥½¹Ìè…™Ñ•É…Ñ„¹µ…¹‘…Ñ½Éå•‘ÕÑ¥½¹Ì°(€€€€€€€€€€€€€µ…É¥¹	…Í”è…™Ñ•É…Ñ„¹µ…É¥¹	…Í”°(€€€€€€€€€€€€€Í½ÕÉ•UÁ‘…Ñ•‘Ðè…™Ñ•É…Ñ„¹Í½ÕÉ•UÁ‘…Ñ•‘Ð(€€€€€€€€€€€€€€€€ü¹•Ü…Ñ”¡…™Ñ•É…Ñ„¹Í½ÕÉ•UÁ‘…Ñ•‘Ð¤(€€€€€€€€€€€€€€€€è¹•Ü…Ñ” ¤°(€€€€€€€€€€€€€Ù•ÉÍ¥½¸èì¥¹É•µ•¹Ðè€Äô°(€€€€€€€€€€€ô°(€€€€€€€€€ô¤ì(€€€€€€€ô((€€€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±¥±•I½Ü¹ÕÁ‘…Ñ•5…¹ä¡ì(€€€€€€€€€Ý¡•É”èìÁ…åÉ½±±¥±•%è™¥±•%°ÍÑ…ÑÕÌè€‰Y1%ˆô°(€€€€€€€€€‘…Ñ„èìÍÑ…ÑÕÌè€‰AA1%ˆô°(€€€€€€€ô¤ì(€€€€€€€½¹ÍÐ…ÁÁ±¥•€ô…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±¥±”¹ÕÁ‘…Ñ”¡ì(€€€€€€€€€Ý¡•É”èì¥è™¥±•%ô°(€€€€€€€€€‘…Ñ„èì(€€€€€€€€€€€ÍÑ…ÑÕÌè€‰AA1%ˆ°(€€€€€€€€€€€ÁÉ½•ÍÍ•‘	åUÍ•É%è½¹Ñ•áÐ¹…Ñ½È„¹ÕÍ•É%°(€€€€€€€€€€€ÁÉ½•ÍÍ•‘Ðè¹•Ü…Ñ” ¤°(€€€€€€€€€ô°(€€€€€€€ô¤ì(€€€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹Á…åÉ½±±å±”¹ÕÁ‘…Ñ”¡ì(€€€€€€€€€Ý¡•É”èì¥èå±•%ô°(€€€€€€€€€‘…Ñ„èìÍÑ…ÑÕÌè€‰AU	1%M!ˆ°Ù•ÉÍ¥½¸èì¥¹É•µ•¹Ðè€Äôô°(€€€€€€€ô¤ì(€€€€€€€…Ý…¥ÐÑÉ…¹Í…Ñ¥½¸¹…Õ‘¥ÑÙ•¹Ð¹É•…Ñ”¡ì(€€€€€€€€€‘…Ñ„èì(€€€€€€€€€€€…É••µ•¹Ñ%°(€€€€€€€€€€€…Ñ½ÉUÍ•É%è½¹Ñ•áÐ¹…Ñ½Èü¹ÕÍ•É%€üü¹Õ±°°(€€€€€€€€€€€…Ñ½ÉI½±”è½¹Ñ•áÐ¹…Ñ½Èü¹É½±”€üü¹Õ±°°(€€€€€€€€€€€…Ñ¥½¸è€‰Á…åÉ½±±}µ…É¥¹}™¥±”¹ÁÕ‰±¥Í ˆ°(€€€€€€€€€€€½ÕÑ½µ”è€‰ÍÕ•ÍÌˆ°(€€€€€€€€€€€•¹Ñ¥ÑåQåÁ”è€‰Á…åÉ½±±}™¥±”ˆ°(€€€€€€€€€€€•¹Ñ¥Ñå%è™¥±•%°(€€€€€€€€€€€½ÉÉ•±…Ñ¥½¹%è½¹Ñ•áÐ¹½ÉÉ•±…Ñ¥½¹%°(€€€€€€€€€€€¹•Ý…Ñ„èìÁÉ½Ñ½½±9Õµ‰•Èè™¥±”¹ÁÉ½Ñ½½±9Õµ‰•È°…ÁÁ±¥•‘I½ÝÌè™¥±”¹Ù…±¥‘I½ÝÌô°(€€€€€€€€€€€¥Á‘‘É•ÍÌè½¹Ñ•áÐ¹¥Á‘‘É•ÍÌ°(€€€€€€€€€€€ÕÍ•É•¹Ðè½¹Ñ•áÐ¹ÕÍ•É•¹Ð°(€€€€€€€€€ô°(€€€€€€€ô¤ì(€€€€€€€É•ÑÕÉ¸ì€¸¸¹Ñ¡¥Ì¹Ñ½¥±•Y¥•Ü¡…ÁÁ±¥•¤°‘ÕÁ±¥…Ñ”è™…±Í”ôì(€€€€€ô°(€€€€€ì¥Í½±…Ñ¥½¹1•Ù•°è€‰M•É¥…±¥é…‰±”ˆô°(€€€€¤ì(€ô((€ÁÉ¥Ù…Ñ”•á•ÁÑ¥½¹Y¥•Ü¡•Ù•¹Ðèì(€€€¥èÍÑÉ¥¹œì(€€€½¹ÑÉ…Ñ%èÍÑÉ¥¹œì(€€€½ÕÑ½µ”èÍÑÉ¥¹œì(€€€¥¹ÍÑ…±±µ•¹Ñ9Õµ‰•Èè¹Õµ‰•Èð¹Õ±°ì(€€€•áÁ•Ñ•‘µ½Õ¹ÐèìÑ½MÑÉ¥¹œ ¤èÍÑÉ¥¹œôì(€€€‘¥Í½Õ¹Ñ•‘µ½Õ¹ÐèìÑ½MÑÉ¥¹œ ¤èÍÑÉ¥¹œôì(€€€É•…Í½¸èÍÑÉ¥¹œð¹Õ±°ì(€€€•á•ÁÑ¥½¹MÑ…ÑÕÌèÍÑÉ¥¹œð¹Õ±°ì(€€€…­¹½Ý±•‘•‘Ðè…Ñ”ð¹Õ±°ì(€€€…­¹½Ý±•‘•‘	äèì¥èÍÑÉ¥¹œì¹…µ”èÍÑÉ¥¹œôð¹Õ±°ì(€€€É•Ù¥•Ý9½Ñ•¹ÉåÁÑ•èÍÑÉ¥¹œð¹Õ±°ì(€€€É•Ù¥•ÝY•ÉÍ¥½¸è¹Õµ‰•Èì(€€€ÁÉ½•ÍÍ•‘Ðè…Ñ”ì(€€€½¹ÑÉ…Ðèì(€€€€€½¹ÑÉ…Ñ9Õµ‰•ÈèÍÑÉ¥¹œì(€€€€€Á…ÉÑäèì¥èÍÑÉ¥¹œìÑÉ…‘•9…µ”èÍÑÉ¥¹œð¹Õ±°ì±•…±9…µ”èÍÑÉ¥¹œôì(€€€€€ÁÉ½‘ÕÐèì¥èÍÑÉ¥¹œì½‘”èÍÑÉ¥¹œì¹…µ”èÍÑÉ¥¹œì™…µ¥±äèÍÑÉ¥¹œôì(€€€ôì(€ô¤ì(€€€É•ÑÕÉ¸ì(€€€€€¥è•Ù•¹Ð¹¥°(€€€€€½¹ÑÉ…Ñ%è•Ù•¹Ð¹½¹ÑÉ…Ñ%°(€€€€€½¹ÑÉ…Ñ9Õµ‰•Èè•Ù•¹Ð¹½¹ÑÉ…Ð¹½¹ÑÉ…Ñ9Õµ‰•È°(€€€€€½ÕÑ½µ”è•Ù•¹Ð¹½ÕÑ½µ”°(€€€€€¥¹ÍÑ…±±µ•¹Ñ9Õµ‰•Èè•Ù•¹Ð¹¥¹ÍÑ…±±µ•¹Ñ9Õµ‰•È°(€€€€€•áÁ•Ñ•‘µ½Õ¹Ðè•Ù•¹Ð¹•áÁ•Ñ•‘µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤°(€€€€€‘¥Í½Õ¹Ñ•‘µ½Õ¹Ðè•Ù•¹Ð¹‘¥Í½Õ¹Ñ•‘µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤°(€€€€€É•…Í½¸è•Ù•¹Ð¹É•…Í½¸°(€€€€€•á•ÁÑ¥½¹MÑ…ÑÕÌè•Ù•¹Ð¹•á•ÁÑ¥½¹MÑ…ÑÕÌ°(€€€€€…­¹½Ý±•‘•‘Ðè•Ù•¹Ð¹…­¹½Ý±•‘•‘Ðü¹Ñ½%M=MÑÉ¥¹œ ¤€üü¹Õ±°°(€€€€€…­¹½Ý±•‘•‘	äè•Ù•¹Ð¹…­¹½Ý±•‘•‘	ä°(€€€€€É•Ù¥•Ý9½Ñ”è•Ù•¹Ð¹É•Ù¥•Ý9½Ñ•¹ÉåÁÑ•(€€€€€€€€üÑ¡¥Ì¹ÁÉ½Ñ•Ñ¥½¸¹‘•ÉåÁÐ¡•Ù•¹Ð¹É•Ù¥•Ý9½Ñ•¹ÉåÁÑ•°€‰Á…åÉ½±°¹•á•ÁÑ¥½¹}¹½Ñ”ˆ¤(€€€€€€€€è¹Õ±°°(€€€€€É•Ù¥•ÝY•ÉÍ¥½¸è•Ù•¹Ð¹É•Ù¥•ÝY•ÉÍ¥½¸°(€€€€€ÁÉ½•ÍÍ•‘Ðè•Ù•¹Ð¹ÁÉ½•ÍÍ•‘Ð¹Ñ½%M=MÑÉ¥¹œ ¤°(€€€€€Á…ÉÑäèì(€€€€€€€¥è•Ù•¹Ð¹½¹ÑÉ…Ð¹Á…ÉÑä¹¥°(€€€€€€€¹…µ”è•Ù•¹Ð¹½¹ÑÉ…Ð¹Á…ÉÑä¹ÑÉ…‘•9…µ”€üü•Ù•¹Ð¹½¹ÑÉ…Ð¹Á…ÉÑä¹±•…±9…µ”°(€€€€€ô°(€€€€€ÁÉ½‘ÕÐèì(€€€€€€€¥è•Ù•¹Ð¹½¹ÑÉ…Ð¹ÁÉ½‘ÕÐ¹¥°(€€€€€€€½‘”è•Ù•¹Ð¹½¹ÑÉ…Ð¹ÁÉ½‘ÕÐ¹½‘”°(€€€€€€€¹…µ”è•Ù•¹Ð¹½¹ÑÉ…Ð¹ÁÉ½‘ÕÐ¹¹…µ”°(€€€€€€€™…µ¥±äè•Ù•¹Ð¹½¹ÑÉ…Ð¹ÁÉ½‘ÕÐ¹™…µ¥±ä°(€€€€€ô°(€€€ôì(€ô((€ÁÉ¥Ù…Ñ”Ñ½å±•Y¥•Ü¡å±”èì(€€€¥èÍÑÉ¥¹œì(€€€…É••µ•¹Ñ%èÍÑÉ¥¹œì(€€€½µÁ•Ñ•¹äè…Ñ”ì(€€€ÕÑ½™™Ðè…Ñ”ì(€€€¥¹Í•ÉÑ¥½¹Õ•Ðè…Ñ”ð¹Õ±°ì(€€€É•ÑÕÉ¹Õ•Ðè…Ñ”ð¹Õ±°ì(€€€ÍÑ…ÑÕÌèÍÑÉ¥¹œì(€€€Á½±¥åY•ÉÍ¥½¹%èÍÑÉ¥¹œð¹Õ±°ì(€€€Ù•ÉÍ¥½¸è¹Õµ‰•Èì(€ô¤ì(€€€É•ÑÕÉ¸ì(€€€€€¥èå±”¹¥°(€€€€€…É••µ•¹Ñ%èå±”¹…É••µ•¹Ñ%°(€€€€€½µÁ•Ñ•¹äèå±”¹½µÁ•Ñ•¹ä¹Ñ½%M=MÑÉ¥¹œ ¤¹Í±¥” À°€Ü¤°(€€€€€ÕÑ½™™Ðèå±”¹ÕÑ½™™Ð¹Ñ½%M=MÑÉ¥¹œ ¤°(€€€€€¥¹Í•ÉÑ¥½¹Õ•Ðè‘…Ñ•Y…±Õ”¡å±”¹¥¹Í•ÉÑ¥½¹Õ•Ð¤°(€€€€€É•ÑÕÉ¹Õ•Ðè‘…Ñ•Y…±Õ”¡å±”¹É•ÑÕÉ¹Õ•Ð¤°(€€€€€ÍÑ…ÑÕÌèå±”¹ÍÑ…ÑÕÌ°(€€€€€Á½±¥åY•ÉÍ¥½¹%èå±”¹Á½±¥åY•ÉÍ¥½¹%°(€€€€€Ù•ÉÍ¥½¸èå±”¹Ù•ÉÍ¥½¸°(€€€ôì(€ô((€ÁÉ¥Ù…Ñ”Ñ½¥±•Y¥•Ü¡™¥±”èì(€€€¥èÍÑÉ¥¹œì(€€€…É••µ•¹Ñ%èÍÑÉ¥¹œì(€€€Á…åÉ½±±å±•%èÍÑÉ¥¹œì(€€€ÁÉ½Ñ½½±9Õµ‰•ÈèÍÑÉ¥¹œì(€€€½É¥¥¹…±¥±•9…µ”èÍÑÉ¥¹œì(€€€±…å½ÕÑY•ÉÍ¥½¸èÍÑÉ¥¹œì(€€€•¹Ù¥É½¹µ•¹ÐèÍÑÉ¥¹œì(€€€ÍÑ…ÑÕÌèÍÑÉ¥¹œì(€€€Ñ½Ñ…±I½ÝÌè¹Õµ‰•Èì(€€€Ù…±¥‘I½ÝÌè¹Õµ‰•Èì(€€€¥¹Ù…±¥‘I½ÝÌè¹Õµ‰•Èì(€€€Ñ½Ñ…±µ½Õ¹ÐèìÑ½MÑÉ¥¹œ ¤èÍÑÉ¥¹œôì(€€€Í¥é•	åÑ•Ìè‰¥¥¹Ðì(€€€É•…Ñ•‘Ðè…Ñ”ì(€€€ÁÉ½•ÍÍ•‘Ðè…Ñ”ð¹Õ±°ì(€ô¤ì(€€€É•ÑÕÉ¸ì(€€€€€¥è™¥±”¹¥°(€€€€€…É••µ•¹Ñ%è™¥±”¹…É••µ•¹Ñ%°(€€€€€Á…åÉ½±±å±•%è™¥±”¹Á…åÉ½±±å±•%°(€€€€€ÁÉ½Ñ½½±9Õµ‰•Èè™¥±”¹ÁÉ½Ñ½½±9Õµ‰•È°(€€€€€½É¥¥¹…±¥±•9…µ”è™¥±”¹½É¥¥¹…±¥±•9…µ”°(€€€€€±…å½ÕÑY•ÉÍ¥½¸è™¥±”¹±…å½ÕÑY•ÉÍ¥½¸°(€€€€€•¹Ù¥É½¹µ•¹Ðè™¥±”¹•¹Ù¥É½¹µ•¹Ð°(€€€€€ÍÑ…ÑÕÌè™¥±”¹ÍÑ…ÑÕÌ°(€€€€€Ñ½Ñ…±I½ÝÌè™¥±”¹Ñ½Ñ…±I½ÝÌ°(€€€€€Ù…±¥‘I½ÝÌè™¥±”¹Ù…±¥‘I½ÝÌ°(€€€€€¥¹Ù…±¥‘I½ÝÌè™¥±”¹¥¹Ù…±¥‘I½ÝÌ°(€€€€€Ñ½Ñ…±µ½Õ¹Ðè™¥±”¹Ñ½Ñ…±µ½Õ¹Ð¹Ñ½MÑÉ¥¹œ ¤°(€€€€€Í¥é•	åÑ•Ìè™¥±”¹Í¥é•	åÑ•Ì¹Ñ½MÑÉ¥¹œ ¤°(€€€€€É•…Ñ•‘Ðè™¥±”¹É•…Ñ•‘Ð¹Ñ½%M=MÑÉ¥¹œ ¤°(€€€€€ÁÉ½•ÍÍ•‘Ðè‘…Ñ•Y…±Õ”¡™¥±”¹ÁÉ½•ÍÍ•‘Ð¤°(€€€ôì(€ô)ô
