@@ -11,6 +11,7 @@ export type DataProtectionPurpose =
   | "payroll.margin_row"
   | "payroll.insertion_row"
   | "payroll.return_row"
+  | "payroll.exception_note"
   | "reservation.confirmation_code";
 
 export class InvalidProtectedValueError extends Error {

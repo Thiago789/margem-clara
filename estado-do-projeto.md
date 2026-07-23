@@ -302,6 +302,7 @@ Servidor/matricula:
 - A arquitetura deve preservar essas frentes futuras sem inclui-las prematuramente no primeiro backend operacional.
 - O backend real ja gera insercao pela data de corte, vincula o retorno ao que foi efetivamente enviado, registra desconto integral/parcial/rejeitado e liquida automaticamente a ultima parcela fixa.
 - A competencia real possui projecao operacional de arquivos, pendencias, excecoes e liquidacoes; rotas de folha recusam associacoes restritas a uma consignataria.
+- Descontos parciais e rejeitados abrem fila de excecao com assuncao concorrente, nota criptografada, auditoria e nenhuma alteracao financeira implicita.
 - O documento `ideias-e-decisoes-produto.md` e a memoria oficial das hipoteses, guardrails e sequenciamento estrategico.
 
 ## Fundacao da Versao Real

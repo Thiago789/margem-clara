@@ -269,6 +269,8 @@ describe("PayrollService", () => {
         count: vi.fn()
           .mockResolvedValueOnce(1)
           .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(0)
+          .mockResolvedValueOnce(1)
           .mockResolvedValueOnce(0),
         aggregate: vi.fn().mockResolvedValue({ _sum: { discountedAmount: decimal("280.00") } }),
         findMany: vi.fn()
@@ -301,6 +303,8 @@ describe("PayrollService", () => {
       full: 1,
       partial: 1,
       settledContracts: 1,
+      openExceptions: 1,
+      inReviewExceptions: 0,
       instructedAmount: "600.00",
       discountedAmount: "280.00",
     });
@@ -309,6 +313,109 @@ describe("PayrollService", () => {
     expect(serialized).not.toContain("enrollmentId");
     expect(serialized).not.toContain("matricula");
     expect(serialized).not.toContain("rawData");
+  });
+
+  it("claims a payroll exception without changing contract or margin balances", async () => {
+    const event = {
+      id: "event-1",
+      agreementId: "agreement-1",
+      payrollCycleId: "cycle-1",
+      contractId: "contract-1",
+      outcome: "REJECTED",
+      installmentNumber: 2,
+      expectedAmount: decimal("200.00"),
+      discountedAmount: decimal("0.00"),
+      reason: "Afastamento",
+      exceptionStatus: "OPEN",
+      acknowledgedAt: null,
+      acknowledgedBy: null,
+      reviewNoteEncrypted: null,
+      reviewVersion: 1,
+      processedAt: new Date("2026-07-31T12:00:00.000Z"),
+      contract: {
+        contractNumber: "CT-001",
+        party: { id: "party-1", tradeName: "Banco Teste", legalName: "Banco Teste SA" },
+        product: { id: "product-1", code: "LOAN", name: "Emprestimo", family: "PAYROLL_LOAN" },
+      },
+    };
+    const updated = {
+      ...event,
+      exceptionStatus: "IN_REVIEW",
+      acknowledgedAt: new Date("2026-08-01T10:00:00.000Z"),
+      acknowledgedBy: { id: "user-1", name: "Gestora" },
+      reviewNoteEncrypted: "protected-note",
+      reviewVersion: 2,
+    };
+    const transaction = {
+      payrollDiscountEvent: {
+        findFirst: vi.fn().mockResolvedValue(event),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue(updated),
+      },
+      auditEvent: { create: vi.fn().mockResolvedValue({}) },
+      outboxEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof transaction) => Promise<unknown>) => callback(transaction)),
+    } as unknown as PrismaService;
+    const protection = {
+      encrypt: vi.fn().mockReturnValue("protected-note"),
+      decrypt: vi.fn().mockReturnValue("Analisar afastamento"),
+    } as unknown as DataProtectionService;
+    const service = new PayrollService(prisma, protection);
+
+    const result = await service.acknowledgeException(
+      "agreement-1",
+      "cycle-1",
+      "event-1",
+      { note: "Analisar afastamento" },
+      context,
+    );
+
+    expect(transaction.payrollDiscountEvent.updateMany).toHaveBeenCalledWith({
+      where: { id: "event-1", exceptionStatus: "OPEN", reviewVersion: 1 },
+      data: expect.objectContaining({
+        exceptionStatus: "IN_REVIEW",
+        acknowledgedByUserId: "user-1",
+        reviewNoteEncrypted: "protected-note",
+        reviewVersion: { increment: 1 },
+      }),
+    });
+    expect(protection.encrypt).toHaveBeenCalledWith("Analisar afastamento", "payroll.exception_note");
+    expect(transaction).not.toHaveProperty("contract");
+    expect(transaction).not.toHaveProperty("marginAccount");
+    expect(result).toMatchObject({ exceptionStatus: "IN_REVIEW", duplicate: false });
+  });
+
+  it("rejects a concurrent attempt to claim the same payroll exception", async () => {
+    const transaction = {
+      payrollDiscountEvent: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "event-1",
+          agreementId: "agreement-1",
+          payrollCycleId: "cycle-1",
+          contractId: "contract-1",
+          outcome: "PARTIAL",
+          exceptionStatus: "OPEN",
+          reviewVersion: 3,
+          contract: {},
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof transaction) => Promise<unknown>) => callback(transaction)),
+    } as unknown as PrismaService;
+    const protection = { encrypt: vi.fn().mockReturnValue("protected-note") } as unknown as DataProtectionService;
+    const service = new PayrollService(prisma, protection);
+
+    await expect(service.acknowledgeException(
+      "agreement-1",
+      "cycle-1",
+      "event-1",
+      { note: "Revisao concorrente" },
+      context,
+    )).rejects.toBeInstanceOf(ConflictException);
   });
 });
 

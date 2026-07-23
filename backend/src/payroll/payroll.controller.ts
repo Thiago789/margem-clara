@@ -21,6 +21,7 @@ import {
   type ContextualRequest,
 } from "../platform/request-context/request-context.js";
 import {
+  AcknowledgePayrollExceptionDto,
   CreatePayrollCycleDto,
   InsertionFileMetadataDto,
   MarginFileMetadataDto,
@@ -118,6 +119,33 @@ export class PayrollController {
     @Param("cycleId", ParseUUIDPipe) cycleId: string,
   ) {
     return this.payroll.getOperations(agreementId, cycleId);
+  }
+
+  @Get(":cycleId/exceptions")
+  @Authorize("payroll:read", { agreementParam: "agreementId", agreementWideOnly: true })
+  listExceptions(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+  ) {
+    return this.payroll.listExceptions(agreementId, cycleId);
+  }
+
+  @Post(":cycleId/exceptions/:eventId/acknowledge")
+  @Authorize("payroll:approve", { agreementParam: "agreementId", agreementWideOnly: true })
+  acknowledgeException(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @Body() input: AcknowledgePayrollExceptionDto,
+    @Req() request: ContextualRequest,
+  ) {
+    return this.payroll.acknowledgeException(
+      agreementId,
+      cycleId,
+      eventId,
+      input,
+      contextFromRequest(request),
+    );
   }
 
   @Post(":cycleId/margin-files")

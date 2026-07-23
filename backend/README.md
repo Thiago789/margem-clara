@@ -187,6 +187,10 @@ O retorno classifica cada desconto como `FULL`, `PARTIAL` ou `REJECTED`. Apenas 
 
 Todas as rotas de folha exigem, alem da permissao correspondente, uma associacao ampla ao convenio. Uma associacao restrita a consignataria e recusada mesmo que receba acidentalmente uma permissao de folha. A projecao operacional nao retorna CPF, matricula, identificador de vinculo nem linha bruta.
 
+Descontos `PARTIAL` e `REJECTED` abrem automaticamente uma excecao operacional. `GET /:cycleId/exceptions` retorna a fila segura e `POST /:cycleId/exceptions/:eventId/acknowledge` permite que um gestor assuma a analise com controle otimista. A observacao e cifrada para persistencia; auditoria e outbox registram a transicao sem copiar seu texto.
+
+Assumir uma excecao nao altera parcela, contrato ou margem. Resolucao financeira, diferenca de desconto e eventual reapresentacao terao regras explicitas e versionadas por convenio antes de serem automatizadas.
+
 ## Reservas de margem
 
 O fluxo transacional usa `/api/v1/agreements/:agreementId/parties/:partyId/reservations` e exige escopo simultaneo no convenio e na consignataria:

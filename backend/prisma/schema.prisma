@@ -114,6 +114,11 @@ enum PayrollDiscountOutcome {
   REJECTED
 }
 
+enum PayrollExceptionStatus {
+  OPEN
+  IN_REVIEW
+}
+
 enum MarginMovementType {
   RECALCULATION
   RESERVATION
@@ -479,17 +484,7 @@ model PayrollInstruction {
   reconciledAt      DateTime?                @map("reconciled_at") @db.Timestamptz(6)
   createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  @@unique([payrollCycleId, contractId], map: "payroll_instructions_cycle_contract_key")
-  @@index([agreementId, statu…589 tokens truncated…(6)
-
-  @@unique([agreementId, code])
-  @@map("margin_groups")
-}
-
-model MarginAccount {
-  id                String              @id @default(uuid()) @db.Uuid
-  agreementId       String              @map("agreement_id") @db.Uuid
-  agreement         Agreement           @relation(fields: [agreementId], references: [id])
+  @@unique([payrollCycleId, contractId], map: "payroll_instruction…855 tokens truncated…    @relation(fields: [agreementId], references: [id])
   enrollmentId      String              @map("enrollment_id") @db.Uuid
   enrollment        Enrollment          @relation(fields: [enrollmentId], references: [id])
   marginGroupId     String              @map("margin_group_id") @db.Uuid
@@ -675,22 +670,23 @@ model Contract {
 }
 
 model User {
-  id                    String              @id @default(uuid()) @db.Uuid
-  name                  String
-  email                 String              @unique
-  passwordHash          String              @map("password_hash")
-  status                RecordStatus        @default(ACTIVE)
-  lastLoginAt           DateTime?           @map("last_login_at") @db.Timestamptz(6)
-  memberships           Membership[]
-  authSessions          AuthSession[]
-  authAttempts          AuthAttempt[]
-  createdReservations   MarginReservation[] @relation("ReservationCreatedBy")
-  confirmedReservations MarginReservation[] @relation("ReservationConfirmedBy")
-  cancelledReservations MarginReservation[] @relation("ReservationCancelledBy")
-  createdContracts      Contract[]          @relation("ContractCreatedBy")
-  createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
-  version               Int                 @default(1)
+  id                            String                 @id @default(uuid()) @db.Uuid
+  name                          String
+  email                         String                 @unique
+  passwordHash                  String                 @map("password_hash")
+  status                        RecordStatus           @default(ACTIVE)
+  lastLoginAt                   DateTime?              @map("last_login_at") @db.Timestamptz(6)
+  memberships                   Membership[]
+  authSessions                  AuthSession[]
+  authAttempts                  AuthAttempt[]
+  createdReservations           MarginReservation[]    @relation("ReservationCreatedBy")
+  confirmedReservations         MarginReservation[]    @relation("ReservationConfirmedBy")
+  cancelledReservations         MarginReservation[]    @relation("ReservationCancelledBy")
+  createdContracts              Contract[]             @relation("ContractCreatedBy")
+  acknowledgedPayrollExceptions PayrollDiscountEvent[] @relation("PayrollExceptionAcknowledgedBy")
+  createdAt                     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version                       Int                    @default(1)
 
   @@map("users")
 }

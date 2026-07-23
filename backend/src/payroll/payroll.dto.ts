@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, Matches, MaxLength } from "class-validator";
+import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from "class-validator";
 
 export class CreatePayrollCycleDto {
   @Matches(/^\d{4}-(?:0[1-9]|1[0-2])$/)
@@ -46,6 +46,13 @@ export class ReturnFileMetadataDto {
   @IsString()
   @MaxLength(200)
   description = "Arquivo retorno da folha";
+}
+
+export class AcknowledgePayrollExceptionDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(500)
+  note!: string;
 }
 
 export interface UploadedMarginFile {

@@ -19,6 +19,7 @@ import {
 } from "./margin-file.parser.js";
 import type {
   CreatePayrollCycleDto,
+  AcknowledgePayrollExceptionDto,
   InsertionFileMetadataDto,
   MarginFileMetadataDto,
   ReturnFileMetadataDto,
@@ -179,6 +180,8 @@ export class PayrollService {
       fullCount,
       partialCount,
       rejectedCount,
+      openExceptionCount,
+      inReviewExceptionCount,
       discountTotals,
       settlementEvents,
       pendingInstructions,
@@ -199,6 +202,8 @@ export class PayrollService {
       this.prisma.payrollDiscountEvent.count({ where: { ...eventWhere, outcome: "FULL" } }),
       this.prisma.payrollDiscountEvent.count({ where: { ...eventWhere, outcome: "PARTIAL" } }),
       this.prisma.payrollDiscountEvent.count({ where: { ...eventWhere, outcome: "REJECTED" } }),
+      this.prisma.payrollDiscountEvent.count({ where: { ...eventWhere, exceptionStatus: "OPEN" } }),
+      this.prisma.payrollDiscountEvent.count({ where: { ...eventWhere, exceptionStatus: "IN_REVIEW" } }),
       this.prisma.payrollDiscountEvent.aggregate({ where: eventWhere, _sum: { discountedAmount: true } }),
       this.prisma.payrollDiscountEvent.findMany({
         where: { ...eventWhere, outcome: "FULL" },
@@ -220,7 +225,10 @@ export class PayrollService {
       }),
       this.prisma.payrollDiscountEvent.findMany({
         where: { ...eventWhere, outcome: { in: ["PARTIAL", "REJECTED"] } },
-        include: { contract: { include: { party: true, product: true } } },
+        include: {
+          acknowledgedBy: { select: { id: true, name: true } },
+          contract: { include: { party: true, product: true } },
+        },
         orderBy: { processedAt: "desc" },
         take: 100,
       }),
@@ -242,6 +250,8 @@ export class PayrollService {
         full: fullCount,
         partial: partialCount,
         rejected: rejectedCount,
+        openExceptions: openExceptionCount,
+        inReviewExceptions: inReviewExceptionCount,
         settledContracts: settledCount,
         instructedAmount: instructionTotals._sum.amount?.toString() ?? "0.00",
         discountedAmount: discountTotals._sum.discountedAmount?.toString() ?? "0.00",
@@ -277,6 +287,12 @@ export class PayrollService {
         expectedAmount: event.expectedAmount.toString(),
         discountedAmount: event.discountedAmount.toString(),
         reason: event.reason,
+        exceptionStatus: event.exceptionStatus,
+        acknowledgedAt: event.acknowledgedAt?.toISOString() ?? null,
+        acknowledgedBy: event.acknowledgedBy,
+        reviewNote: event.reviewNoteEncrypted
+          ? this.protection.decrypt(event.reviewNoteEncrypted, "payroll.exception_note")
+          : null,
         processedAt: event.processedAt.toISOString(),
         party: {
           id: event.contract.party.id,
@@ -290,6 +306,101 @@ export class PayrollService {
         },
       })),
     };
+  }
+
+  async listExceptions(agreementId: string, cycleId: string) {
+    const cycle = await this.prisma.payrollCycle.findFirst({
+      where: { id: cycleId, agreementId },
+      select: { id: true },
+    });
+    if (!cycle) throw new NotFoundException("Ciclo de folha nao encontrado");
+    const events = await this.prisma.payrollDiscountEvent.findMany({
+      where: { agreementId, payrollCycleId: cycleId, outcome: { in: ["PARTIAL", "REJECTED"] } },
+      include: {
+        acknowledgedBy: { select: { id: true, name: true } },
+        contract: { include: { party: true, product: true } },
+      },
+      orderBy: [{ exceptionStatus: "asc" }, { processedAt: "desc" }],
+      take: 500,
+    });
+    return events.map((event) => this.exceptionView(event));
+  }
+
+  async acknowledgeException(
+    agreementId: string,
+    cycleId: string,
+    eventId: string,
+    input: AcknowledgePayrollExceptionDto,
+    context: RequestContext,
+  ) {
+    const note = input.note.trim();
+    if (note.length < 3) throw new BadRequestException("Observacao da analise e obrigatoria");
+    return this.prisma.$transaction(async (transaction) => {
+      const event = await transaction.payrollDiscountEvent.findFirst({
+        where: {
+          id: eventId,
+          agreementId,
+          payrollCycleId: cycleId,
+          outcome: { in: ["PARTIAL", "REJECTED"] },
+        },
+        include: {
+          acknowledgedBy: { select: { id: true, name: true } },
+          contract: { include: { party: true, product: true } },
+        },
+      });
+      if (!event) throw new NotFoundException("Excecao de folha nao encontrada");
+      if (event.exceptionStatus === "IN_REVIEW") {
+        return { ...this.exceptionView(event), duplicate: true };
+      }
+      if (event.exceptionStatus !== "OPEN") throw new ConflictException("Excecao nao esta aberta");
+      const acknowledgedAt = new Date();
+      const protectedNote = this.protection.encrypt(note, "payroll.exception_note");
+      const claimed = await transaction.payrollDiscountEvent.updateMany({
+        where: { id: event.id, exceptionStatus: "OPEN", reviewVersion: event.reviewVersion },
+        data: {
+          exceptionStatus: "IN_REVIEW",
+          acknowledgedByUserId: context.actor!.userId,
+          acknowledgedAt,
+          reviewNoteEncrypted: protectedNote,
+          reviewVersion: { increment: 1 },
+        },
+      });
+      if (claimed.count !== 1) throw new ConflictException("Excecao foi assumida por outro operador");
+      await transaction.auditEvent.create({ data: {
+        agreementId,
+        actorUserId: context.actor?.userId ?? null,
+        actorRole: context.actor?.role ?? null,
+        action: "payroll_exception.acknowledge",
+        outcome: "success",
+        entityType: "payroll_discount_event",
+        entityId: event.id,
+        correlationId: context.correlationId,
+        previousData: { exceptionStatus: "OPEN", reviewVersion: event.reviewVersion },
+        newData: { exceptionStatus: "IN_REVIEW", outcome: event.outcome },
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      } });
+      await transaction.outboxEvent.create({ data: {
+        agreementId,
+        aggregateType: "payroll_discount_event",
+        aggregateId: event.id,
+        eventType: "payroll.exception_acknowledged",
+        payload: { payrollCycleId: cycleId, contractId: event.contractId, outcome: event.outcome },
+        correlationId: context.correlationId,
+      } });
+      const updated = await transaction.payrollDiscountEvent.findUnique({
+        where: { id: event.id },
+        include: {
+          acknowledgedBy: { select: { id: true, name: true } },
+          contract: { include: { party: true, product: true } },
+        },
+      });
+      if (!updated) throw new ConflictException("Excecao nao esta mais disponivel");
+      return {
+        ...this.exceptionView(updated),
+        duplicate: false,
+      };
+    }, { isolationLevel: "Serializable" });
   }
 
   async uploadMarginFile(
@@ -383,162 +494,7 @@ export class PayrollService {
         errors,
       };
     });
-    const invalidRows = stagedRows.filter((row) => row.status === "INVALID").length;
-    const validRows = stagedRows.length - invalidRows;
-    const protocolNumber = `MG-${cycle.competency.toISOString().slice(0, 7).replace("-", "")}-${contentHash.slice(0, 12).toUpperCase()}`;
-
-    try {
-      const stored = await this.prisma.$transaction(
-        async (transaction) => {
-          const currentCycle = await transaction.payrollCycle.findFirst({
-            where: { id: cycleId, agreementId, status: { in: ["OPEN", "REVIEW"] } },
-            select: { id: true },
-          });
-          if (!currentCycle) throw new ConflictException("Ciclo nao aceita novos arquivos de margem");
-          const payrollFile = await transaction.payrollFile.create({
-            data: {
-              agreementId,
-              payrollCycleId: cycleId,
-              fileType: "MARGIN",
-              direction: "INBOUND",
-              environment: metadata.environment,
-              layoutVersion: metadata.layoutVersion,
-              protocolNumber,
-              originalFileName: safeFileName,
-              contentHash,
-              sizeBytes: BigInt(file.size),
-              mediaType: file.mimetype,
-              status: invalidRows ? "REJECTED" : "VALIDATED",
-              totalRows: stagedRows.length,
-              validRows,
-              invalidRows,
-              totalAmount: decimalFromCents(totalAmount),
-              idempotencyKey,
-              uploadedByUserId: context.actor!.userId,
-            },
-          });
-          await transaction.payrollFileRow.createMany({
-            data: stagedRows.map(({ normalizedData, ...row }) => ({
-              ...row,
-              payrollFileId: payrollFile.id,
-              ...(normalizedData ? { normalizedData } : {}),
-            })),
-          });
-          await transaction.payrollCycle.update({
-            where: { id: cycleId },
-            data: { status: "REVIEW", version: { increment: 1 } },
-          });
-          await transaction.auditEvent.create({
-            data: {
-              agreementId,
-              actorUserId: context.actor?.userId ?? null,
-              actorRole: context.actor?.role ?? null,
-              action: "payroll_margin_file.stage",
-              outcome: invalidRows ? "rejected" : "success",
-              entityType: "payroll_file",
-              entityId: payrollFile.id,
-              correlationId: context.correlationId,
-              newData: {
-                protocolNumber,
-                totalRows: stagedRows.length,
-                validRows,
-                invalidRows,
-                description: metadata.description,
-              },
-              ipAddress: context.ipAddress,
-              userAgent: context.userAgent,
-            },
-          });
-          return payrollFile;
-        },
-        { isolationLevel: "Serializable" },
-      );
-      return { ...this.toFileView(stored), duplicate: false };
-    } catch (error) {
-      if (isUniqueConflict(error)) {
-        const duplicate = await this.prisma.payrollFile.findFirst({
-          where: {
-            agreementId,
-            OR: [
-              { idempotencyKey },
-              { payrollCycleId: cycleId, fileType: "MARGIN", contentHash },
-            ],
-          },
-        });
-        if (duplicate) return { ...this.toFileView(duplicate), duplicate: true };
-      }
-      throw error;
-    }
-  }
-
-  async generateInsertionFile(
-    agreementId: string,
-    cycleId: string,
-    metadata: InsertionFileMetadataDto,
-    idempotencyKey: string | undefined,
-    context: RequestContext,
-  ) {
-    assertIdempotencyKey(idempotencyKey);
-    const duplicate = await this.prisma.payrollFile.findFirst({ where: { agreementId, idempotencyKey } });
-    if (duplicate) return { ...this.toFileView(duplicate), duplicate: true };
-
-    return this.prisma.$transaction(async (transaction) => {
-      const cycle = await transaction.payrollCycle.findFirst({
-        where: { id: cycleId, agreementId },
-        include: { policyVersion: true },
-      });
-      if (!cycle) throw new NotFoundException("Ciclo de folha nao encontrado");
-      if (cycle.status !== "PUBLISHED" || !cycle.policyVersion) {
-        throw new ConflictException("Ciclo precisa ter a margem publicada antes da insercao");
-      }
-      const existing = await transaction.payrollFile.findFirst({
-        where: { payrollCycleId: cycleId, fileType: "INSERTION", status: { not: "REJECTED" } },
-      });
-      if (existing) throw new ConflictException("Ciclo ja possui arquivo de insercao gerado");
-      const policy = operationalRulesSchema.safeParse(cycle.policyVersion.payload);
-      if (!policy.success || !policy.data.marginGroups?.length) {
-        throw new ConflictException("Politica do ciclo nao possui rubricas de folha va…1443 tokens truncated…n { ...this.toFileView(file), duplicate: false };
-    }, { isolationLevel: "Serializable" });
-  }
-
-  async downloadInsertionFile(agreementId: string, cycleId: string, fileId: string) {
-    const file = await this.prisma.payrollFile.findFirst({
-      where: { id: fileId, agreementId, payrollCycleId: cycleId, fileType: "INSERTION" },
-      include: { rows: { orderBy: { rowNumber: "asc" } } },
-    });
-    if (!file) throw new NotFoundException("Arquivo de insercao nao encontrado");
-    const rows = file.rows.map((row) => {
-      const raw = JSON.parse(this.protection.decrypt(row.rawDataEncrypted, "payroll.insertion_row")) as Record<string, string | number | null>;
-      return Object.values(raw);
-    });
-    const buffer = buildInsertionCsv(rows);
-    if (createHash("sha256").update(buffer).digest("hex") !== file.contentHash) {
-      throw new ConflictException("Integridade do arquivo de insercao comprometida");
-    }
-    return {
-      fileName: file.originalFileName,
-      mediaType: file.mediaType,
-      buffer,
-      contentHash: file.contentHash,
-    };
-  }
-
-  async uploadReturnFile(
-    agreementId: string,
-    cycleId: string,
-    metadata: ReturnFileMetadataDto,
-    idempotencyKey: string | undefined,
-    file: UploadedMarginFile,
-    context: RequestContext,
-  ) {
-    assertIdempotencyKey(idempotencyKey);
-    const safeFileName = safeCsvFile(file);
-    const cycle = await this.prisma.payrollCycle.findFirst({ where: { id: cycleId, agreementId } });
-    if (!cycle) throw new NotFoundException("Ciclo de folha nao encontrado");
-    if (!(cycle.status === "PUBLISHED" || cycle.status === "CLOSED")) throw new ConflictException("Ciclo nao aceita arquivo retorno");
-    const contentHash = createHash("sha256").update(file.buffer).digest("hex");
-    const duplicate = await this.prisma.payrollFile.findFirst({
-      where: { agreementId, OR: [{ idempotencyKey }, { payrollCycleId: cycleId, fileType: "RETURN", contentHash }] },
+    const invalidRows = stage…3093 tokens truncated…here: { agreementId, OR: [{ idempotencyKey }, { payrollCycleId: cycleId, fileType: "RETURN", contentHash }] },
     });
     if (duplicate) return { ...this.toFileView(duplicate), duplicate: true };
 
@@ -639,6 +595,7 @@ export class PayrollService {
           enrollmentId: instruction.enrollmentId, sourceFileRowId: row.id,
           expectedAmount: parsed.data.expectedAmount, discountedAmount: parsed.data.discountedAmount,
           outcome: parsed.data.outcome, installmentNumber: parsed.data.installmentNumber, reason: parsed.data.reason,
+          exceptionStatus: parsed.data.outcome === "FULL" ? null : "OPEN",
         } });
         if (parsed.data.outcome === "FULL") {
           full += 1;
@@ -831,6 +788,56 @@ export class PayrollService {
       },
       { isolationLevel: "Serializable" },
     );
+  }
+
+  private exceptionView(event: {
+    id: string;
+    contractId: string;
+    outcome: string;
+    installmentNumber: number | null;
+    expectedAmount: { toString(): string };
+    discountedAmount: { toString(): string };
+    reason: string | null;
+    exceptionStatus: string | null;
+    acknowledgedAt: Date | null;
+    acknowledgedBy: { id: string; name: string } | null;
+    reviewNoteEncrypted: string | null;
+    reviewVersion: number;
+    processedAt: Date;
+    contract: {
+      contractNumber: string;
+      party: { id: string; tradeName: string | null; legalName: string };
+      product: { id: string; code: string; name: string; family: string };
+    };
+  }) {
+    return {
+      id: event.id,
+      contractId: event.contractId,
+      contractNumber: event.contract.contractNumber,
+      outcome: event.outcome,
+      installmentNumber: event.installmentNumber,
+      expectedAmount: event.expectedAmount.toString(),
+      discountedAmount: event.discountedAmount.toString(),
+      reason: event.reason,
+      exceptionStatus: event.exceptionStatus,
+      acknowledgedAt: event.acknowledgedAt?.toISOString() ?? null,
+      acknowledgedBy: event.acknowledgedBy,
+      reviewNote: event.reviewNoteEncrypted
+        ? this.protection.decrypt(event.reviewNoteEncrypted, "payroll.exception_note")
+        : null,
+      reviewVersion: event.reviewVersion,
+      processedAt: event.processedAt.toISOString(),
+      party: {
+        id: event.contract.party.id,
+        name: event.contract.party.tradeName ?? event.contract.party.legalName,
+      },
+      product: {
+        id: event.contract.product.id,
+        code: event.contract.product.code,
+        name: event.contract.product.name,
+        family: event.contract.product.family,
+      },
+    };
   }
 
   private toCycleView(cycle: {

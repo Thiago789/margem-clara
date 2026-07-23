@@ -11,6 +11,7 @@ const agreementId = "1a3c8d1e-c8ca-4551-9448-31476c575ef5";
 const otherAgreementId = "6b194810-5e29-4b51-92b2-037120b1c896";
 const cycleId = "2312f48d-d3c7-43c5-aed5-2cbc09a8f353";
 const fileId = "40f76a2a-7724-4f93-a7eb-d0d72c73520d";
+const eventId = "af21b950-5778-40d8-9ca8-df266f441837";
 const actor = {
   userId: "cc59fe16-6075-4cba-b306-5e45b7f3e66a",
   role: "agreement_manager",
@@ -31,6 +32,8 @@ describe("payroll endpoints", () => {
     listCycles: vi.fn(),
     listFiles: vi.fn(),
     getOperations: vi.fn(),
+    listExceptions: vi.fn(),
+    acknowledgeException: vi.fn(),
     uploadMarginFile: vi.fn(),
     getFile: vi.fn(),
     publishMarginFile: vi.fn(),
@@ -146,6 +149,38 @@ describe("payroll endpoints", () => {
       expect.any(Object),
       expect.objectContaining({ action: "access.denied", entityId: "payroll:read" }),
     );
+  });
+
+  it("allows an agreement manager to assume a payroll exception", async () => {
+    auth.authenticate.mockResolvedValue(actor);
+    payroll.acknowledgeException.mockResolvedValue({ id: eventId, exceptionStatus: "IN_REVIEW" });
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/agreements/${agreementId}/payroll-cycles/${cycleId}/exceptions/${eventId}/acknowledge`)
+      .set("Cookie", "mc_session=session-value")
+      .send({ note: "Validar afastamento informado pela folha" })
+      .expect(201)
+      .expect(({ body }) => expect(body.exceptionStatus).toBe("IN_REVIEW"));
+
+    expect(payroll.acknowledgeException).toHaveBeenCalledWith(
+      agreementId,
+      cycleId,
+      eventId,
+      { note: "Validar afastamento informado pela folha" },
+      expect.any(Object),
+    );
+  });
+
+  it("rejects an exception acknowledgement without a meaningful note", async () => {
+    auth.authenticate.mockResolvedValue(actor);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/agreements/${agreementId}/payroll-cycles/${cycleId}/exceptions/${eventId}/acknowledge`)
+      .set("Cookie", "mc_session=session-value")
+      .send({ note: "x" })
+      .expect(400);
+
+    expect(payroll.acknowledgeException).not.toHaveBeenCalled();
   });
 });
 
