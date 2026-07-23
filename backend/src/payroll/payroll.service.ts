@@ -23,6 +23,7 @@ import type {
   InsertionFileMetadataDto,
   MarginFileMetadataDto,
   ReturnFileMetadataDto,
+  ResolvePayrollExceptionDto,
   UploadedMarginFile,
 } from "./payroll.dto.js";
 import {
@@ -346,6 +347,7 @@ export class PayrollService {
       where: { agreementId, payrollCycleId: cycleId, outcome: { in: ["PARTIAL", "REJECTED"] } },
       include: {
         acknowledgedBy: { select: { id: true, name: true } },
+        resolvedBy: { select: { id: true, name: true } },
         contract: { include: { party: true, product: true } },
       },
       orderBy: [{ exceptionStatus: "asc" }, { processedAt: "desc" }],
@@ -373,6 +375,7 @@ export class PayrollService {
         },
         include: {
           acknowledgedBy: { select: { id: true, name: true } },
+          resolvedBy: { select: { id: true, name: true } },
           contract: { include: { party: true, product: true } },
         },
       });
@@ -420,6 +423,7 @@ export class PayrollService {
         where: { id: event.id },
         include: {
           acknowledgedBy: { select: { id: true, name: true } },
+          resolvedBy: { select: { id: true, name: true } },
           contract: { include: { party: true, product: true } },
         },
       });
@@ -428,6 +432,99 @@ export class PayrollService {
         ...this.exceptionView(updated),
         duplicate: false,
       };
+    }, { isolationLevel: "Serializable" });
+  }
+
+  async resolveException(
+    agreementId: string,
+    cycleId: string,
+    eventId: string,
+    input: ResolvePayrollExceptionDto,
+    context: RequestContext,
+  ) {
+    const note = input.note.trim();
+    if (note.length < 3) throw new BadRequestException("Justificativa da resolucao e obrigatoria");
+    return this.prisma.$transaction(async (transaction) => {
+      const event = await transaction.payrollDiscountEvent.findFirst({
+        where: {
+          id: eventId,
+          agreementId,
+          payrollCycleId: cycleId,
+          outcome: { in: ["PARTIAL", "REJECTED"] },
+        },
+        include: {
+          acknowledgedBy: { select: { id: true, name: true } },
+          resolvedBy: { select: { id: true, name: true } },
+          contract: { include: { party: true, product: true } },
+        },
+      });
+      if (!event) throw new NotFoundException("Excecao de folha nao encontrada");
+      if (event.exceptionStatus === "RESOLVED") {
+        if (event.resolutionAction !== input.action) {
+          throw new ConflictException("Excecao ja resolvida com outra acao");
+        }
+        return { ...this.exceptionView(event), duplicate: true };
+      }
+      if (event.exceptionStatus !== "IN_REVIEW") {
+        throw new ConflictException("Excecao precisa estar em analise antes da resolucao");
+      }
+      if (input.action !== "RETRY_NEXT_CYCLE" || event.outcome !== "REJECTED") {
+        throw new ConflictException("Somente desconto rejeitado pode ser reapresentado neste momento");
+      }
+      if (compareMoney(event.discountedAmount.toString(), "0.00") !== 0) {
+        throw new ConflictException("Reapresentacao exige valor descontado igual a zero");
+      }
+
+      const resolvedAt = new Date();
+      const protectedNote = this.protection.encrypt(note, "payroll.exception_resolution_note");
+      const resolved = await transaction.payrollDiscountEvent.updateMany({
+        where: { id: event.id, exceptionStatus: "IN_REVIEW", reviewVersion: event.reviewVersion },
+        data: {
+          exceptionStatus: "RESOLVED",
+          resolutionAction: input.action,
+          resolvedByUserId: context.actor!.userId,
+          resolvedAt,
+          resolutionNoteEncrypted: protectedNote,
+          reviewVersion: { increment: 1 },
+        },
+      });
+      if (resolved.count !== 1) throw new ConflictException("Excecao foi alterada por outro operador");
+      await transaction.auditEvent.create({ data: {
+        agreementId,
+        actorUserId: context.actor?.userId ?? null,
+        actorRole: context.actor?.role ?? null,
+        action: "payroll_exception.resolve",
+        outcome: "success",
+        entityType: "payroll_discount_event",
+        entityId: event.id,
+        correlationId: context.correlationId,
+        previousData: { exceptionStatus: "IN_REVIEW", reviewVersion: event.reviewVersion },
+        newData: { exceptionStatus: "RESOLVED", resolutionAction: input.action },
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      } });
+      await transaction.outboxEvent.create({ data: {
+        agreementId,
+        aggregateType: "payroll_discount_event",
+        aggregateId: event.id,
+        eventType: "payroll.exception_resolved",
+        payload: {
+          payrollCycleId: cycleId,
+          contractId: event.contractId,
+          resolutionAction: input.action,
+        },
+        correlationId: context.correlationId,
+      } });
+      const updated = await transaction.payrollDiscountEvent.findUnique({
+        where: { id: event.id },
+        include: {
+          acknowledgedBy: { select: { id: true, name: true } },
+          resolvedBy: { select: { id: true, name: true } },
+          contract: { include: { party: true, product: true } },
+        },
+      });
+      if (!updated) throw new ConflictException("Excecao nao esta mais disponivel");
+      return { ...this.exceptionView(updated), duplicate: false };
     }, { isolationLevel: "Serializable" });
   }
 
@@ -1154,6 +1251,10 @@ export class PayrollService {
     acknowledgedAt: Date | null;
     acknowledgedBy: { id: string; name: string } | null;
     reviewNoteEncrypted: string | null;
+    resolutionAction: string | null;
+    resolvedAt: Date | null;
+    resolvedBy: { id: string; name: string } | null;
+    resolutionNoteEncrypted: string | null;
     reviewVersion: number;
     processedAt: Date;
     contract: {
@@ -1176,6 +1277,12 @@ export class PayrollService {
       acknowledgedBy: event.acknowledgedBy,
       reviewNote: event.reviewNoteEncrypted
         ? this.protection.decrypt(event.reviewNoteEncrypted, "payroll.exception_note")
+        : null,
+      resolutionAction: event.resolutionAction,
+      resolvedAt: event.resolvedAt?.toISOString() ?? null,
+      resolvedBy: event.resolvedBy,
+      resolutionNote: event.resolutionNoteEncrypted
+        ? this.protection.decrypt(event.resolutionNoteEncrypted, "payroll.exception_resolution_note")
         : null,
       reviewVersion: event.reviewVersion,
       processedAt: event.processedAt.toISOString(),

@@ -34,6 +34,7 @@ describe("payroll endpoints", () => {
     getOperations: vi.fn(),
     listExceptions: vi.fn(),
     acknowledgeException: vi.fn(),
+    resolveException: vi.fn(),
     uploadMarginFile: vi.fn(),
     getFile: vi.fn(),
     publishMarginFile: vi.fn(),
@@ -182,5 +183,28 @@ describe("payroll endpoints", () => {
 
     expect(payroll.acknowledgeException).not.toHaveBeenCalled();
   });
-});
 
+  it("allows an agreement manager to resolve a rejected exception for retry", async () => {
+    auth.authenticate.mockResolvedValue(actor);
+    payroll.resolveException.mockResolvedValue({
+      id: eventId,
+      exceptionStatus: "RESOLVED",
+      resolutionAction: "RETRY_NEXT_CYCLE",
+    });
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/agreements/${agreementId}/payroll-cycles/${cycleId}/exceptions/${eventId}/resolve`)
+      .set("Cookie", "mc_session=session-value")
+      .send({ action: "RETRY_NEXT_CYCLE", note: "Reapresentar no proximo ciclo" })
+      .expect(201)
+      .expect(({ body }) => expect(body.exceptionStatus).toBe("RESOLVED"));
+
+    expect(payroll.resolveException).toHaveBeenCalledWith(
+      agreementId,
+      cycleId,
+      eventId,
+      { action: "RETRY_NEXT_CYCLE", note: "Reapresentar no proximo ciclo" },
+      expect.any(Object),
+    );
+  });
+});

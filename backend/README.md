@@ -189,7 +189,7 @@ Todas as rotas de folha exigem, alem da permissao correspondente, uma associacao
 
 Descontos `PARTIAL` e `REJECTED` abrem automaticamente uma excecao operacional. `GET /:cycleId/exceptions` retorna a fila segura e `POST /:cycleId/exceptions/:eventId/acknowledge` permite que um gestor assuma a analise com controle otimista. A observacao e cifrada para persistencia; auditoria e outbox registram a transicao sem copiar seu texto.
 
-Assumir uma excecao nao altera parcela, contrato ou margem. Resolucao financeira, diferenca de desconto e eventual reapresentacao terao regras explicitas e versionadas por convenio antes de serem automatizadas.
+Assumir uma excecao nao altera parcela, contrato ou margem. Depois da analise, `POST /:cycleId/exceptions/:eventId/resolve` permite `RETRY_NEXT_CYCLE` somente para retorno `REJECTED` com desconto zero. A decisao exige justificativa cifrada, autoria preservada, auditoria e controle otimista; ela libera o contrato para a proxima insercao sem avancar parcela nem alterar margem. Descontos `PARTIAL` continuam bloqueados ate que a regra de diferenca seja definida e versionada por convenio.
 
 ## Reservas de margem
 
@@ -214,4 +214,3 @@ O contrato registra tipo da operacao (`NEW`, `REFINANCING`, `PORTABILITY` ou `DE
 A conversao aceita apenas reserva confirmada, ativa e dentro da validade. Produtos parcelados exigem prazo e primeiro vencimento; produtos de credito exigem valor contratado; a politica fixada na reserva pode exigir campos adicionais. Refinanciamento exige contrato de origem, enquanto portabilidade e compra de divida exigem contrato e credor de origem.
 
 Na mesma transacao, o valor da parcela sai de `reserved_amount` e entra em `consumed_amount`. O disponivel nao muda porque o compromisso total permanece igual. A operacao usa versao otimista da conta e da reserva, cria movimento `CONSUMPTION`, marca a reserva como `CONVERTED`, registra auditoria e publica `contract.activated` na outbox.
-

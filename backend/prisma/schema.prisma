@@ -117,6 +117,11 @@ enum PayrollDiscountOutcome {
 enum PayrollExceptionStatus {
   OPEN
   IN_REVIEW
+  RESOLVED
+}
+
+enum PayrollExceptionResolutionAction {
+  RETRY_NEXT_CYCLE
 }
 
 enum MarginMovementType {
@@ -484,7 +489,69 @@ model PayrollInstruction {
   reconciledAt      DateTime?                @map("reconciled_at") @db.Timestamptz(6)
   createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  @@unique([payrollCycleId, contractId], map: "payroll_instruction…855 tokens truncated…    @relation(fields: [agreementId], references: [id])
+  @@unique([payrollCycleId, contractId], map: "payroll_instructions_cycle_contract_key")
+  @@index([agreementId, status, createdAt])
+  @@map("payroll_instructions")
+}
+
+model PayrollDiscountEvent {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  agreementId          String                  @map("agreement_id") @db.Uuid
+  agreement            Agreement               @relation(fields: [agreementId], references: [id])
+  payrollCycleId       String                  @map("payroll_cycle_id") @db.Uuid
+  payrollCycle         PayrollCycle            @relation(fields: [payrollCycleId], references: [id])
+  instructionId        String                  @unique @map("instruction_id") @db.Uuid
+  instruction          PayrollInstruction      @relation(fields: [instructionId], references: [id])
+  contractId           String                  @map("contract_id") @db.Uuid
+  contract             Contract                @relation(fields: [contractId], references: [id])
+  enrollmentId         String                  @map("enrollment_id") @db.Uuid
+  enrollment           Enrollment              @relation(fields: [enrollmentId], references: [id])
+  sourceFileRowId      String                  @unique @map("source_file_row_id") @db.Uuid
+  sourceFileRow        PayrollFileRow          @relation("DiscountReturnSourceRow", fields: [sourceFileRowId], references: [id])
+  expectedAmount       Decimal                 @map("expected_amount") @db.Decimal(18, 2)
+  discountedAmount     Decimal                 @map("discounted_amount") @db.Decimal(18, 2)
+  outcome              PayrollDiscountOutcome
+  installmentNumber    Int?                    @map("installment_number")
+  reason               String?
+  exceptionStatus      PayrollExceptionStatus? @map("exception_status")
+  acknowledgedByUserId String?                 @map("acknowledged_by_user_id") @db.Uuid
+  acknowledgedBy       User?                   @relation("PayrollExceptionAcknowledgedBy", fields: [acknowledgedByUserId], references: [id])
+  acknowledgedAt       DateTime?               @map("acknowledged_at") @db.Timestamptz(6)
+  reviewNoteEncrypted  String?                 @map("review_note_encrypted")
+  resolutionAction     PayrollExceptionResolutionAction? @map("resolution_action")
+  resolvedByUserId     String?                 @map("resolved_by_user_id") @db.Uuid
+  resolvedBy           User?                   @relation("PayrollExceptionResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: Restrict)
+  resolvedAt           DateTime?               @map("resolved_at") @db.Timestamptz(6)
+  resolutionNoteEncrypted String?              @map("resolution_note_encrypted")
+  reviewVersion        Int                     @default(1) @map("review_version")
+  processedAt          DateTime                @default(now()) @map("processed_at") @db.Timestamptz(6)
+  createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([agreementId, contractId, processedAt])
+  @@index([agreementId, payrollCycleId, exceptionStatus, processedAt], map: "payroll_discount_events_exception_queue_idx")
+  @@map("payroll_discount_events")
+}
+
+model MarginGroup {
+  id          String           @id @default(uuid()) @db.Uuid
+  agreementId String           @map("agreement_id") @db.Uuid
+  agreement   Agreement        @relation(fields: [agreementId], references: [id])
+  code        String
+  name        String
+  status      RecordStatus     @default(ACTIVE)
+  accounts    MarginAccount[]
+  snapshots   MarginSnapshot[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([agreementId, code])
+  @@map("margin_groups")
+}
+
+model MarginAccount {
+  id                String              @id @default(uuid()) @db.Uuid
+  agreementId       String              @map("agreement_id") @db.Uuid
+  agreement         Agreement           @relation(fields: [agreementId], references: [id])
   enrollmentId      String              @map("enrollment_id") @db.Uuid
   enrollment        Enrollment          @relation(fields: [enrollmentId], references: [id])
   marginGroupId     String              @map("margin_group_id") @db.Uuid
@@ -684,6 +751,7 @@ model User {
   cancelledReservations         MarginReservation[]    @relation("ReservationCancelledBy")
   createdContracts              Contract[]             @relation("ContractCreatedBy")
   acknowledgedPayrollExceptions PayrollDiscountEvent[] @relation("PayrollExceptionAcknowledgedBy")
+  resolvedPayrollExceptions     PayrollDiscountEvent[] @relation("PayrollExceptionResolvedBy")
   createdAt                     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
   version                       Int                    @default(1)
@@ -818,4 +886,3 @@ model OutboxEvent {
   @@index([agreementId, aggregateType, aggregateId])
   @@map("outbox_events")
 }
-

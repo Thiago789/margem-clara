@@ -55,10 +55,19 @@ export class AcknowledgePayrollExceptionDto {
   note!: string;
 }
 
+export class ResolvePayrollExceptionDto {
+  @IsIn(["RETRY_NEXT_CYCLE"])
+  action!: "RETRY_NEXT_CYCLE";
+
+  @IsString()
+  @MinLength(3)
+  @MaxLength(500)
+  note!: string;
+}
+
 export interface UploadedMarginFile {
   buffer: Buffer;
   originalname: string;
   mimetype: string;
   size: number;
 }
-

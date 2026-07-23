@@ -26,6 +26,7 @@ import {
   InsertionFileMetadataDto,
   MarginFileMetadataDto,
   ReturnFileMetadataDto,
+  ResolvePayrollExceptionDto,
   type UploadedMarginFile,
 } from "./payroll.dto.js";
 import { PayrollService } from "./payroll.service.js";
@@ -148,6 +149,24 @@ export class PayrollController {
     );
   }
 
+  @Post(":cycleId/exceptions/:eventId/resolve")
+  @Authorize("payroll:approve", { agreementParam: "agreementId", agreementWideOnly: true })
+  resolveException(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("cycleId", ParseUUIDPipe) cycleId: string,
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @Body() input: ResolvePayrollExceptionDto,
+    @Req() request: ContextualRequest,
+  ) {
+    return this.payroll.resolveException(
+      agreementId,
+      cycleId,
+      eventId,
+      input,
+      contextFromRequest(request),
+    );
+  }
+
   @Post(":cycleId/margin-files")
   @Authorize("payroll:write", { agreementParam: "agreementId", agreementWideOnly: true })
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5 * 1024 * 1024, files: 1 } }))
@@ -196,4 +215,3 @@ export class PayrollController {
     );
   }
 }
-

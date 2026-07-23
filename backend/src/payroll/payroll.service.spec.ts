@@ -493,4 +493,118 @@ describe("PayrollService", () => {
       context,
     )).rejects.toBeInstanceOf(ConflictException);
   });
+
+  it("resolves a rejected zero-value exception for retry without changing financial state", async () => {
+    const event = {
+      id: "event-1",
+      agreementId: "agreement-1",
+      payrollCycleId: "cycle-1",
+      contractId: "contract-1",
+      outcome: "REJECTED",
+      installmentNumber: 2,
+      expectedAmount: decimal("200.00"),
+      discountedAmount: decimal("0.00"),
+      reason: "Afastamento",
+      exceptionStatus: "IN_REVIEW",
+      acknowledgedAt: new Date("2026-08-01T09:00:00.000Z"),
+      acknowledgedBy: { id: "reviewer-1", name: "Revisora" },
+      reviewNoteEncrypted: "review-note",
+      resolutionAction: null,
+      resolvedAt: null,
+      resolvedBy: null,
+      resolutionNoteEncrypted: null,
+      reviewVersion: 2,
+      processedAt: new Date("2026-07-31T12:00:00.000Z"),
+      contract: {
+        contractNumber: "CT-001",
+        party: { id: "party-1", tradeName: "Banco Teste", legalName: "Banco Teste SA" },
+        product: { id: "product-1", code: "LOAN", name: "Emprestimo", family: "PAYROLL_LOAN" },
+      },
+    };
+    const updated = {
+      ...event,
+      exceptionStatus: "RESOLVED",
+      resolutionAction: "RETRY_NEXT_CYCLE",
+      resolvedAt: new Date("2026-08-01T10:00:00.000Z"),
+      resolvedBy: { id: "user-1", name: "Gestora" },
+      resolutionNoteEncrypted: "resolution-note",
+      reviewVersion: 3,
+    };
+    const transaction = {
+      payrollDiscountEvent: {
+        findFirst: vi.fn().mockResolvedValue(event),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue(updated),
+      },
+      auditEvent: { create: vi.fn().mockResolvedValue({}) },
+      outboxEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof transaction) => Promise<unknown>) => callback(transaction)),
+    } as unknown as PrismaService;
+    const protection = {
+      encrypt: vi.fn().mockReturnValue("resolution-note"),
+      decrypt: vi.fn().mockReturnValue("Reapresentar apos retorno da folha"),
+    } as unknown as DataProtectionService;
+    const service = new PayrollService(prisma, protection);
+
+    const result = await service.resolveException(
+      "agreement-1",
+      "cycle-1",
+      "event-1",
+      { action: "RETRY_NEXT_CYCLE", note: "Reapresentar apos retorno da folha" },
+      context,
+    );
+
+    expect(transaction.payrollDiscountEvent.updateMany).toHaveBeenCalledWith({
+      where: { id: "event-1", exceptionStatus: "IN_REVIEW", reviewVersion: 2 },
+      data: expect.objectContaining({
+        exceptionStatus: "RESOLVED",
+        resolutionAction: "RETRY_NEXT_CYCLE",
+        resolvedByUserId: "user-1",
+        resolutionNoteEncrypted: "resolution-note",
+        reviewVersion: { increment: 1 },
+      }),
+    });
+    expect(transaction).not.toHaveProperty("contract");
+    expect(transaction).not.toHaveProperty("marginAccount");
+    expect(result).toMatchObject({
+      exceptionStatus: "RESOLVED",
+      resolutionAction: "RETRY_NEXT_CYCLE",
+      duplicate: false,
+    });
+  });
+
+  it("keeps partial discounts blocked from retry resolution", async () => {
+    const transaction = {
+      payrollDiscountEvent: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "event-1",
+          agreementId: "agreement-1",
+          payrollCycleId: "cycle-1",
+          contractId: "contract-1",
+          outcome: "PARTIAL",
+          discountedAmount: decimal("80.00"),
+          exceptionStatus: "IN_REVIEW",
+          reviewVersion: 2,
+          contract: {},
+        }),
+        updateMany: vi.fn(),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof transaction) => Promise<unknown>) => callback(transaction)),
+    } as unknown as PrismaService;
+    const service = new PayrollService(prisma, {} as DataProtectionService);
+
+    await expect(service.resolveException(
+      "agreement-1",
+      "cycle-1",
+      "event-1",
+      { action: "RETRY_NEXT_CYCLE", note: "Tentar cobrar novamente" },
+      context,
+    )).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.payrollDiscountEvent.updateMany).not.toHaveBeenCalled();
+  });
 });

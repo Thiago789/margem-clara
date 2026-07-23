@@ -12,6 +12,7 @@ export type DataProtectionPurpose =
   | "payroll.insertion_row"
   | "payroll.return_row"
   | "payroll.exception_note"
+  | "payroll.exception_resolution_note"
   | "reservation.confirmation_code";
 
 export class InvalidProtectedValueError extends Error {
@@ -96,4 +97,3 @@ export class DataProtectionService {
       .digest("base64url");
   }
 }
-
