@@ -158,10 +158,26 @@ function setup() {
   };
   const prisma = {
     $transaction: vi.fn((callback) => callback(transaction)),
-    contract: { findUnique: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
-    contractArrearsPayment: { findUnique: vi.fn(), findMany: vi.fn() },
+    contract: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      aggregate: vi.fn(),
+    },
+    contractArrearsPayment: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      aggregate: vi.fn(),
+    },
   } as unknown as PrismaService;
-  return { service: new ContractsService(prisma), transaction };
+  return {
+    service: new ContractsService(prisma),
+    transaction,
+    prisma: prisma as unknown as {
+      contract: { findMany: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
+      contractArrearsPayment: { aggregate: ReturnType<typeof vi.fn> };
+    },
+  };
 }
 
 describe("ContractsService", () => {
@@ -254,6 +270,79 @@ describe("ContractsService", () => {
     )).rejects.toBeInstanceOf(ConflictException);
 
     expect(transaction.marginReservation.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("returns a party-scoped arrears overview without servant identifiers", async () => {
+    const { service, prisma } = setup();
+    prisma.contract.aggregate
+      .mockResolvedValueOnce({
+        _count: { _all: 2 },
+        _sum: { arrearsAmount: decimal("180.00") },
+      })
+      .mockResolvedValueOnce({
+        _count: { _all: 1 },
+        _sum: { arrearsAmount: decimal("120.00") },
+      })
+      .mockResolvedValueOnce({
+        _count: { _all: 1 },
+        _sum: { arrearsAmount: decimal("60.00") },
+      });
+    prisma.contractArrearsPayment.aggregate.mockResolvedValue({
+      _count: { _all: 3 },
+      _sum: { amount: decimal("90.00") },
+    });
+    prisma.contract.findMany.mockResolvedValue([{
+      ...contract({
+        currentInstallment: 4,
+        fullyPaidInstallments: 3,
+        arrearsAmount: decimal("120.00"),
+      }),
+      updatedAt: now,
+      party: { id: "party-1", legalName: "Banco Teste SA", tradeName: "Banco Teste" },
+      product: {
+        id: "product-1",
+        code: "LOAN",
+        name: "Emprestimo",
+        family: "PAYROLL_LOAN",
+      },
+      payrollDiscountEvents: [{
+        processedAt: new Date("2026-07-22T12:00:00.000Z"),
+        installmentNumber: 4,
+        expectedAmount: decimal("200.00"),
+        discountedAmount: decimal("80.00"),
+        reason: "Margem insuficiente",
+      }],
+    }]);
+
+    const result = await service.getArrearsOverview(
+      "agreement-1",
+      "party-1",
+      { productFamily: "PAYROLL_LOAN", minArrears: "50.00", limit: 25 },
+    );
+
+    expect(prisma.contract.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        agreementId: "agreement-1",
+        partyId: "party-1",
+        arrearsAmount: { gte: "50.00" },
+        product: { family: "PAYROLL_LOAN" },
+      }),
+      take: 25,
+    }));
+    expect(result.summary).toEqual({
+      contractsWithArrears: 2,
+      totalArrearsAmount: "180.00",
+      activeSchedule: { contracts: 1, amount: "120.00" },
+      payrollCompleted: { contracts: 1, amount: "60.00" },
+      recoveredOnOpenContracts: { payments: 3, amount: "90.00" },
+    });
+    expect(result.contracts[0]).toMatchObject({
+      contractNumber: "CT-001",
+      arrearsAmount: "120.00",
+      party: { id: "party-1", name: "Banco Teste" },
+      latestPartial: { shortfallAmount: "120.00" },
+    });
+    expect(result.contracts[0]).not.toHaveProperty("enrollmentId");
   });
 
   it("records an external arrears payment without changing the installment schedule", async () => {

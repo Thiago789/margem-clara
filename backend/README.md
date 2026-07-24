@@ -213,6 +213,13 @@ Uma reserva ativa pode ser convertida em contrato por `POST /api/v1/agreements/:
 
 Saldos originados por desconto parcial podem ser acompanhados em `GET /:contractId/arrears-payments`. A consignataria registra uma cobranca recebida fora da folha em `POST /:contractId/arrears-payments`, com permissao `contracts:recover`, chave idempotente, meio de pagamento, data e referencia externa opcional. A baixa nao muda a parcela corrente, nao pode superar o saldo, nao aceita data futura nem anterior a ativacao e preserva saldo anterior e posterior em um lancamento imutavel.
 
+A fila operacional de recuperacao possui duas visoes com a permissao `contracts:read`:
+
+- `GET /api/v1/agreements/:agreementId/parties/:partyId/contracts/arrears`: restringe obrigatoriamente os dados a consignataria da rota;
+- `GET /api/v1/agreements/:agreementId/contracts/arrears`: exige associacao ampla ao convenio e permite filtrar por consignataria.
+
+As duas visoes aceitam filtros de status, familia de produto, saldo minimo e numero exato do contrato. A resposta consolida saldo aberto, contratos com folha ativa ou concluida, recuperacoes ja registradas e a ultima ocorrencia parcial. CPF, matricula e identificador do vinculo nao sao retornados.
+
 O contrato registra tipo da operacao (`NEW`, `REFINANCING`, `PORTABILITY` ou `DEBT_PURCHASE`), produto, credenciamento, politica, valor contratado, valor da parcela, prazo, parcela atual, CET, primeira competencia e primeiro vencimento. Campos de contrato e credor de origem, saldo e valor de compra da divida permitem evoluir refinanciamento, portabilidade e compra de divida sem alterar o nucleo. Prazo e vencimento permanecem opcionais para produtos nao parcelados, como cartoes e descontos recorrentes.
 
 A conversao aceita apenas reserva confirmada, ativa e dentro da validade. Produtos parcelados exigem prazo e primeiro vencimento; produtos de credito exigem valor contratado; a politica fixada na reserva pode exigir campos adicionais. Refinanciamento exige contrato de origem, enquanto portabilidade e compra de divida exigem contrato e credor de origem.

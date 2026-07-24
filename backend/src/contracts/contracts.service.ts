@@ -15,6 +15,7 @@ import {
   normalizeMoney,
   subtractMoney,
 } from "../reservations/reservation-money.js";
+import type { ContractArrearsQueryDto } from "./contract-arrears.dto.js";
 import type { CreateContractDto, RecordArrearsPaymentDto } from "./contract.dto.js";
 
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
@@ -358,6 +359,148 @@ export class ContractsService {
     });
     if (!contract) throw new NotFoundException("Contrato nao encontrado");
     return this.view(contract);
+  }
+
+  async getArrearsOverview(
+    agreementId: string,
+    partyId: string | undefined,
+    query: ContractArrearsQueryDto,
+  ) {
+    const minArrears = query.minArrears ? normalizeMoney(query.minArrears) : "0.00";
+    const scopeWhere: Prisma.ContractWhereInput = {
+      agreementId,
+      ...(partyId ? { partyId } : {}),
+      arrearsAmount: query.minArrears ? { gte: minArrears } : { gt: "0.00" },
+      ...(query.productFamily ? { product: { family: query.productFamily } } : {}),
+      ...(query.contractNumber
+        ? { contractNumber: query.contractNumber.trim().toUpperCase() }
+        : {}),
+    };
+    const listWhere: Prisma.ContractWhereInput = {
+      ...scopeWhere,
+      ...(query.status ? { status: query.status } : {
+        status: { in: ["ACTIVE", "PAYROLL_COMPLETED_WITH_ARREARS"] },
+      }),
+    };
+
+    const [
+      total,
+      active,
+      payrollCompleted,
+      recovered,
+      contracts,
+    ] = await Promise.all([
+      this.prisma.contract.aggregate({
+        where: {
+          ...scopeWhere,
+          status: { in: ["ACTIVE", "PAYROLL_COMPLETED_WITH_ARREARS"] },
+        },
+        _count: { _all: true },
+        _sum: { arrearsAmount: true },
+      }),
+      this.prisma.contract.aggregate({
+        where: { ...scopeWhere, status: "ACTIVE" },
+        _count: { _all: true },
+        _sum: { arrearsAmount: true },
+      }),
+      this.prisma.contract.aggregate({
+        where: { ...scopeWhere, status: "PAYROLL_COMPLETED_WITH_ARREARS" },
+        _count: { _all: true },
+        _sum: { arrearsAmount: true },
+      }),
+      this.prisma.contractArrearsPayment.aggregate({
+        where: {
+          agreementId,
+          ...(partyId ? { partyId } : {}),
+          contract: {
+            ...scopeWhere,
+            status: { in: ["ACTIVE", "PAYROLL_COMPLETED_WITH_ARREARS"] },
+          },
+        },
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+      this.prisma.contract.findMany({
+        where: listWhere,
+        include: {
+          party: { select: { id: true, legalName: true, tradeName: true } },
+          product: { select: { id: true, code: true, name: true, family: true } },
+          payrollDiscountEvents: {
+            where: { outcome: "PARTIAL" },
+            select: {
+              processedAt: true,
+              installmentNumber: true,
+              expectedAmount: true,
+              discountedAmount: true,
+              reason: true,
+            },
+            orderBy: { processedAt: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: [{ arrearsAmount: "desc" }, { updatedAt: "asc" }],
+        take: query.limit,
+      }),
+    ]);
+
+    return {
+      summary: {
+        contractsWithArrears: total._count._all,
+        totalArrearsAmount: total._sum.arrearsAmount?.toString() ?? "0.00",
+        activeSchedule: {
+          contracts: active._count._all,
+          amount: active._sum.arrearsAmount?.toString() ?? "0.00",
+        },
+        payrollCompleted: {
+          contracts: payrollCompleted._count._all,
+          amount: payrollCompleted._sum.arrearsAmount?.toString() ?? "0.00",
+        },
+        recoveredOnOpenContracts: {
+          payments: recovered._count._all,
+          amount: recovered._sum.amount?.toString() ?? "0.00",
+        },
+      },
+      filters: {
+        partyId: partyId ?? null,
+        status: query.status ?? null,
+        productFamily: query.productFamily ?? null,
+        minArrears,
+        contractNumber: query.contractNumber?.trim().toUpperCase() ?? null,
+        limit: query.limit,
+      },
+      contracts: contracts.map((contract) => {
+        const latestPartial = contract.payrollDiscountEvents[0];
+        return {
+          id: contract.id,
+          contractNumber: contract.contractNumber,
+          status: contract.status,
+          arrearsAmount: contract.arrearsAmount.toString(),
+          installmentAmount: contract.installmentAmount.toString(),
+          currentInstallment: contract.currentInstallment,
+          fullyPaidInstallments: contract.fullyPaidInstallments,
+          termInstallments: contract.termInstallments,
+          payrollCompletedAt: contract.payrollCompletedAt?.toISOString() ?? null,
+          party: {
+            id: contract.party.id,
+            name: contract.party.tradeName ?? contract.party.legalName,
+          },
+          product: contract.product,
+          latestPartial: latestPartial
+            ? {
+              processedAt: latestPartial.processedAt.toISOString(),
+              installmentNumber: latestPartial.installmentNumber,
+              expectedAmount: latestPartial.expectedAmount.toString(),
+              discountedAmount: latestPartial.discountedAmount.toString(),
+              shortfallAmount: subtractMoney(
+                latestPartial.expectedAmount.toString(),
+                latestPartial.discountedAmount.toString(),
+              ),
+              reason: latestPartial.reason,
+            }
+            : null,
+        };
+      }),
+    };
   }
 
   async listArrearsPayments(agreementId: string, partyId: string, contractId: string) {

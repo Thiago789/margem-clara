@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Query, Req } from "@nestjs/common";
 import { Authorize } from "../platform/access-control/authorize.decorator.js";
 import { contextFromRequest, type ContextualRequest } from "../platform/request-context/request-context.js";
+import { ContractArrearsQueryDto } from "./contract-arrears.dto.js";
 import { CreateContractDto, RecordArrearsPaymentDto } from "./contract.dto.js";
 import { ContractsService } from "./contracts.service.js";
 
@@ -18,6 +19,16 @@ export class ContractsController {
     @Req() request: ContextualRequest,
   ) {
     return this.contracts.create(agreementId, partyId, input, idempotencyKey, contextFromRequest(request));
+  }
+
+  @Get("arrears")
+  @Authorize("contracts:read", { agreementParam: "agreementId", partyParam: "partyId" })
+  arrears(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("partyId", ParseUUIDPipe) partyId: string,
+    @Query() query: ContractArrearsQueryDto,
+  ) {
+    return this.contracts.getArrearsOverview(agreementId, partyId, query);
   }
 
   @Get()

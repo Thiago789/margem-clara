@@ -20,6 +20,15 @@ const actor = {
     permissions: new Set(["contracts:create", "contracts:read", "contracts:recover"]),
   }],
 };
+const agreementManager = {
+  userId: "a7df1711-866a-4247-b66f-5054f88f5822",
+  role: "agreement_manager",
+  memberships: [{
+    agreementId,
+    partyId: null,
+    permissions: new Set(["contracts:read"]),
+  }],
+};
 
 describe("contract endpoints", () => {
   let app: INestApplication;
@@ -28,6 +37,7 @@ describe("contract endpoints", () => {
     create: vi.fn(),
     list: vi.fn(),
     get: vi.fn(),
+    getArrearsOverview: vi.fn(),
     listArrearsPayments: vi.fn(),
     recordArrearsPayment: vi.fn(),
   };
@@ -110,6 +120,62 @@ describe("contract endpoints", () => {
     expect(audit.record).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({ action: "access.denied", entityId: "contracts:create" }),
+    );
+  });
+
+  it("returns the arrears overview only inside the consignee scope", async () => {
+    auth.authenticate.mockResolvedValue(actor);
+    contracts.getArrearsOverview.mockResolvedValue({
+      summary: { contractsWithArrears: 2, totalArrearsAmount: "180.00" },
+      contracts: [],
+    });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/agreements/${agreementId}/parties/${partyId}/contracts/arrears`)
+      .query({ productFamily: "PAYROLL_LOAN", minArrears: "50.00", limit: "25" })
+      .set("Cookie", "mc_session=session-value")
+      .expect(200)
+      .expect(({ body }) => expect(body.summary.contractsWithArrears).toBe(2));
+
+    expect(contracts.getArrearsOverview).toHaveBeenCalledWith(
+      agreementId,
+      partyId,
+      expect.objectContaining({
+        productFamily: "PAYROLL_LOAN",
+        minArrears: "50.00",
+        limit: 25,
+      }),
+    );
+  });
+
+  it("denies a party-scoped operator access to the agreement-wide arrears overview", async () => {
+    auth.authenticate.mockResolvedValue(actor);
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/agreements/${agreementId}/contracts/arrears`)
+      .set("Cookie", "mc_session=session-value")
+      .expect(403);
+
+    expect(contracts.getArrearsOverview).not.toHaveBeenCalled();
+  });
+
+  it("allows an agreement manager to filter the wide overview by consignee", async () => {
+    auth.authenticate.mockResolvedValue(agreementManager);
+    contracts.getArrearsOverview.mockResolvedValue({
+      summary: { contractsWithArrears: 1, totalArrearsAmount: "60.00" },
+      contracts: [],
+    });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/agreements/${agreementId}/contracts/arrears`)
+      .query({ partyId, status: "PAYROLL_COMPLETED_WITH_ARREARS" })
+      .set("Cookie", "mc_session=session-value")
+      .expect(200);
+
+    expect(contracts.getArrearsOverview).toHaveBeenCalledWith(
+      agreementId,
+      partyId,
+      expect.objectContaining({ status: "PAYROLL_COMPLETED_WITH_ARREARS" }),
     );
   });
 
