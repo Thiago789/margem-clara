@@ -163,8 +163,17 @@ enum ContractOperationType {
 enum ContractStatus {
   ACTIVE
   SUSPENDED
+  PAYROLL_COMPLETED_WITH_ARREARS
   SETTLED
   CANCELLED
+}
+
+enum ArrearsPaymentMethod {
+  PIX
+  BOLETO
+  BANK_TRANSFER
+  CASH
+  OTHER
 }
 
 model Organization {
@@ -208,6 +217,7 @@ model Agreement {
   marginMovements       MarginMovement[]
   marginReservations    MarginReservation[]
   contracts             Contract[]
+  contractArrearsPayments ContractArrearsPayment[]
   payrollInstructions   PayrollInstruction[]
   payrollDiscountEvents PayrollDiscountEvent[]
   createdAt             DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -256,6 +266,7 @@ model Party {
   memberships          Membership[]
   marginReservations   MarginReservation[]
   contracts            Contract[]
+  contractArrearsPayments ContractArrearsPayment[]
   createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
   version              Int                 @default(1)
@@ -706,6 +717,9 @@ model Contract {
   installmentAmount       Decimal                @map("installment_amount") @db.Decimal(18, 2)
   termInstallments        Int?                   @map("term_installments")
   currentInstallment      Int                    @default(0) @map("current_installment")
+  fullyPaidInstallments   Int                    @default(0) @map("fully_paid_installments")
+  totalDiscountedAmount   Decimal                @default(0) @map("total_discounted_amount") @db.Decimal(18, 2)
+  arrearsAmount           Decimal                @default(0) @map("arrears_amount") @db.Decimal(18, 2)
   cetAnnual               Decimal?               @map("cet_annual") @db.Decimal(9, 6)
   cetMonthly              Decimal?               @map("cet_monthly") @db.Decimal(9, 6)
   firstDueDate            DateTime?              @map("first_due_date") @db.Date
@@ -719,6 +733,8 @@ model Contract {
   activatedAt             DateTime               @map("activated_at") @db.Timestamptz(6)
   suspendedAt             DateTime?              @map("suspended_at") @db.Timestamptz(6)
   settledAt               DateTime?              @map("settled_at") @db.Timestamptz(6)
+  payrollCompletedAt      DateTime?              @map("payroll_completed_at") @db.Timestamptz(6)
+  marginReleasedAt        DateTime?              @map("margin_released_at") @db.Timestamptz(6)
   cancelledAt             DateTime?              @map("cancelled_at") @db.Timestamptz(6)
   createdByUserId         String                 @map("created_by_user_id") @db.Uuid
   createdBy               User                   @relation("ContractCreatedBy", fields: [createdByUserId], references: [id])
@@ -727,6 +743,7 @@ model Contract {
   version                 Int                    @default(1)
   payrollInstructions     PayrollInstruction[]
   payrollDiscountEvents   PayrollDiscountEvent[]
+  arrearsPayments         ContractArrearsPayment[]
 
   @@unique([agreementId, idempotencyKey], map: "contracts_idempotency_key")
   @@unique([agreementId, partyId, contractNumber], map: "contracts_party_number_key")
@@ -734,6 +751,30 @@ model Contract {
   @@index([marginAccountId, status], map: "contracts_margin_account_status_idx")
   @@index([enrollmentId, status], map: "contracts_enrollment_status_idx")
   @@map("contracts")
+}
+
+model ContractArrearsPayment {
+  id                String               @id @default(uuid()) @db.Uuid
+  agreementId       String               @map("agreement_id") @db.Uuid
+  agreement         Agreement            @relation(fields: [agreementId], references: [id])
+  partyId           String               @map("party_id") @db.Uuid
+  party             Party                @relation(fields: [partyId], references: [id])
+  contractId        String               @map("contract_id") @db.Uuid
+  contract          Contract             @relation(fields: [contractId], references: [id])
+  amount            Decimal              @db.Decimal(18, 2)
+  arrearsBefore     Decimal              @map("arrears_before") @db.Decimal(18, 2)
+  arrearsAfter      Decimal              @map("arrears_after") @db.Decimal(18, 2)
+  method            ArrearsPaymentMethod
+  paidAt            DateTime             @map("paid_at") @db.Timestamptz(6)
+  externalReference String?              @map("external_reference")
+  idempotencyKey    String               @map("idempotency_key")
+  recordedByUserId  String               @map("recorded_by_user_id") @db.Uuid
+  recordedBy        User                 @relation("ArrearsPaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([agreementId, idempotencyKey], map: "contract_arrears_payments_idempotency_key")
+  @@index([agreementId, partyId, contractId, paidAt], map: "contract_arrears_payments_contract_idx")
+  @@map("contract_arrears_payments")
 }
 
 model User {
@@ -750,6 +791,7 @@ model User {
   confirmedReservations         MarginReservation[]    @relation("ReservationConfirmedBy")
   cancelledReservations         MarginReservation[]    @relation("ReservationCancelledBy")
   createdContracts              Contract[]             @relation("ContractCreatedBy")
+  recordedArrearsPayments       ContractArrearsPayment[] @relation("ArrearsPaymentRecordedBy")
   acknowledgedPayrollExceptions PayrollDiscountEvent[] @relation("PayrollExceptionAcknowledgedBy")
   resolvedPayrollExceptions     PayrollDiscountEvent[] @relation("PayrollExceptionResolvedBy")
   createdAt                     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)

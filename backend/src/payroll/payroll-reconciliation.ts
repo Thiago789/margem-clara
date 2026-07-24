@@ -1,7 +1,7 @@
 export interface ReconciliationDecision {
   advancesInstallment: boolean;
   nextInstallment: number;
-  settlesContract: boolean;
+  completesSchedule: boolean;
 }
 
 export function decideReconciliation(input: {
@@ -10,17 +10,16 @@ export function decideReconciliation(input: {
   currentInstallment: number;
   termInstallments: number | null;
 }): ReconciliationDecision {
-  if (input.outcome !== "FULL") {
+  if (input.outcome === "REJECTED") {
     return {
       advancesInstallment: false,
       nextInstallment: input.currentInstallment,
-      settlesContract: false,
+      completesSchedule: false,
     };
   }
   const nextInstallment = input.currentInstallment + 1;
-  const settlesContract = input.chargeMode === "FIXED_INSTALLMENTS"
+  const completesSchedule = input.chargeMode === "FIXED_INSTALLMENTS"
     && input.termInstallments !== null
     && nextInstallment >= input.termInstallments;
-  return { advancesInstallment: true, nextInstallment, settlesContract };
+  return { advancesInstallment: true, nextInstallment, completesSchedule };
 }
-

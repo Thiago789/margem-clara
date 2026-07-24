@@ -9,8 +9,13 @@ import type { Prisma } from "../generated/prisma/client.js";
 import { operationalRulesSchema } from "../agreements/agreement-policy.schema.js";
 import { PrismaService } from "../platform/database/prisma.service.js";
 import type { RequestContext } from "../platform/request-context/request-context.js";
-import { compareMoney, isPositiveMoney, normalizeMoney } from "../reservations/reservation-money.js";
-import type { CreateContractDto } from "./contract.dto.js";
+import {
+  compareMoney,
+  isPositiveMoney,
+  normalizeMoney,
+  subtractMoney,
+} from "../reservations/reservation-money.js";
+import type { CreateContractDto, RecordArrearsPaymentDto } from "./contract.dto.js";
 
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
 
@@ -31,6 +36,9 @@ interface ContractViewSource {
   installmentAmount: { toString(): string };
   termInstallments: number | null;
   currentInstallment: number;
+  fullyPaidInstallments?: number;
+  totalDiscountedAmount?: { toString(): string };
+  arrearsAmount?: { toString(): string };
   cetAnnual: { toString(): string } | null;
   cetMonthly: { toString(): string } | null;
   firstDueDate: Date | null;
@@ -42,8 +50,25 @@ interface ContractViewSource {
   externalReference: string | null;
   activatedAt: Date;
   settledAt: Date | null;
+  payrollCompletedAt?: Date | null;
+  marginReleasedAt?: Date | null;
   createdAt: Date;
   product?: { id: string; code: string; name: string; family: string; chargeMode: string };
+}
+
+interface ArrearsPaymentViewSource {
+  id: string;
+  agreementId: string;
+  partyId: string;
+  contractId: string;
+  amount: { toString(): string };
+  arrearsBefore: { toString(): string };
+  arrearsAfter: { toString(): string };
+  method: string;
+  paidAt: Date;
+  externalReference: string | null;
+  recordedByUserId: string;
+  createdAt: Date;
 }
 
 function isPrismaCode(error: unknown, code: string): boolean {
@@ -90,6 +115,21 @@ function matchesContractRequest(existing: ContractViewSource, partyId: string, i
     && existing.originContractReference === (input.originContractReference?.trim() || null)
     && existing.originCreditorName === (input.originCreditorName?.trim() || null)
     && sameOptionalDecimal(existing.debtPurchaseAmount, debtPurchaseAmount)
+    && existing.externalReference === (input.externalReference?.trim() || null);
+}
+
+function matchesArrearsPaymentRequest(
+  existing: ArrearsPaymentViewSource,
+  partyId: string,
+  contractId: string,
+  input: RecordArrearsPaymentDto,
+  amount: string,
+): boolean {
+  return existing.partyId === partyId
+    && existing.contractId === contractId
+    && compareMoney(existing.amount.toString(), amount) === 0
+    && existing.method === input.method
+    && existing.paidAt.toISOString() === new Date(input.paidAt).toISOString()
     && existing.externalReference === (input.externalReference?.trim() || null);
 }
 
@@ -320,6 +360,156 @@ export class ContractsService {
     return this.view(contract);
   }
 
+  async listArrearsPayments(agreementId: string, partyId: string, contractId: string) {
+    const contract = await this.prisma.contract.findFirst({
+      where: { id: contractId, agreementId, partyId },
+      select: { id: true },
+    });
+    if (!contract) throw new NotFoundException("Contrato nao encontrado");
+    const payments = await this.prisma.contractArrearsPayment.findMany({
+      where: { agreementId, partyId, contractId },
+      orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+      take: 200,
+    });
+    return payments.map((payment) => this.paymentView(payment));
+  }
+
+  async recordArrearsPayment(
+    agreementId: string,
+    partyId: string,
+    contractId: string,
+    input: RecordArrearsPaymentDto,
+    idempotencyKey: string | undefined,
+    context: RequestContext,
+  ) {
+    const actorUserId = context.actor?.userId;
+    if (!actorUserId) throw new UnauthorizedException();
+    const key = idempotencyKey?.trim() ?? "";
+    if (!IDEMPOTENCY_PATTERN.test(key)) {
+      throw new BadRequestException("Idempotency-Key deve ter entre 8 e 128 caracteres seguros");
+    }
+    const amount = normalizeMoney(input.amount);
+    if (!isPositiveMoney(amount)) throw new BadRequestException("Valor da baixa deve ser positivo");
+    const paidAt = new Date(input.paidAt);
+    if (Number.isNaN(paidAt.getTime())) throw new BadRequestException("Data da baixa invalida");
+    if (paidAt.getTime() > Date.now() + 5 * 60_000) {
+      throw new BadRequestException("Data da baixa nao pode estar no futuro");
+    }
+
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const existing = await transaction.contractArrearsPayment.findUnique({
+          where: { agreementId_idempotencyKey: { agreementId, idempotencyKey: key } },
+        });
+        if (existing) {
+          if (!matchesArrearsPaymentRequest(existing, partyId, contractId, input, amount)) {
+            throw new ConflictException("Chave idempotente reutilizada com dados diferentes");
+          }
+          return { ...this.paymentView(existing), duplicate: true };
+        }
+
+        const contract = await transaction.contract.findFirst({
+          where: {
+            id: contractId,
+            agreementId,
+            partyId,
+            status: { in: ["ACTIVE", "PAYROLL_COMPLETED_WITH_ARREARS"] },
+          },
+        });
+        if (!contract) throw new NotFoundException("Contrato ativo nao encontrado");
+        if (paidAt.getTime() < contract.activatedAt.getTime()) {
+          throw new BadRequestException("Data da baixa nao pode ser anterior a ativacao do contrato");
+        }
+        const arrearsBefore = contract.arrearsAmount.toString();
+        if (compareMoney(arrearsBefore, "0.00") <= 0) {
+          throw new ConflictException("Contrato nao possui saldo em atraso");
+        }
+        if (compareMoney(amount, arrearsBefore) > 0) {
+          throw new ConflictException("Baixa nao pode superar o saldo em atraso");
+        }
+        const arrearsAfter = subtractMoney(arrearsBefore, amount);
+        const settlesContract = contract.status === "PAYROLL_COMPLETED_WITH_ARREARS"
+          && compareMoney(arrearsAfter, "0.00") === 0;
+        const updated = await transaction.contract.updateMany({
+          where: { id: contract.id, version: contract.version, arrearsAmount: contract.arrearsAmount },
+          data: {
+            arrearsAmount: arrearsAfter,
+            status: settlesContract ? "SETTLED" : contract.status,
+            settledAt: settlesContract ? paidAt : contract.settledAt,
+            version: { increment: 1 },
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException("Saldo em atraso foi alterado por outra operacao");
+        }
+        const payment = await transaction.contractArrearsPayment.create({
+          data: {
+            agreementId,
+            partyId,
+            contractId,
+            amount,
+            arrearsBefore,
+            arrearsAfter,
+            method: input.method,
+            paidAt,
+            externalReference: input.externalReference?.trim() || null,
+            idempotencyKey: key,
+            recordedByUserId: actorUserId,
+          },
+        });
+        await transaction.auditEvent.create({ data: {
+          agreementId,
+          actorUserId,
+          actorRole: context.actor?.role ?? null,
+          actorPartyId: partyId,
+          action: "contract.arrears_payment.record",
+          outcome: "success",
+          entityType: "contract_arrears_payment",
+          entityId: payment.id,
+          correlationId: context.correlationId,
+          previousData: { arrearsAmount: arrearsBefore, contractStatus: contract.status },
+          newData: {
+            arrearsAmount: arrearsAfter,
+            amount,
+            method: input.method,
+            contractStatus: settlesContract ? "SETTLED" : contract.status,
+          },
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        } });
+        await transaction.outboxEvent.create({ data: {
+          agreementId,
+          aggregateType: "contract",
+          aggregateId: contract.id,
+          eventType: "contract.arrears_payment_recorded",
+          payload: {
+            contractId: contract.id,
+            paymentId: payment.id,
+            amount,
+            arrearsAfter,
+            settled: settlesContract,
+          },
+          correlationId: context.correlationId,
+        } });
+        return { ...this.paymentView(payment), duplicate: false, contractSettled: settlesContract };
+      }, { isolationLevel: "Serializable" });
+    } catch (error) {
+      if (isPrismaCode(error, "P2002")) {
+        const existing = await this.prisma.contractArrearsPayment.findUnique({
+          where: { agreementId_idempotencyKey: { agreementId, idempotencyKey: key } },
+        });
+        if (existing && matchesArrearsPaymentRequest(existing, partyId, contractId, input, amount)) {
+          return { ...this.paymentView(existing), duplicate: true };
+        }
+        throw new ConflictException("Chave idempotente reutilizada com dados diferentes");
+      }
+      if (isPrismaCode(error, "P2034")) {
+        throw new ConflictException("Concorrencia detectada; repita com a mesma chave idempotente");
+      }
+      throw error;
+    }
+  }
+
   private validateInput(
     input: CreateContractDto,
     chargeMode: string,
@@ -395,6 +585,9 @@ export class ContractsService {
       installmentAmount: contract.installmentAmount.toString(),
       termInstallments: contract.termInstallments,
       currentInstallment: contract.currentInstallment,
+      fullyPaidInstallments: contract.fullyPaidInstallments ?? contract.currentInstallment,
+      totalDiscountedAmount: contract.totalDiscountedAmount?.toString() ?? "0.00",
+      arrearsAmount: contract.arrearsAmount?.toString() ?? "0.00",
       cetAnnual: contract.cetAnnual?.toString() ?? null,
       cetMonthly: contract.cetMonthly?.toString() ?? null,
       firstDueDate: contract.firstDueDate?.toISOString().slice(0, 10) ?? null,
@@ -406,8 +599,27 @@ export class ContractsService {
       externalReference: contract.externalReference,
       activatedAt: contract.activatedAt.toISOString(),
       settledAt: contract.settledAt?.toISOString() ?? null,
+      payrollCompletedAt: contract.payrollCompletedAt?.toISOString() ?? null,
+      marginReleasedAt: contract.marginReleasedAt?.toISOString() ?? null,
       createdAt: contract.createdAt.toISOString(),
       ...(contract.product ? { product: contract.product } : {}),
+    };
+  }
+
+  private paymentView(payment: ArrearsPaymentViewSource) {
+    return {
+      id: payment.id,
+      agreementId: payment.agreementId,
+      partyId: payment.partyId,
+      contractId: payment.contractId,
+      amount: payment.amount.toString(),
+      arrearsBefore: payment.arrearsBefore.toString(),
+      arrearsAfter: payment.arrearsAfter.toString(),
+      method: payment.method,
+      paidAt: payment.paidAt.toISOString(),
+      externalReference: payment.externalReference,
+      recordedByUserId: payment.recordedByUserId,
+      createdAt: payment.createdAt.toISOString(),
     };
   }
 }

@@ -99,6 +99,11 @@ describe("AgreementsService", () => {
           reservationValidityMinutes: 1_440,
           confirmationCodeValidityMinutes: 10,
           confirmationMaxAttempts: 5,
+          partialDiscountHandling: {
+            defaultMode: "ARREARS_LEDGER",
+            residualMaxAttempts: 1,
+            residualRequiresAuthorization: true,
+          },
         },
       }),
     });

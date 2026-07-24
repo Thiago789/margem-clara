@@ -84,6 +84,9 @@ function contract(overrides: Record<string, unknown> = {}) {
     installmentAmount: decimal("200.00"),
     termInstallments: 60,
     currentInstallment: 0,
+    fullyPaidInstallments: 0,
+    totalDiscountedAmount: decimal("0.00"),
+    arrearsAmount: decimal("0.00"),
     cetAnnual: decimal("18.500000"),
     cetMonthly: null,
     firstDueDate: new Date("2026-08-10T00:00:00.000Z"),
@@ -95,6 +98,8 @@ function contract(overrides: Record<string, unknown> = {}) {
     externalReference: null,
     activatedAt: now,
     settledAt: null,
+    payrollCompletedAt: null,
+    marginReleasedAt: null,
     createdAt: now,
     ...overrides,
   };
@@ -115,6 +120,7 @@ function setup() {
   const transaction = {
     contract: {
       findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn(),
       create: vi.fn().mockImplementation(({ data }) => contract({
         ...data,
         contractValue: data.contractValue ? decimal(data.contractValue) : null,
@@ -126,6 +132,18 @@ function setup() {
         currentInstallment: 0,
         status: "ACTIVE",
         settledAt: null,
+        createdAt: now,
+      })),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    contractArrearsPayment: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(({ data }) => ({
+        id: "payment-1",
+        ...data,
+        amount: decimal(data.amount),
+        arrearsBefore: decimal(data.arrearsBefore),
+        arrearsAfter: decimal(data.arrearsAfter),
         createdAt: now,
       })),
     },
@@ -141,6 +159,7 @@ function setup() {
   const prisma = {
     $transaction: vi.fn((callback) => callback(transaction)),
     contract: { findUnique: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
+    contractArrearsPayment: { findUnique: vi.fn(), findMany: vi.fn() },
   } as unknown as PrismaService;
   return { service: new ContractsService(prisma), transaction };
 }
@@ -235,5 +254,141 @@ describe("ContractsService", () => {
     )).rejects.toBeInstanceOf(ConflictException);
 
     expect(transaction.marginReservation.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("records an external arrears payment without changing the installment schedule", async () => {
+    const { service, transaction } = setup();
+    transaction.contract.findFirst.mockResolvedValue(contract({
+      currentInstallment: 10,
+      fullyPaidInstallments: 8,
+      arrearsAmount: decimal("130.00"),
+      version: 5,
+    }));
+
+    const result = await service.recordArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      {
+        amount: "100.00",
+        method: "PIX",
+        paidAt: "2026-07-23T10:00:00Z",
+        externalReference: "E2E-PIX-001",
+      },
+      "arrears-payment-001",
+      context,
+    );
+
+    expect(transaction.contract.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "contract-1",
+        version: 5,
+        arrearsAmount: expect.objectContaining({ toString: expect.any(Function) }),
+      },
+      data: {
+        arrearsAmount: "30.00",
+        status: "ACTIVE",
+        settledAt: null,
+        version: { increment: 1 },
+      },
+    });
+    expect(transaction.contractArrearsPayment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        amount: "100.00",
+        arrearsBefore: "130.00",
+        arrearsAfter: "30.00",
+        method: "PIX",
+      }),
+    });
+    expect(result).toMatchObject({
+      amount: "100.00",
+      arrearsBefore: "130.00",
+      arrearsAfter: "30.00",
+      duplicate: false,
+      contractSettled: false,
+    });
+  });
+
+  it("settles a completed payroll contract when the final arrears balance is paid", async () => {
+    const { service, transaction } = setup();
+    transaction.contract.findFirst.mockResolvedValue(contract({
+      status: "PAYROLL_COMPLETED_WITH_ARREARS",
+      currentInstallment: 60,
+      fullyPaidInstallments: 58,
+      arrearsAmount: decimal("80.00"),
+      payrollCompletedAt: now,
+      marginReleasedAt: now,
+      version: 9,
+    }));
+
+    const result = await service.recordArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      { amount: "80.00", method: "BOLETO", paidAt: "2026-07-23T11:00:00Z" },
+      "arrears-payment-002",
+      context,
+    );
+
+    expect(transaction.contract.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ arrearsAmount: "0.00", status: "SETTLED" }),
+    }));
+    expect(result).toMatchObject({ arrearsAfter: "0.00", contractSettled: true });
+  });
+
+  it("rejects an external payment above the arrears balance", async () => {
+    const { service, transaction } = setup();
+    transaction.contract.findFirst.mockResolvedValue(contract({
+      arrearsAmount: decimal("50.00"),
+      version: 2,
+    }));
+
+    await expect(service.recordArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      { amount: "50.01", method: "PIX", paidAt: "2026-07-23T12:00:00Z" },
+      "arrears-payment-003",
+      context,
+    )).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.contract.updateMany).not.toHaveBeenCalled();
+    expect(transaction.contractArrearsPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an external payment dated before contract activation", async () => {
+    const { service, transaction } = setup();
+    transaction.contract.findFirst.mockResolvedValue(contract({
+      arrearsAmount: decimal("50.00"),
+      version: 2,
+    }));
+
+    await expect(service.recordArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      { amount: "10.00", method: "PIX", paidAt: "2026-07-20T12:00:00Z" },
+      "arrears-payment-004",
+      context,
+    )).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(transaction.contract.updateMany).not.toHaveBeenCalled();
+    expect(transaction.contractArrearsPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an external payment dated in the future", async () => {
+    const { service, transaction } = setup();
+
+    await expect(service.recordArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      { amount: "10.00", method: "PIX", paidAt: "2999-07-23T12:00:00Z" },
+      "arrears-payment-005",
+      context,
+    )).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(transaction.contract.findFirst).not.toHaveBeenCalled();
+    expect(transaction.contractArrearsPayment.create).not.toHaveBeenCalled();
   });
 });

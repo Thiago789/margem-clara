@@ -32,6 +32,29 @@ const validPolicy = {
 };
 
 describe("operationalRulesSchema", () => {
+  it("defaults partial discounts to the external arrears ledger", () => {
+    const result = operationalRulesSchema.parse(validPolicy);
+
+    expect(result.partialDiscountHandling).toEqual({
+      defaultMode: "ARREARS_LEDGER",
+      residualMaxAttempts: 1,
+      residualRequiresAuthorization: true,
+    });
+  });
+
+  it("requires a dedicated rubric for residual payroll collection", () => {
+    const result = operationalRulesSchema.safeParse({
+      ...validPolicy,
+      partialDiscountHandling: {
+        defaultMode: "RESIDUAL_RUBRIC",
+        residualMaxAttempts: 1,
+        residualRequiresAuthorization: true,
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("accepts the configurable rules decided for the first agreement version", () => {
     expect(operationalRulesSchema.safeParse(validPolicy).success).toBe(true);
   });

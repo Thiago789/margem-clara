@@ -41,6 +41,21 @@ const marginGroup = z.object({
   payrollRubricCode: z.string().trim().min(1).max(40).optional(),
 });
 
+const partialDiscountHandling = z.object({
+  defaultMode: z.enum(["ARREARS_LEDGER", "RESIDUAL_RUBRIC"]).default("ARREARS_LEDGER"),
+  residualRubricCode: z.string().trim().min(1).max(40).optional(),
+  residualMaxAttempts: z.number().int().min(1).max(6).default(1),
+  residualRequiresAuthorization: z.boolean().default(true),
+}).superRefine((value, context) => {
+  if (value.defaultMode === "RESIDUAL_RUBRIC" && !value.residualRubricCode) {
+    context.addIssue({
+      code: "custom",
+      path: ["residualRubricCode"],
+      message: "Rubrica residual e obrigatoria quando a cobranca em folha estiver ativa",
+    });
+  }
+});
+
 export const operationalRulesSchema = z
   .object({
     marginConsultationAuthorization: z.enum(["REQUIRED", "NOT_REQUIRED"]),
@@ -57,6 +72,11 @@ export const operationalRulesSchema = z
       .default(["ACTIVE"]),
     requiredContractFields: z.array(contractField).max(7),
     publicServantValidation: publicValidation,
+    partialDiscountHandling: partialDiscountHandling.default({
+      defaultMode: "ARREARS_LEDGER",
+      residualMaxAttempts: 1,
+      residualRequiresAuthorization: true,
+    }),
     marginGroups: z.array(marginGroup).min(1).max(8).optional(),
   })
   .superRefine((value, context) => {

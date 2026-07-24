@@ -11,7 +11,12 @@ import { PrismaService } from "../platform/database/prisma.service.js";
 import type { RequestContext } from "../platform/request-context/request-context.js";
 import { normalizeEnrollmentNumber } from "../servants/servant-identifiers.js";
 import { operationalRulesSchema } from "../agreements/agreement-policy.schema.js";
-import { availableMoney, compareMoney, subtractMoney } from "../reservations/reservation-money.js";
+import {
+  addMoney,
+  availableMoney,
+  compareMoney,
+  subtractMoney,
+} from "../reservations/reservation-money.js";
 import {
   normalizedMarginRowSchema,
   parseMarginFile,
@@ -776,7 +781,10 @@ export class PayrollService {
           status: "ACTIVE",
           activatedAt: { lte: cycle.cutoffAt },
           payrollDiscountEvents: {
-            none: { exceptionStatus: { in: ["OPEN", "IN_REVIEW"] } },
+            none: {
+              outcome: "REJECTED",
+              exceptionStatus: { in: ["OPEN", "IN_REVIEW"] },
+            },
           },
           OR: [{ firstCompetency: null }, { firstCompetency: { lte: cycle.competency } }],
         },
@@ -1046,20 +1054,52 @@ export class PayrollService {
           outcome: parsed.data.outcome, installmentNumber: parsed.data.installmentNumber, reason: parsed.data.reason,
           exceptionStatus: parsed.data.outcome === "FULL" ? null : "OPEN",
         } });
-        if (parsed.data.outcome === "FULL") {
-          full += 1;
+        if (parsed.data.outcome !== "REJECTED") {
+          if (parsed.data.outcome === "FULL") full += 1;
+          else partial += 1;
           const decision = decideReconciliation({
             outcome: parsed.data.outcome,
             chargeMode: contract.product.chargeMode,
             currentInstallment: contract.currentInstallment,
             termInstallments: contract.termInstallments,
           });
-          await transaction.contract.update({ where: { id: contract.id }, data: {
-            currentInstallment: decision.nextInstallment, status: decision.settlesContract ? "SETTLED" : "ACTIVE",
-            settledAt: decision.settlesContract ? new Date() : null, version: { increment: 1 },
-          } });
-          if (decision.settlesContract) {
-            settled += 1;
+          const shortfall = parsed.data.outcome === "PARTIAL"
+            ? subtractMoney(parsed.data.expectedAmount, parsed.data.discountedAmount)
+            : "0.00";
+          const arrearsAmount = addMoney(contract.arrearsAmount.toString(), shortfall);
+          const totalDiscountedAmount = addMoney(
+            contract.totalDiscountedAmount.toString(),
+            parsed.data.discountedAmount,
+          );
+          const completedWithoutArrears = decision.completesSchedule
+            && compareMoney(arrearsAmount, "0.00") === 0;
+          const reconciledAt = new Date();
+          const nextStatus = decision.completesSchedule
+            ? completedWithoutArrears
+              ? "SETTLED"
+              : "PAYROLL_COMPLETED_WITH_ARREARS"
+            : "ACTIVE";
+          const contractUpdated = await transaction.contract.updateMany({
+            where: { id: contract.id, status: "ACTIVE", version: contract.version },
+            data: {
+              currentInstallment: decision.nextInstallment,
+              fullyPaidInstallments: parsed.data.outcome === "FULL"
+                ? { increment: 1 }
+                : contract.fullyPaidInstallments,
+              totalDiscountedAmount,
+              arrearsAmount,
+              status: nextStatus,
+              payrollCompletedAt: decision.completesSchedule ? reconciledAt : null,
+              marginReleasedAt: decision.completesSchedule ? reconciledAt : null,
+              settledAt: completedWithoutArrears ? reconciledAt : null,
+              version: { increment: 1 },
+            },
+          });
+          if (contractUpdated.count !== 1) {
+            throw new ConflictException("Contrato foi alterado durante a conciliacao");
+          }
+          if (completedWithoutArrears) settled += 1;
+          if (decision.completesSchedule) {
             const account = contract.marginAccount;
             const consumed = compareMoney(account.consumedAmount.toString(), contract.installmentAmount.toString()) >= 0
               ? subtractMoney(account.consumedAmount.toString(), contract.installmentAmount.toString())
@@ -1076,11 +1116,15 @@ export class PayrollService {
               amount: contract.installmentAmount, balanceBefore: account.availableAmount, balanceAfter: available,
               sourceType: "payroll_discount_event", sourceId: event.id,
               idempotencyKey: `payroll-settlement:${event.id}`, correlationId: context.correlationId,
-              actorUserId: context.actor?.userId ?? null, reason: "Liquidacao automatica na ultima parcela descontada",
+              actorUserId: context.actor?.userId ?? null,
+              reason: completedWithoutArrears
+                ? "Liquidacao automatica ao concluir o cronograma da folha"
+                : "Liberacao da margem ao concluir o cronograma com saldo em atraso",
             } });
           }
-        } else if (parsed.data.outcome === "PARTIAL") partial += 1;
-        else rejected += 1;
+        } else {
+          rejected += 1;
+        }
         await transaction.payrollInstruction.update({ where: { id: instruction.id }, data: { status: "RECONCILED", reconciledAt: new Date() } });
       }
       await transaction.payrollFileRow.updateMany({ where: { payrollFileId: fileId, status: "VALID" }, data: { status: "APPLIED" } });

@@ -17,14 +17,20 @@ const actor = {
   memberships: [{
     agreementId,
     partyId,
-    permissions: new Set(["contracts:create", "contracts:read"]),
+    permissions: new Set(["contracts:create", "contracts:read", "contracts:recover"]),
   }],
 };
 
 describe("contract endpoints", () => {
   let app: INestApplication;
   const auth = { authenticate: vi.fn(), login: vi.fn(), logout: vi.fn() };
-  const contracts = { create: vi.fn(), list: vi.fn(), get: vi.fn() };
+  const contracts = {
+    create: vi.fn(),
+    list: vi.fn(),
+    get: vi.fn(),
+    listArrearsPayments: vi.fn(),
+    recordArrearsPayment: vi.fn(),
+  };
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
 
   beforeEach(async () => {
@@ -104,6 +110,37 @@ describe("contract endpoints", () => {
     expect(audit.record).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({ action: "access.denied", entityId: "contracts:create" }),
+    );
+  });
+
+  it("allows the scoped consignee to record an external arrears payment", async () => {
+    auth.authenticate.mockResolvedValue(actor);
+    contracts.recordArrearsPayment.mockResolvedValue({
+      id: "payment-1",
+      amount: "80.00",
+      arrearsAfter: "0.00",
+    });
+
+    const body = {
+      amount: "80.00",
+      method: "PIX",
+      paidAt: "2026-07-23T10:00:00Z",
+      externalReference: "PIX-001",
+    };
+    await request(app.getHttpServer())
+      .post(`/api/v1/agreements/${agreementId}/parties/${partyId}/contracts/40f76a2a-7724-4f93-a7eb-d0d72c73520d/arrears-payments`)
+      .set("Cookie", "mc_session=session-value")
+      .set("Idempotency-Key", "arrears-payment-001")
+      .send(body)
+      .expect(201);
+
+    expect(contracts.recordArrearsPayment).toHaveBeenCalledWith(
+      agreementId,
+      partyId,
+      "40f76a2a-7724-4f93-a7eb-d0d72c73520d",
+      body,
+      "arrears-payment-001",
+      expect.any(Object),
     );
   });
 });

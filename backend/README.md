@@ -183,13 +183,15 @@ Depois da margem publicada, o ciclo possui o fluxo operacional completo de desco
 
 O layout de insercao leva consignataria, matricula, contrato, rubrica, valor, competencia, parcela, prazo, operacao e produto. A matricula existe apenas na linha cifrada e no CSV autorizado; nao integra o staging normalizado.
 
-O retorno classifica cada desconto como `FULL`, `PARTIAL` ou `REJECTED`. Apenas `FULL` avanca a parcela. Parcial e rejeitado exigem motivo e permanecem registrados sem alterar silenciosamente o contrato. A ultima parcela integral de um contrato fixo liquida o contrato e libera sua margem pela formula completa. Restricoes unicas por instrucao e por linha impedem conciliacao duplicada.
+O retorno classifica cada desconto como `FULL`, `PARTIAL` ou `REJECTED`. `FULL` e `PARTIAL` avancam a parcela programada; `REJECTED` permanece na mesma parcela para nova tentativa. No desconto parcial, a diferenca acumula em `arrearsAmount`, mas a insercao seguinte envia a proxima parcela normal, sem alongar automaticamente o prazo. A ultima parcela programada libera a margem: o contrato fica `SETTLED` quando nao ha diferenca ou `PAYROLL_COMPLETED_WITH_ARREARS` enquanto existir saldo a recuperar. Restricoes unicas por instrucao e por linha impedem conciliacao duplicada.
 
 Todas as rotas de folha exigem, alem da permissao correspondente, uma associacao ampla ao convenio. Uma associacao restrita a consignataria e recusada mesmo que receba acidentalmente uma permissao de folha. A projecao operacional nao retorna CPF, matricula, identificador de vinculo nem linha bruta.
 
 Descontos `PARTIAL` e `REJECTED` abrem automaticamente uma excecao operacional. `GET /:cycleId/exceptions` retorna a fila segura e `POST /:cycleId/exceptions/:eventId/acknowledge` permite que um gestor assuma a analise com controle otimista. A observacao e cifrada para persistencia; auditoria e outbox registram a transicao sem copiar seu texto.
 
-Assumir uma excecao nao altera parcela, contrato ou margem. Depois da analise, `POST /:cycleId/exceptions/:eventId/resolve` permite `RETRY_NEXT_CYCLE` somente para retorno `REJECTED` com desconto zero. A decisao exige justificativa cifrada, autoria preservada, auditoria e controle otimista; ela libera o contrato para a proxima insercao sem avancar parcela nem alterar margem. Descontos `PARTIAL` continuam bloqueados ate que a regra de diferenca seja definida e versionada por convenio.
+Assumir uma excecao nao altera parcela, contrato ou margem. Depois da analise, `POST /:cycleId/exceptions/:eventId/resolve` permite `RETRY_NEXT_CYCLE` somente para retorno `REJECTED` com desconto zero. A decisao exige justificativa cifrada, autoria preservada, auditoria e controle otimista; ela libera o contrato para a proxima insercao sem avancar parcela nem alterar margem. A excecao `PARTIAL` documenta a divergencia e sua causa, mas nao bloqueia o envio da proxima parcela programada.
+
+A politica do convenio usa `partialDiscountHandling.defaultMode = ARREARS_LEDGER` por padrao. A alternativa futura `RESIDUAL_RUBRIC` exige uma rubrica exclusiva, limite de tentativas e autorizacao explicita; ela esta modelada, mas ainda nao gera cobranca residual na folha.
 
 ## Reservas de margem
 
@@ -208,6 +210,8 @@ Toda ativacao e liberacao usa controle otimista da versao da conta, movimento fi
 ## Contratos
 
 Uma reserva ativa pode ser convertida em contrato por `POST /api/v1/agreements/:agreementId/parties/:partyId/contracts`. A rota exige `Idempotency-Key` e permissao dentro da mesma consignataria. `GET /` e `GET /:contractId` disponibilizam a consulta segura dos contratos daquele escopo.
+
+Saldos originados por desconto parcial podem ser acompanhados em `GET /:contractId/arrears-payments`. A consignataria registra uma cobranca recebida fora da folha em `POST /:contractId/arrears-payments`, com permissao `contracts:recover`, chave idempotente, meio de pagamento, data e referencia externa opcional. A baixa nao muda a parcela corrente, nao pode superar o saldo, nao aceita data futura nem anterior a ativacao e preserva saldo anterior e posterior em um lancamento imutavel.
 
 O contrato registra tipo da operacao (`NEW`, `REFINANCING`, `PORTABILITY` ou `DEBT_PURCHASE`), produto, credenciamento, politica, valor contratado, valor da parcela, prazo, parcela atual, CET, primeira competencia e primeiro vencimento. Campos de contrato e credor de origem, saldo e valor de compra da divida permitem evoluir refinanciamento, portabilidade e compra de divida sem alterar o nucleo. Prazo e vencimento permanecem opcionais para produtos nao parcelados, como cartoes e descontos recorrentes.
 

@@ -74,3 +74,19 @@ export class CreateContractDto {
   @MaxLength(100)
   externalReference?: string;
 }
+
+export class RecordArrearsPaymentDto {
+  @Matches(moneyPattern)
+  amount!: string;
+
+  @IsIn(["PIX", "BOLETO", "BANK_TRANSFER", "CASH", "OTHER"])
+  method!: "PIX" | "BOLETO" | "BANK_TRANSFER" | "CASH" | "OTHER";
+
+  @Matches(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?(?:Z|[+-]\d{2}:\d{2})$/)
+  paidAt!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  externalReference?: string;
+}

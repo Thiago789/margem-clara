@@ -248,10 +248,109 @@ describe("PayrollService", () => {
     expect(transaction.contract.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         payrollDiscountEvents: {
-          none: { exceptionStatus: { in: ["OPEN", "IN_REVIEW"] } },
+          none: {
+            outcome: "REJECTED",
+            exceptionStatus: { in: ["OPEN", "IN_REVIEW"] },
+          },
         },
       }),
     }));
+  });
+
+  it("advances a partial installment and accumulates only its shortfall", async () => {
+    const returnData = {
+      partyDocument: "12345678000190",
+      contractNumber: "CT-001",
+      competency: "2026-07",
+      installmentNumber: 4,
+      expectedAmount: "200.00",
+      discountedAmount: "80.00",
+      outcome: "PARTIAL",
+      reason: "Margem insuficiente",
+      instructionId: "instruction-1",
+    };
+    const file = {
+      ...storedFile,
+      fileType: "RETURN",
+      status: "VALIDATED",
+      rows: [{
+        id: "row-1",
+        status: "VALID",
+        normalizedData: returnData,
+      }],
+    };
+    const contract = {
+      id: "contract-1",
+      status: "ACTIVE",
+      version: 7,
+      currentInstallment: 3,
+      fullyPaidInstallments: 3,
+      totalDiscountedAmount: decimal("600.00"),
+      arrearsAmount: decimal("0.00"),
+      termInstallments: 12,
+      installmentAmount: decimal("200.00"),
+      product: { chargeMode: "FIXED_INSTALLMENTS" },
+      marginAccount: {
+        id: "account-1",
+        lockVersion: 2,
+        totalAmount: decimal("1000.00"),
+        consumedAmount: decimal("200.00"),
+        reservedAmount: decimal("0.00"),
+        blockedAmount: decimal("0.00"),
+        availableAmount: decimal("800.00"),
+      },
+    };
+    const transaction = {
+      payrollFile: {
+        findFirst: vi.fn().mockResolvedValue(file),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        update: vi.fn().mockResolvedValue({ ...file, status: "APPLIED", processedAt: new Date() }),
+      },
+      payrollInstruction: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "instruction-1",
+          agreementId: "agreement-1",
+          payrollCycleId: "cycle-1",
+          enrollmentId: "enrollment-1",
+          installmentNumber: 4,
+          status: "GENERATED",
+          contract,
+        }),
+        update: vi.fn().mockResolvedValue({}),
+        count: vi.fn().mockResolvedValue(0),
+      },
+      payrollDiscountEvent: { create: vi.fn().mockResolvedValue({ id: "event-1" }) },
+      contract: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      marginAccount: { updateMany: vi.fn() },
+      marginMovement: { create: vi.fn() },
+      payrollFileRow: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      payrollCycle: { update: vi.fn().mockResolvedValue({}) },
+      auditEvent: { create: vi.fn().mockResolvedValue({}) },
+      outboxEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof transaction) => Promise<unknown>) => callback(transaction)),
+    } as unknown as PrismaService;
+    const service = new PayrollService(prisma, {} as DataProtectionService);
+
+    const result = await service.applyReturnFile("agreement-1", "cycle-1", "file-1", context);
+
+    expect(transaction.contract.updateMany).toHaveBeenCalledWith({
+      where: { id: "contract-1", status: "ACTIVE", version: 7 },
+      data: expect.objectContaining({
+        currentInstallment: 4,
+        fullyPaidInstallments: 3,
+        totalDiscountedAmount: "680.00",
+        arrearsAmount: "120.00",
+        status: "ACTIVE",
+        version: { increment: 1 },
+      }),
+    });
+    expect(transaction.marginAccount.updateMany).not.toHaveBeenCalled();
+    expect("reconciliation" in result).toBe(true);
+    if ("reconciliation" in result) {
+      expect(result.reconciliation).toMatchObject({ partial: 1, settled: 0 });
+    }
   });
 
   it("creates a before/after snapshot before applying a validated row", async () => {
