@@ -213,6 +213,8 @@ Uma reserva ativa pode ser convertida em contrato por `POST /api/v1/agreements/:
 
 Saldos originados por desconto parcial podem ser acompanhados em `GET /:contractId/arrears-payments`. A consignataria registra uma cobranca recebida fora da folha em `POST /:contractId/arrears-payments`, com permissao `contracts:recover`, chave idempotente, meio de pagamento, data e referencia externa opcional. A baixa nao muda a parcela corrente, nao pode superar o saldo, nao aceita data futura nem anterior a ativacao e preserva saldo anterior e posterior em um lancamento imutavel.
 
+Uma baixa incorreta nao e apagada. `POST /:contractId/arrears-payments/:paymentId/reverse` cria um estorno unico e imutavel com justificativa cifrada, autoria, auditoria, outbox e `Idempotency-Key`. O valor volta ao saldo em atraso sem alterar a parcela programada. Se a baixa havia liquidado um contrato cuja folha ja terminou, o contrato retorna a `PAYROLL_COMPLETED_WITH_ARREARS`; a margem liberada no termino da folha nao e consumida novamente. Indicadores de valor recuperado desconsideram pagamentos estornados.
+
 A fila operacional de recuperacao possui duas visoes com a permissao `contracts:read`:
 
 - `GET /api/v1/agreements/:agreementId/parties/:partyId/contracts/arrears`: restringe obrigatoriamente os dados a consignataria da rota;

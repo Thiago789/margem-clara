@@ -13,6 +13,7 @@ export type DataProtectionPurpose =
   | "payroll.return_row"
   | "payroll.exception_note"
   | "payroll.exception_resolution_note"
+  | "contract.arrears_reversal_reason"
   | "reservation.confirmation_code";
 
 export class InvalidProtectedValueError extends Error {

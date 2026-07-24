@@ -7,16 +7,22 @@ import {
 } from "@nestjs/common";
 import type { Prisma } from "../generated/prisma/client.js";
 import { operationalRulesSchema } from "../agreements/agreement-policy.schema.js";
+import { DataProtectionService } from "../platform/crypto/data-protection.service.js";
 import { PrismaService } from "../platform/database/prisma.service.js";
 import type { RequestContext } from "../platform/request-context/request-context.js";
 import {
+  addMoney,
   compareMoney,
   isPositiveMoney,
   normalizeMoney,
   subtractMoney,
 } from "../reservations/reservation-money.js";
 import type { ContractArrearsQueryDto } from "./contract-arrears.dto.js";
-import type { CreateContractDto, RecordArrearsPaymentDto } from "./contract.dto.js";
+import type {
+  CreateContractDto,
+  RecordArrearsPaymentDto,
+  ReverseArrearsPaymentDto,
+} from "./contract.dto.js";
 
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
 
@@ -70,6 +76,21 @@ interface ArrearsPaymentViewSource {
   externalReference: string | null;
   recordedByUserId: string;
   createdAt: Date;
+  reversal?: ArrearsPaymentReversalViewSource | null;
+}
+
+interface ArrearsPaymentReversalViewSource {
+  id: string;
+  agreementId: string;
+  partyId: string;
+  contractId: string;
+  paymentId: string;
+  amount: { toString(): string };
+  arrearsBefore: { toString(): string };
+  arrearsAfter: { toString(): string };
+  reasonEncrypted: string;
+  reversedByUserId: string;
+  reversedAt: Date;
 }
 
 function isPrismaCode(error: unknown, code: string): boolean {
@@ -134,9 +155,29 @@ function matchesArrearsPaymentRequest(
     && existing.externalReference === (input.externalReference?.trim() || null);
 }
 
+function matchesArrearsReversalRequest(
+  existing: ArrearsPaymentReversalViewSource,
+  partyId: string,
+  contractId: string,
+  paymentId: string,
+  reason: string,
+  protection: DataProtectionService,
+): boolean {
+  return existing.partyId === partyId
+    && existing.contractId === contractId
+    && existing.paymentId === paymentId
+    && protection.decrypt(
+      existing.reasonEncrypted,
+      "contract.arrears_reversal_reason",
+    ) === reason;
+}
+
 @Injectable()
 export class ContractsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly protection: DataProtectionService,
+  ) {}
 
   async create(
     agreementId: string,
@@ -412,6 +453,7 @@ export class ContractsService {
         where: {
           agreementId,
           ...(partyId ? { partyId } : {}),
+          reversal: { is: null },
           contract: {
             ...scopeWhere,
             status: { in: ["ACTIVE", "PAYROLL_COMPLETED_WITH_ARREARS"] },
@@ -511,6 +553,7 @@ export class ContractsService {
     if (!contract) throw new NotFoundException("Contrato nao encontrado");
     const payments = await this.prisma.contractArrearsPayment.findMany({
       where: { agreementId, partyId, contractId },
+      include: { reversal: true },
       orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
       take: 200,
     });
@@ -653,6 +696,170 @@ export class ContractsService {
     }
   }
 
+  async reverseArrearsPayment(
+    agreementId: string,
+    partyId: string,
+    contractId: string,
+    paymentId: string,
+    input: ReverseArrearsPaymentDto,
+    idempotencyKey: string | undefined,
+    context: RequestContext,
+  ) {
+    const actorUserId = context.actor?.userId;
+    if (!actorUserId) throw new UnauthorizedException();
+    const key = idempotencyKey?.trim() ?? "";
+    if (!IDEMPOTENCY_PATTERN.test(key)) {
+      throw new BadRequestException("Idempotency-Key deve ter entre 8 e 128 caracteres seguros");
+    }
+    const reason = input.reason.trim();
+    if (reason.length < 5) throw new BadRequestException("Justificativa do estorno e obrigatoria");
+
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const existing = await transaction.contractArrearsPaymentReversal.findUnique({
+          where: { agreementId_idempotencyKey: { agreementId, idempotencyKey: key } },
+        });
+        if (existing) {
+          if (!matchesArrearsReversalRequest(
+            existing,
+            partyId,
+            contractId,
+            paymentId,
+            reason,
+            this.protection,
+          )) {
+            throw new ConflictException("Chave idempotente reutilizada com dados diferentes");
+          }
+          return { ...this.reversalView(existing), duplicate: true };
+        }
+
+        const payment = await transaction.contractArrearsPayment.findFirst({
+          where: { id: paymentId, agreementId, partyId, contractId },
+          include: { reversal: true, contract: true },
+        });
+        if (!payment) throw new NotFoundException("Baixa de atraso nao encontrada");
+        if (payment.reversal) {
+          throw new ConflictException("Baixa de atraso ja foi estornada");
+        }
+
+        const contract = payment.contract;
+        if (!["ACTIVE", "PAYROLL_COMPLETED_WITH_ARREARS", "SETTLED"].includes(contract.status)) {
+          throw new ConflictException("Situacao do contrato nao permite estorno da baixa");
+        }
+        if (contract.status === "SETTLED" && !contract.payrollCompletedAt) {
+          throw new ConflictException("Contrato liquidado fora da folha nao pode ser reaberto por este fluxo");
+        }
+
+        const amount = payment.amount.toString();
+        const arrearsBefore = contract.arrearsAmount.toString();
+        const arrearsAfter = addMoney(arrearsBefore, amount);
+        const reopensContract = contract.status === "SETTLED";
+        const nextStatus = reopensContract
+          ? "PAYROLL_COMPLETED_WITH_ARREARS"
+          : contract.status;
+        const updated = await transaction.contract.updateMany({
+          where: {
+            id: contract.id,
+            version: contract.version,
+            arrearsAmount: contract.arrearsAmount,
+            status: contract.status,
+          },
+          data: {
+            arrearsAmount: arrearsAfter,
+            status: nextStatus,
+            settledAt: reopensContract ? null : contract.settledAt,
+            version: { increment: 1 },
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException("Saldo em atraso foi alterado por outra operacao");
+        }
+
+        const reversal = await transaction.contractArrearsPaymentReversal.create({
+          data: {
+            agreementId,
+            partyId,
+            contractId,
+            paymentId,
+            amount,
+            arrearsBefore,
+            arrearsAfter,
+            reasonEncrypted: this.protection.encrypt(
+              reason,
+              "contract.arrears_reversal_reason",
+            ),
+            idempotencyKey: key,
+            reversedByUserId: actorUserId,
+          },
+        });
+        await transaction.auditEvent.create({ data: {
+          agreementId,
+          actorUserId,
+          actorRole: context.actor?.role ?? null,
+          actorPartyId: partyId,
+          action: "contract.arrears_payment.reverse",
+          outcome: "success",
+          entityType: "contract_arrears_payment_reversal",
+          entityId: reversal.id,
+          correlationId: context.correlationId,
+          previousData: {
+            arrearsAmount: arrearsBefore,
+            contractStatus: contract.status,
+            paymentId,
+          },
+          newData: {
+            arrearsAmount: arrearsAfter,
+            amount,
+            contractStatus: nextStatus,
+          },
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        } });
+        await transaction.outboxEvent.create({ data: {
+          agreementId,
+          aggregateType: "contract",
+          aggregateId: contract.id,
+          eventType: "contract.arrears_payment_reversed",
+          payload: {
+            contractId: contract.id,
+            paymentId,
+            reversalId: reversal.id,
+            amount,
+            arrearsAfter,
+            reopened: reopensContract,
+          },
+          correlationId: context.correlationId,
+        } });
+        return {
+          ...this.reversalView(reversal),
+          duplicate: false,
+          contractReopened: reopensContract,
+        };
+      }, { isolationLevel: "Serializable" });
+    } catch (error) {
+      if (isPrismaCode(error, "P2002")) {
+        const existing = await this.prisma.contractArrearsPaymentReversal.findUnique({
+          where: { agreementId_idempotencyKey: { agreementId, idempotencyKey: key } },
+        });
+        if (existing && matchesArrearsReversalRequest(
+          existing,
+          partyId,
+          contractId,
+          paymentId,
+          reason,
+          this.protection,
+        )) {
+          return { ...this.reversalView(existing), duplicate: true };
+        }
+        throw new ConflictException("Baixa ja estornada ou chave idempotente reutilizada");
+      }
+      if (isPrismaCode(error, "P2034")) {
+        throw new ConflictException("Concorrencia detectada; repita com a mesma chave idempotente");
+      }
+      throw error;
+    }
+  }
+
   private validateInput(
     input: CreateContractDto,
     chargeMode: string,
@@ -763,6 +970,26 @@ export class ContractsService {
       externalReference: payment.externalReference,
       recordedByUserId: payment.recordedByUserId,
       createdAt: payment.createdAt.toISOString(),
+      reversal: payment.reversal ? this.reversalView(payment.reversal) : null,
+    };
+  }
+
+  private reversalView(reversal: ArrearsPaymentReversalViewSource) {
+    return {
+      id: reversal.id,
+      agreementId: reversal.agreementId,
+      partyId: reversal.partyId,
+      contractId: reversal.contractId,
+      paymentId: reversal.paymentId,
+      amount: reversal.amount.toString(),
+      arrearsBefore: reversal.arrearsBefore.toString(),
+      arrearsAfter: reversal.arrearsAfter.toString(),
+      reason: this.protection.decrypt(
+        reversal.reasonEncrypted,
+        "contract.arrears_reversal_reason",
+      ),
+      reversedByUserId: reversal.reversedByUserId,
+      reversedAt: reversal.reversedAt.toISOString(),
     };
   }
 }

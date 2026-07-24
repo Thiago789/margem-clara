@@ -9,6 +9,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from "class-validator";
 
 const moneyPattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,2})?$/;
@@ -89,4 +90,11 @@ export class RecordArrearsPaymentDto {
   @IsString()
   @MaxLength(120)
   externalReference?: string;
+}
+
+export class ReverseArrearsPaymentDto {
+  @IsString()
+  @MinLength(5)
+  @MaxLength(500)
+  reason!: string;
 }

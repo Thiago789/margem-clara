@@ -2,7 +2,11 @@ import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Query, Req 
 import { Authorize } from "../platform/access-control/authorize.decorator.js";
 import { contextFromRequest, type ContextualRequest } from "../platform/request-context/request-context.js";
 import { ContractArrearsQueryDto } from "./contract-arrears.dto.js";
-import { CreateContractDto, RecordArrearsPaymentDto } from "./contract.dto.js";
+import {
+  CreateContractDto,
+  RecordArrearsPaymentDto,
+  ReverseArrearsPaymentDto,
+} from "./contract.dto.js";
 import { ContractsService } from "./contracts.service.js";
 
 @Controller("agreements/:agreementId/parties/:partyId/contracts")
@@ -74,6 +78,28 @@ export class ContractsController {
       agreementId,
       partyId,
       contractId,
+      input,
+      idempotencyKey,
+      contextFromRequest(request),
+    );
+  }
+
+  @Post(":contractId/arrears-payments/:paymentId/reverse")
+  @Authorize("contracts:recover", { agreementParam: "agreementId", partyParam: "partyId" })
+  reverseArrearsPayment(
+    @Param("agreementId", ParseUUIDPipe) agreementId: string,
+    @Param("partyId", ParseUUIDPipe) partyId: string,
+    @Param("contractId", ParseUUIDPipe) contractId: string,
+    @Param("paymentId", ParseUUIDPipe) paymentId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() input: ReverseArrearsPaymentDto,
+    @Req() request: ContextualRequest,
+  ) {
+    return this.contracts.reverseArrearsPayment(
+      agreementId,
+      partyId,
+      contractId,
+      paymentId,
       input,
       idempotencyKey,
       contextFromRequest(request),

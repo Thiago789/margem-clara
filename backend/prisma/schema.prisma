@@ -218,6 +218,7 @@ model Agreement {
   marginReservations    MarginReservation[]
   contracts             Contract[]
   contractArrearsPayments ContractArrearsPayment[]
+  contractArrearsPaymentReversals ContractArrearsPaymentReversal[]
   payrollInstructions   PayrollInstruction[]
   payrollDiscountEvents PayrollDiscountEvent[]
   createdAt             DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -267,6 +268,7 @@ model Party {
   marginReservations   MarginReservation[]
   contracts            Contract[]
   contractArrearsPayments ContractArrearsPayment[]
+  contractArrearsPaymentReversals ContractArrearsPaymentReversal[]
   createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
   version              Int                 @default(1)
@@ -744,6 +746,7 @@ model Contract {
   payrollInstructions     PayrollInstruction[]
   payrollDiscountEvents   PayrollDiscountEvent[]
   arrearsPayments         ContractArrearsPayment[]
+  arrearsPaymentReversals ContractArrearsPaymentReversal[]
 
   @@unique([agreementId, idempotencyKey], map: "contracts_idempotency_key")
   @@unique([agreementId, partyId, contractNumber], map: "contracts_party_number_key")
@@ -770,11 +773,36 @@ model ContractArrearsPayment {
   idempotencyKey    String               @map("idempotency_key")
   recordedByUserId  String               @map("recorded_by_user_id") @db.Uuid
   recordedBy        User                 @relation("ArrearsPaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  reversal          ContractArrearsPaymentReversal?
   createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([agreementId, idempotencyKey], map: "contract_arrears_payments_idempotency_key")
   @@index([agreementId, partyId, contractId, paidAt], map: "contract_arrears_payments_contract_idx")
   @@map("contract_arrears_payments")
+}
+
+model ContractArrearsPaymentReversal {
+  id               String                 @id @default(uuid()) @db.Uuid
+  agreementId      String                 @map("agreement_id") @db.Uuid
+  agreement        Agreement              @relation(fields: [agreementId], references: [id])
+  partyId          String                 @map("party_id") @db.Uuid
+  party            Party                  @relation(fields: [partyId], references: [id])
+  contractId       String                 @map("contract_id") @db.Uuid
+  contract         Contract               @relation(fields: [contractId], references: [id])
+  paymentId        String                 @unique @map("payment_id") @db.Uuid
+  payment          ContractArrearsPayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  amount           Decimal                @db.Decimal(18, 2)
+  arrearsBefore    Decimal                @map("arrears_before") @db.Decimal(18, 2)
+  arrearsAfter     Decimal                @map("arrears_after") @db.Decimal(18, 2)
+  reasonEncrypted  String                 @map("reason_encrypted")
+  idempotencyKey   String                 @map("idempotency_key")
+  reversedByUserId String                 @map("reversed_by_user_id") @db.Uuid
+  reversedBy       User                   @relation("ArrearsPaymentReversedBy", fields: [reversedByUserId], references: [id], onDelete: Restrict)
+  reversedAt       DateTime               @default(now()) @map("reversed_at") @db.Timestamptz(6)
+
+  @@unique([agreementId, idempotencyKey], map: "contract_arrears_payment_reversals_idempotency_key")
+  @@index([agreementId, partyId, contractId, reversedAt], map: "contract_arrears_payment_reversals_contract_idx")
+  @@map("contract_arrears_payment_reversals")
 }
 
 model User {
@@ -792,6 +820,7 @@ model User {
   cancelledReservations         MarginReservation[]    @relation("ReservationCancelledBy")
   createdContracts              Contract[]             @relation("ContractCreatedBy")
   recordedArrearsPayments       ContractArrearsPayment[] @relation("ArrearsPaymentRecordedBy")
+  reversedArrearsPayments       ContractArrearsPaymentReversal[] @relation("ArrearsPaymentReversedBy")
   acknowledgedPayrollExceptions PayrollDiscountEvent[] @relation("PayrollExceptionAcknowledgedBy")
   resolvedPayrollExceptions     PayrollDiscountEvent[] @relation("PayrollExceptionResolvedBy")
   createdAt                     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)

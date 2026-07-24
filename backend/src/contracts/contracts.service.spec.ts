@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PrismaService } from "../platform/database/prisma.service.js";
 import type { RequestContext } from "../platform/request-context/request-context.js";
 import { ContractsService } from "./contracts.service.js";
+import type { DataProtectionService } from "../platform/crypto/data-protection.service.js";
 
 const now = new Date("2026-07-21T12:00:00.000Z");
 const context: RequestContext = {
@@ -138,6 +139,7 @@ function setup() {
     },
     contractArrearsPayment: {
       findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn(),
       create: vi.fn().mockImplementation(({ data }) => ({
         id: "payment-1",
         ...data,
@@ -145,6 +147,17 @@ function setup() {
         arrearsBefore: decimal(data.arrearsBefore),
         arrearsAfter: decimal(data.arrearsAfter),
         createdAt: now,
+      })),
+    },
+    contractArrearsPaymentReversal: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(({ data }) => ({
+        id: "reversal-1",
+        ...data,
+        amount: decimal(data.amount),
+        arrearsBefore: decimal(data.arrearsBefore),
+        arrearsAfter: decimal(data.arrearsAfter),
+        reversedAt: now,
       })),
     },
     marginReservation: {
@@ -169,13 +182,20 @@ function setup() {
       findMany: vi.fn(),
       aggregate: vi.fn(),
     },
+    contractArrearsPaymentReversal: { findUnique: vi.fn() },
   } as unknown as PrismaService;
+  const protection = {
+    encrypt: vi.fn((value: string) => `protected:${value}`),
+    decrypt: vi.fn((value: string) => value.replace(/^protected:/, "")),
+  } as unknown as DataProtectionService;
   return {
-    service: new ContractsService(prisma),
+    service: new ContractsService(prisma, protection),
     transaction,
+    protection,
     prisma: prisma as unknown as {
       contract: { findMany: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
       contractArrearsPayment: { aggregate: ReturnType<typeof vi.fn> };
+      contractArrearsPaymentReversal: { findUnique: ReturnType<typeof vi.fn> };
     },
   };
 }
@@ -329,6 +349,9 @@ describe("ContractsService", () => {
       }),
       take: 25,
     }));
+    expect(prisma.contractArrearsPayment.aggregate).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ reversal: { is: null } }),
+    }));
     expect(result.summary).toEqual({
       contractsWithArrears: 2,
       totalArrearsAmount: "180.00",
@@ -479,5 +502,155 @@ describe("ContractsService", () => {
 
     expect(transaction.contract.findFirst).not.toHaveBeenCalled();
     expect(transaction.contractArrearsPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("reverses an arrears payment and restores the balance without changing the schedule", async () => {
+    const { service, transaction, protection } = setup();
+    transaction.contractArrearsPayment.findFirst.mockResolvedValue({
+      id: "payment-1",
+      agreementId: "agreement-1",
+      partyId: "party-1",
+      contractId: "contract-1",
+      amount: decimal("100.00"),
+      reversal: null,
+      contract: contract({
+        currentInstallment: 10,
+        arrearsAmount: decimal("30.00"),
+        version: 6,
+      }),
+    });
+
+    const result = await service.reverseArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      "payment-1",
+      { reason: "Pagamento registrado em duplicidade" },
+      "arrears-reversal-001",
+      context,
+    );
+
+    expect(transaction.contract.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "contract-1",
+        version: 6,
+        arrearsAmount: expect.objectContaining({ toString: expect.any(Function) }),
+        status: "ACTIVE",
+      },
+      data: {
+        arrearsAmount: "130.00",
+        status: "ACTIVE",
+        settledAt: null,
+        version: { increment: 1 },
+      },
+    });
+    expect(protection.encrypt).toHaveBeenCalledWith(
+      "Pagamento registrado em duplicidade",
+      "contract.arrears_reversal_reason",
+    );
+    expect(result).toMatchObject({
+      amount: "100.00",
+      arrearsBefore: "30.00",
+      arrearsAfter: "130.00",
+      duplicate: false,
+      contractReopened: false,
+    });
+  });
+
+  it("reopens a payroll-completed contract when its final payment is reversed", async () => {
+    const { service, transaction } = setup();
+    transaction.contractArrearsPayment.findFirst.mockResolvedValue({
+      id: "payment-2",
+      agreementId: "agreement-1",
+      partyId: "party-1",
+      contractId: "contract-1",
+      amount: decimal("80.00"),
+      reversal: null,
+      contract: contract({
+        status: "SETTLED",
+        currentInstallment: 60,
+        arrearsAmount: decimal("0.00"),
+        payrollCompletedAt: now,
+        marginReleasedAt: now,
+        settledAt: now,
+        version: 10,
+      }),
+    });
+
+    const result = await service.reverseArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      "payment-2",
+      { reason: "Pagamento posteriormente cancelado" },
+      "arrears-reversal-002",
+      context,
+    );
+
+    expect(transaction.contract.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        arrearsAmount: "80.00",
+        status: "PAYROLL_COMPLETED_WITH_ARREARS",
+        settledAt: null,
+      }),
+    }));
+    expect(result).toMatchObject({ contractReopened: true, arrearsAfter: "80.00" });
+  });
+
+  it("returns the same reversal for a repeated idempotency key", async () => {
+    const { service, transaction } = setup();
+    transaction.contractArrearsPaymentReversal.findUnique.mockResolvedValue({
+      id: "reversal-1",
+      agreementId: "agreement-1",
+      partyId: "party-1",
+      contractId: "contract-1",
+      paymentId: "payment-1",
+      amount: decimal("100.00"),
+      arrearsBefore: decimal("30.00"),
+      arrearsAfter: decimal("130.00"),
+      reasonEncrypted: "protected:Pagamento registrado em duplicidade",
+      reversedByUserId: "user-1",
+      reversedAt: now,
+    });
+
+    const result = await service.reverseArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      "payment-1",
+      { reason: "Pagamento registrado em duplicidade" },
+      "arrears-reversal-001",
+      context,
+    );
+
+    expect(result).toMatchObject({ id: "reversal-1", duplicate: true });
+    expect(transaction.contractArrearsPayment.findFirst).not.toHaveBeenCalled();
+    expect(transaction.contract.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects a second reversal of the same payment", async () => {
+    const { service, transaction } = setup();
+    transaction.contractArrearsPayment.findFirst.mockResolvedValue({
+      id: "payment-1",
+      agreementId: "agreement-1",
+      partyId: "party-1",
+      contractId: "contract-1",
+      amount: decimal("100.00"),
+      reversal: { id: "reversal-existing" },
+      contract: contract({ arrearsAmount: decimal("30.00"), version: 6 }),
+    });
+
+    await expect(service.reverseArrearsPayment(
+      "agreement-1",
+      "party-1",
+      "contract-1",
+      "payment-1",
+      { reason: "Nova tentativa de estorno" },
+      "arrears-reversal-003",
+      context,
+    )).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.contract.updateMany).not.toHaveBeenCalled();
+    expect(transaction.contractArrearsPaymentReversal.create).not.toHaveBeenCalled();
   });
 });

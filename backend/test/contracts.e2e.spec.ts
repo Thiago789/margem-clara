@@ -40,6 +40,7 @@ describe("contract endpoints", () => {
     getArrearsOverview: vi.fn(),
     listArrearsPayments: vi.fn(),
     recordArrearsPayment: vi.fn(),
+    reverseArrearsPayment: vi.fn(),
   };
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
 
@@ -206,6 +207,37 @@ describe("contract endpoints", () => {
       "40f76a2a-7724-4f93-a7eb-d0d72c73520d",
       body,
       "arrears-payment-001",
+      expect.any(Object),
+    );
+  });
+
+  it("allows the scoped consignee to reverse an arrears payment with justification", async () => {
+    auth.authenticate.mockResolvedValue(actor);
+    contracts.reverseArrearsPayment.mockResolvedValue({
+      id: "reversal-1",
+      paymentId: "2ee6e3bc-c717-4ca4-9d96-34629bd87f47",
+      arrearsAfter: "80.00",
+    });
+    const body = { reason: "Pagamento cancelado pela instituicao" };
+
+    await request(app.getHttpServer())
+      .post(
+        `/api/v1/agreements/${agreementId}/parties/${partyId}` +
+        `/contracts/40f76a2a-7724-4f93-a7eb-d0d72c73520d` +
+        `/arrears-payments/2ee6e3bc-c717-4ca4-9d96-34629bd87f47/reverse`,
+      )
+      .set("Cookie", "mc_session=session-value")
+      .set("Idempotency-Key", "arrears-reversal-001")
+      .send(body)
+      .expect(201);
+
+    expect(contracts.reverseArrearsPayment).toHaveBeenCalledWith(
+      agreementId,
+      partyId,
+      "40f76a2a-7724-4f93-a7eb-d0d72c73520d",
+      "2ee6e3bc-c717-4ca4-9d96-34629bd87f47",
+      body,
+      "arrears-reversal-001",
       expect.any(Object),
     );
   });
