@@ -562,6 +562,9 @@ function renderJourneyShell() {
 
 const journeyShellStyle = document.createElement("style");
 journeyShellStyle.textContent = `
+  .journey-shell[hidden] {
+    display: none !important;
+  }
   .journey-shell {
     display: grid;
     gap: 12px;

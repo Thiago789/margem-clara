@@ -643,6 +643,97 @@ async function exercisePilotQaApprovalFreshness(page, scenarioName) {
   }
 }
 
+async function exerciseContractArrears(page, scenarioName) {
+  await openView(page, "contracts");
+  await expectVisible(page, "[data-contract-mode='recovery']", `${scenarioName}: modo de recuperacao`);
+  await page.locator("[data-contract-mode='recovery']").click();
+  await expectVisible(page, "#arrears-summary", `${scenarioName}: indicadores de recuperacao`);
+  await expectVisible(page, ".arrears-row", `${scenarioName}: contrato com saldo em atraso`);
+
+  const managerState = await page.evaluate(() => ({
+    cards: document.querySelectorAll("#arrears-summary article").length,
+    rows: document.querySelectorAll(".arrears-row").length,
+    recoveryActions: document.querySelectorAll("[data-record-arrears]").length,
+  }));
+  if (managerState.cards !== 4 || managerState.rows < 1) {
+    fail(`${scenarioName}: visao de recuperacao nao carregou resumo e contratos.`);
+  }
+  if (managerState.recoveryActions !== 0) {
+    fail(`${scenarioName}: gestor amplo recebeu acao de baixa restrita a consignataria.`);
+  }
+
+  await page.evaluate(() => {
+    state.currentProfile = "lender";
+    saveState();
+    render();
+    openView("contracts");
+    setContractMode("recovery");
+  });
+  await expectVisible(page, "[data-record-arrears]", `${scenarioName}: acao de baixa da consignataria`);
+  const lenderFilterVisible = await page.locator("#arrears-lender-filter-wrap").isVisible();
+  if (lenderFilterVisible) {
+    fail(`${scenarioName}: consignataria visualiza filtro amplo de outras consignatarias.`);
+  }
+
+  await page.locator("[data-record-arrears]").first().click();
+  await expectVisible(page, "#arrears-payment-modal", `${scenarioName}: modal de baixa externa`);
+  await page.locator("#arrears-payment-amount").fill("20.00");
+  await page.locator("#arrears-payment-reference").fill("SMOKE-PIX-001");
+  await page.locator("#arrears-payment-form button[type='submit']").click();
+
+  const paymentResult = await page.evaluate(() => {
+    const contract = state.contracts.find((item) => item.id === "CTR-2026-001");
+    return {
+      modalOpen: document.getElementById("arrears-payment-modal")?.open,
+      arrears: Number(contract?.arrearsAmount || 0),
+      paymentFound: state.arrearsPayments.some(
+        (payment) => payment.contractId === "CTR-2026-001" && payment.externalReference === "SMOKE-PIX-001"
+      ),
+    };
+  });
+  if (paymentResult.modalOpen || paymentResult.arrears !== 100 || !paymentResult.paymentFound) {
+    fail(`${scenarioName}: baixa externa nao reduziu o saldo de 120 para 100 com evidencia.`);
+  }
+
+  const partialResult = await page.evaluate(() => {
+    const contract = state.contracts.find((item) => item.id === "CTR-2026-002");
+    if (!contract) return { found: false };
+    const before = Number(contract.currentInstallment || 0);
+    processReturnCsv(
+      "contrato,competencia,status,motivo,valor_descontado\n" +
+      "CTR-2026-002,2099-01,DESCONTADO,Margem insuficiente,300.00"
+    );
+    const latest = contract.partialDiscounts.at(-1);
+    return {
+      found: true,
+      before,
+      current: Number(contract.currentInstallment || 0),
+      arrears: Number(contract.arrearsAmount || 0),
+      shortfall: Number(latest?.shortfallAmount || 0),
+      partialCount: Number(state.lastReturnReconciliation?.partial || 0),
+    };
+  });
+  if (!partialResult.found) {
+    fail(`${scenarioName}: contrato de teste para desconto parcial nao encontrado.`);
+  } else if (
+    partialResult.current !== partialResult.before + 1 ||
+    partialResult.arrears !== 130 ||
+    partialResult.shortfall !== 130 ||
+    partialResult.partialCount !== 1
+  ) {
+    fail(`${scenarioName}: desconto parcial nao avancou parcela e acumulou residual corretamente.`);
+  }
+
+  await page.evaluate(() => {
+    state.currentProfile = "manager";
+    saveState();
+    render();
+    openView("contracts");
+    setContractMode("recovery");
+  });
+  await expectPageUsable(page, `${scenarioName}: recuperacao de contratos`);
+}
+
 async function expectPageUsable(page, label) {
   const layout = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
@@ -811,6 +902,7 @@ async function runScenario(browser, scenario) {
   await exerciseDemoScriptGuide(page, scenario.name);
   await exercisePilotQaApprovalFreshness(page, scenario.name);
   await exercisePublicValidationBatch(page, scenario.name);
+  await exerciseContractArrears(page, scenario.name);
 
   const guardedViews = await page.evaluate(() => {
     const config = profileConfig?.manager || { views: [] };
