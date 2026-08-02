@@ -44,7 +44,7 @@ function loadAddonScript(filename) {
   if (hasAddonScript(filename)) return;
   const script = document.createElement("script");
   script.async = false;
-  script.src = `${filename}?v=20260723-01`;
+  script.src = `${filename}?v=20260724-01`;
   document.body.appendChild(script);
 }
 
@@ -99,6 +99,7 @@ function loadMissingAddons() {
     "contract-timeline-addon.js",
     "return-reconciliation-addon.js",
     "contract-arrears-addon.js",
+    "connected-mode-addon.js",
     "insertion-batch-addon.js",
     "lender-management-addon.js",
     "file-layouts-addon.js",

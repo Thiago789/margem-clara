@@ -1,169 +1,332 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Margem Clara</title>
-    <link rel="stylesheet" href="styles.css?v=20260723-01" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <aside class="sidebar" aria-label="Navegacao principal">
-        <div class="brand">
-          <div class="brand-mark">MC</div>
-          <div>
-            <strong>Margem Clara</strong>
-            <span>Gestao consignavel</span>
-          </div>
-        </div>
+const CONNECTED_MODE_QUERY = "connected";
+const CONNECTED_API_PORT = "3333";
+const CONNECTED_LOCAL_HOSTS = new Set(["127.0.0.1", "localhost"]);
 
-        <nav class="nav-list">
-          <button class="nav-item active" data-view="dashboard" type="button">Painel</button>
-          <button class="nav-item" data-view="employees" type="button">Servidores</button>
-          <button class="nav-item" data-view="margin" type="button">Margem</button>
-          <button class="nav-item" data-view="contracts" type="button">Contratos</button>
-          <button class="nav-item" data-view="import" type="button">Troca arquivos</button>
-          <button class="nav-item" data-view="simulation" type="button">Simulacao</button>
-          <button class="nav-item" data-view="authorizations" type="button">Autorizacoes</button>
-          <button class="nav-item" data-view="tickets" type="button">Suporte</button>
-          <button class="nav-item" data-view="audit" type="button">Auditoria</button>
-        </nav>
+function connectedModeRequested() {
+  const query = new URLSearchParams(location.search);
+  return query.get("mode") === CONNECTED_MODE_QUERY;
+}
 
-        <div class="profile-card">
-          <span>Perfil ativo</span>
-          <strong id="active-profile-label">Gestor/RH</strong>
-          <small id="active-profile-scope">Prefeitura Modelo</small>
-        </div>
-      </aside>
+function connectedApiBase() {
+  if (!CONNECTED_LOCAL_HOSTS.has(location.hostname) || location.protocol !== "http:") return null;
+  return `http://${location.hostname}:${CONNECTED_API_PORT}/api/v1`;
+}
 
-      <main class="main-panel">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">MVP operacional</p>
-            <h1 id="page-title">Painel</h1>
-          </div>
-          <div class="topbar-actions">
-            <select class="select-input compact-select" id="module-jump" title="Ir para modulo"></select>
-            <select class="select-input compact-select" id="profile-select" title="Perfil ativo">
-              <option value="manager">Gestor/RH</option>
-              <option value="employee">Servidor</option>
-              <option value="lender">Consignataria</option>
-            </select>
-            <button class="icon-button" id="seed-data-button" type="button" title="Carregar dados exemplo">R</button>
-            <button class="primary-button" id="new-employee-open" type="button">Novo servidor</button>
-          </div>
-        </header>
+const connectedRuntime = {
+  active: connectedModeRequested() && Boolean(connectedApiBase()),
+  actor: null,
+  agreements: [],
+  agreementId: null,
+  partyId: null,
+  overview: null,
+  loading: false,
+  error: null,
+};
 
-        <section class="view active" id="dashboard-view" aria-labelledby="dashboard-title">
-          <div class="section-heading">
-            <h2 id="dashboard-title">Visao geral</h2>
-            <p id="dashboard-subtitle">Resumo operacional do convenio Prefeitura Modelo.</p>
-          </div>
+function connectedEscape(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[character],
+  );
+}
 
-          <div class="metric-grid" id="metrics"></div>
+async function connectedRequest(path, options = {}) {
+  const base = connectedApiBase();
+  if (!base) throw new Error("O modo conectado exige o frontend local em HTTP.");
 
-          <div class="content-grid">
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Alertas operacionais</h3>
-              </div>
-              <div class="alert-list" id="alerts"></div>
-            </section>
+  const response = await fetch(`${base}${path}`, {
+    ...options,
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {}),
+    },
+  });
 
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Movimentos recentes</h3>
-              </div>
-              <div class="timeline compact" id="recent-movements"></div>
-            </section>
-          </div>
+  if (response.status === 204) return null;
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = new Error(payload?.message || `Falha na API (${response.status}).`);
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
 
-          <section class="panel guided-panel">
-            <div class="panel-heading">
-              <h3 id="guided-title">Jornada recomendada</h3>
-            </div>
-            <div class="guided-flow" id="guided-flow"></div>
-          </section>
-        </section>
+function connectedMembershipScopes(actor) {
+  return (actor?.memberships || []).filter((membership) => membership.agreementId);
+}
 
-        <section class="view" id="employees-view" aria-labelledby="employees-title">
-          <div class="section-heading row-heading">
+async function loadConnectedSession() {
+  connectedRuntime.loading = true;
+  connectedRuntime.error = null;
+  renderConnectedStatus();
+  try {
+    connectedRuntime.actor = await connectedRequest("/auth/me");
+    const scopes = connectedMembershipScopes(connectedRuntime.actor);
+    try {
+      connectedRuntime.agreements = await connectedRequest("/agreements");
+    } catch (error) {
+      if (error.status !== 403) throw error;
+      connectedRuntime.agreements = scopes.map((scope) => ({
+        id: scope.agreementId,
+        name: "Convenio autorizado",
+      }));
+    }
+
+    if (!connectedRuntime.agreementId) {
+      connectedRuntime.agreementId =
+        scopes[0]?.agreementId ||
+        connectedRuntime.agreements[0]?.id ||
+        null;
+    }
+    const selectedScope = scopes.find(
+      (membership) => membership.agreementId === connectedRuntime.agreementId,
+    );
+    connectedRuntime.partyId = selectedScope?.partyId || null;
+    await loadConnectedArrears();
+  } catch (error) {
+    connectedRuntime.actor = null;
+    connectedRuntime.overview = null;
+    connectedRuntime.error =
+      error.status === 401 ? null : error.message;
+  } finally {
+    connectedRuntime.loading = false;
+    renderConnectedStatus();
+    renderConnectedRecovery();
+  }
+}
+
+async function loadConnectedArrears() {
+  if (!connectedRuntime.actor || !connectedRuntime.agreementId) return;
+  const agreementId = encodeURIComponent(connectedRuntime.agreementId);
+  const partyPath = connectedRuntime.partyId
+    ? `/parties/${encodeURIComponent(connectedRuntime.partyId)}`
+    : "";
+  connectedRuntime.overview = await connectedRequest(
+    `/agreements/${agreementId}${partyPath}/contracts/arrears?limit=100`,
+  );
+}
+
+async function loginConnected(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const submit = form.querySelector("button[type='submit']");
+  submit.disabled = true;
+  connectedRuntime.error = null;
+  try {
+    await connectedRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: form.elements.email.value.trim(),
+        password: form.elements.password.value,
+      }),
+    });
+    form.elements.password.value = "";
+    document.getElementById("connected-login-modal")?.close();
+    await loadConnectedSession();
+  } catch (error) {
+    connectedRuntime.error = error.message;
+    renderConnectedStatus();
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function logoutConnected() {
+  try {
+    await connectedRequest("/auth/logout", { method: "POST" });
+  } finally {
+    connectedRuntime.actor = null;
+    connectedRuntime.overview = null;
+    connectedRuntime.agreementId = null;
+    connectedRuntime.partyId = null;
+    renderConnectedStatus();
+    renderConnectedRecovery();
+  }
+}
+
+async function changeConnectedAgreement(event) {
+  connectedRuntime.agreementId = event.target.value;
+  const scope = connectedMembershipScopes(connectedRuntime.actor).find(
+    (membership) => membership.agreementId === connectedRuntime.agreementId,
+  );
+  connectedRuntime.partyId = scope?.partyId || null;
+  connectedRuntime.loading = true;
+  connectedRuntime.error = null;
+  renderConnectedStatus();
+  try {
+    await loadConnectedArrears();
+  } catch (error) {
+    connectedRuntime.error = error.message;
+  } finally {
+    connectedRuntime.loading = false;
+    renderConnectedStatus();
+    renderConnectedRecovery();
+  }
+}
+
+function ensureConnectedUi() {
+  if (!connectedRuntime.active || document.getElementById("connected-api-status")) return;
+  const panel = document.getElementById("contract-arrears-panel");
+  if (!panel) return;
+
+  panel.insertAdjacentHTML(
+    "afterbegin",
+    `<div class="connected-api-status" id="connected-api-status" role="status"></div>`,
+  );
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <dialog class="modal" id="connected-login-modal">
+        <form method="dialog" class="modal-content connected-login-form" id="connected-login-form">
+          <div class="modal-heading">
             <div>
-              <h2 id="employees-title">Servidores</h2>
-              <p>Cadastre servidores e acompanhe suas matriculas.</p>
+              <p class="eyebrow">Ambiente local protegido</p>
+              <h2>Entrar na API</h2>
             </div>
-            <input class="search-input" id="employee-search" placeholder="Buscar por nome, CPF ou matricula" />
+            <button class="icon-button" value="cancel" type="button" data-close-connected-login title="Fechar">x</button>
           </div>
-          <div class="table-panel">
-            <table>
-              <thead>
-                <tr>
-                  <th>Servidor</th>
-                  <th>CPF</th>
-                  <th>Matricula</th>
-                  <th>Renda base</th>
-                  <th>Margem disponivel</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="employees-table"></tbody>
-            </table>
-          </div>
-        </section>
+          <label>E-mail
+            <input class="search-input" name="email" type="email" autocomplete="username" required />
+          </label>
+          <label>Senha
+            <input class="search-input" name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="primary-button wide" value="default" type="submit">Entrar</button>
+        </form>
+      </dialog>
+    `,
+  );
 
-        <section class="view" id="margin-view" aria-labelledby="margin-title">
-          <div class="section-heading row-heading">
+  document.getElementById("connected-login-form")?.addEventListener("submit", loginConnected);
+  document.querySelector("[data-close-connected-login]")?.addEventListener("click", () => {
+    document.getElementById("connected-login-modal")?.close();
+  });
+}
+
+function renderConnectedStatus() {
+  ensureConnectedUi();
+  const status = document.getElementById("connected-api-status");
+  if (!status) return;
+
+  const agreements = connectedRuntime.agreements.map((agreement) =>
+    `<option value="${connectedEscape(agreement.id)}" ${agreement.id === connectedRuntime.agreementId ? "selected" : ""}>${connectedEscape(agreement.name)}</option>`,
+  ).join("");
+
+  status.innerHTML = connectedRuntime.actor
+    ? `
+      <div>
+        <strong>API local conectada</strong>
+        <span>${connectedRuntime.partyId ? "Escopo da consignataria" : "Escopo amplo do convenio"}</span>
+      </div>
+      ${agreements ? `<label><span>Convenio</span><select class="select-input" id="connected-agreement">${agreements}</select></label>` : ""}
+      <button class="secondary-button" type="button" id="connected-refresh" ${connectedRuntime.loading ? "disabled" : ""}>Atualizar</button>
+      <button class="secondary-button" type="button" id="connected-logout">Sair</button>
+    `
+    : `
+      <div>
+        <strong>API local ${connectedRuntime.loading ? "verificando..." : "desconectada"}</strong>
+        <span>Os dados demonstrativos permanecem separados.</span>
+      </div>
+      <button class="primary-button" type="button" id="connected-login-open">Entrar</button>
+    `;
+
+  if (connectedRuntime.error) {
+    status.insertAdjacentHTML("beforeend", `<small class="connected-api-error">${connectedEscape(connectedRuntime.error)}</small>`);
+  }
+  document.getElementById("connected-login-open")?.addEventListener("click", () => {
+    connectedRuntime.error = null;
+    document.getElementById("connected-login-modal")?.showModal();
+  });
+  document.getElementById("connected-logout")?.addEventListener("click", logoutConnected);
+  document.getElementById("connected-agreement")?.addEventListener("change", changeConnectedAgreement);
+  document.getElementById("connected-refresh")?.addEventListener("click", loadConnectedSession);
+}
+
+function connectedVisibleContracts() {
+  const contractFilter = document.getElementById("arrears-contract-filter")?.value.trim().toLowerCase() || "";
+  const statusFilter = document.getElementById("arrears-status-filter")?.value || "";
+  const minAmount = Number(document.getElementById("arrears-min-filter")?.value || 0);
+  return (connectedRuntime.overview?.contracts || [])
+    .filter((contract) => !contractFilter || contract.contractNumber.toLowerCase().includes(contractFilter))
+    .filter((contract) => !statusFilter || contract.status === statusFilter)
+    .filter((contract) => Number(contract.arrearsAmount) >= minAmount);
+}
+
+function renderConnectedRecovery() {
+  ensureConnectedUi();
+  renderConnectedStatus();
+  const summary = document.getElementById("arrears-summary");
+  const list = document.getElementById("arrears-list");
+  const lenderFilter = document.getElementById("arrears-lender-filter-wrap");
+  if (!summary || !list) return;
+  if (lenderFilter) lenderFilter.hidden = true;
+
+  if (!connectedRuntime.actor) {
+    summary.innerHTML = "";
+    list.innerHTML = `<div class="empty-state">Entre na API local para consultar a carteira real de homologacao.</div>`;
+    return;
+  }
+  if (connectedRuntime.loading && !connectedRuntime.overview) {
+    summary.innerHTML = "";
+    list.innerHTML = `<div class="empty-state">Consultando dados autorizados...</div>`;
+    return;
+  }
+  if (connectedRuntime.error) {
+    summary.innerHTML = "";
+    list.innerHTML = `<div class="empty-state">Nao foi possivel carregar a carteira. Verifique a API local.</div>`;
+    return;
+  }
+
+  const contracts = connectedVisibleContracts();
+  const total = contracts.reduce((sum, contract) => sum + Number(contract.arrearsAmount), 0);
+  const completed = contracts.filter((contract) => contract.status === "PAYROLL_COMPLETED_WITH_ARREARS");
+  const recovered = Number(connectedRuntime.overview?.summary?.recoveredOnOpenContracts?.amount || 0);
+  summary.innerHTML = [
+    ["Contratos com saldo", contracts.length],
+    ["Saldo em atraso", money.format(total)],
+    ["Folha concluida", completed.length],
+    ["Recuperado", money.format(recovered)],
+  ].map(([label, value]) => `<article><span>${label}</span><strong>${value}</strong></article>`).join("");
+
+  list.innerHTML = contracts.length
+    ? contracts.map((contract) => {
+      const partial = contract.latestPartial;
+      return `
+        <article class="arrears-row">
+          <div class="arrears-row-main">
             <div>
-              <h2 id="margin-title">Margem explicada</h2>
-              <p>Entenda a base, contratos, reservas e bloqueios.</p>
+              <span class="arrears-contract-label">Contrato</span>
+              <strong>${connectedEscape(contract.contractNumber)}</strong>
+              <small>${connectedEscape(contract.party.name)}</small>
             </div>
-            <select id="margin-employee-select" class="select-input"></select>
-          </div>
-
-          <div id="margin-detail"></div>
-        </section>
-
-        <section class="view" id="contracts-view" aria-labelledby="contracts-title">
-          <div class="section-heading row-heading">
             <div>
-              <h2 id="contracts-title">Contratos</h2>
-              <p>Operacoes que consomem margem.</p>
+              <span>Saldo em atraso</span>
+              <strong class="arrears-amount">${money.format(Number(contract.arrearsAmount))}</strong>
+              <small>Parcela atual ${contract.currentInstallment} de ${contract.termInstallments || "-"}</small>
             </div>
-            <button class="primary-button" id="new-contract-open" type="button">Nova reserva</button>
+            <div>
+              <span>Situacao</span>
+              <strong>${contract.status === "ACTIVE" ? "Folha ativa" : "Folha concluida"}</strong>
+              <small>${connectedEscape(contract.product.name)}</small>
+            </div>
           </div>
-          <div class="table-panel">
-            <table>
-              <thead>
-                <tr>
-                  <th>Contrato</th>
-                  <th>Servidor</th>
-                  <th>Consignataria</th>
-                  <th>Produto</th>
-                  <th>Tipo</th>
-                  <th>Parcela</th>
-                  <th>Prazo</th>
-                  <th>Evolucao</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="contracts-table"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="view" id="import-view" aria-labelledby="import-title">
-          <div class="section-heading">
-            <h2 id="import-title">Troca de arquivos</h2>
-            <p>Controle o ciclo com a folha: margem recebida, insercoes enviadas e retorno processado.</p>
-          </div>
-
-          <div class="file-flow">
-            <article>
-              <strong>1. Arquivo de margem</strong>
-              <span>Folha envia dados de servidores e base de calculo.</span>
-            </article>
-            <article>
-              <strong>2. Arquivo de insercao</strong>
+          ${partial ? `
+            <div class="arrears-partial-detail">
+              Esperado ${money.format(Number(partial.expectedAmount))};
+              descontado ${money.format(Number(partial.discountedAmount))}.
+            </div>
+          ` : ""}
+          <div class="arrears-row-actions">
+        …9448 tokens truncated… <strong>2. Arquivo de insercao</strong>
               <span>Margem Clara envia descontos para entrar na folha.</span>
             </article>
             <article>
@@ -440,7 +603,7 @@
     </dialog>
 
     <script src="app.js"></script>
-    <script src="audit-addon.js?v=20260723-01"></script>
+    <script src="audit-addon.js?v=20260724-01"></script>
   </body>
 </html>
 
