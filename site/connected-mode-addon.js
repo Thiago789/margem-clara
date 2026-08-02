@@ -326,284 +326,65 @@ function renderConnectedRecovery() {
             </div>
           ` : ""}
           <div class="arrears-row-actions">
-        …9448 tokens truncated… <strong>2. Arquivo de insercao</strong>
-              <span>Margem Clara envia descontos para entrar na folha.</span>
-            </article>
-            <article>
-              <strong>3. Arquivo retorno</strong>
-              <span>Folha informa o que foi descontado ou rejeitado.</span>
-            </article>
+            <span>Consulta autenticada. Baixas reais serao habilitadas apos a validacao desta etapa.</span>
           </div>
+        </article>
+      `;
+    }).join("")
+    : `<div class="empty-state">Nenhum contrato corresponde aos filtros de recuperacao.</div>`;
+}
 
-          <div class="exchange-grid">
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Arquivo de margem</h3>
-              </div>
-              <p class="muted">
-                Colunas esperadas: nome, cpf, matricula, renda_base, descontos_obrigatorios, status.
-              </p>
-              <input id="csv-file" class="file-input" type="file" accept=".csv,text/csv" />
-              <div class="button-row">
-                <button class="secondary-button" id="download-sample" type="button">Baixar exemplo</button>
-                <button class="primary-button" id="process-csv" type="button">Processar folha</button>
-              </div>
-              <div id="import-result" class="import-result">Nenhum arquivo de margem processado ainda.</div>
-            </section>
+window.margemClaraConnected = {
+  isActive: () => connectedRuntime.active,
+  renderRecovery: renderConnectedRecovery,
+};
 
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Arquivo de insercao</h3>
-              </div>
-              <p class="muted">
-                Gera os descontos reservados que devem ser enviados para processamento na folha.
-              </p>
-              <div class="button-row">
-                <button class="secondary-button" id="download-insertion-sample" type="button">Modelo</button>
-                <button class="primary-button" id="generate-insertion" type="button">Gerar insercao</button>
-              </div>
-              <div id="insertion-result" class="import-result">Nenhuma insercao gerada ainda.</div>
-            </section>
+if (connectedRuntime.active) {
+  ensureConnectedUi();
+  renderConnectedStatus();
+  loadConnectedSession();
+}
 
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Arquivo retorno</h3>
-              </div>
-              <p class="muted">
-                Colunas esperadas: contrato, competencia, status, motivo, valor_descontado.
-              </p>
-              <input id="return-file" class="file-input" type="file" accept=".csv,text/csv" />
-              <div class="button-row">
-                <button class="secondary-button" id="download-return-sample" type="button">Baixar exemplo</button>
-                <button class="primary-button" id="process-return" type="button">Processar retorno</button>
-              </div>
-              <div id="return-result" class="import-result">Nenhum retorno processado ainda.</div>
-            </section>
-          </div>
-
-          <section class="panel exchange-summary">
-            <div class="panel-heading">
-              <h3>Situacao da competencia</h3>
-            </div>
-            <div class="exchange-status-grid" id="exchange-summary"></div>
-          </section>
-        </section>
-
-        <section class="view" id="simulation-view" aria-labelledby="simulation-title">
-          <div class="section-heading">
-            <h2 id="simulation-title">Simulacao e ranking</h2>
-            <p>Compare ofertas pelo valor de parcela e taxa.</p>
-          </div>
-
-          <div class="simulation-layout">
-            <form class="panel form-grid" id="simulation-form">
-              <label>
-                Servidor
-                <select id="simulation-employee" class="select-input"></select>
-              </label>
-              <label>
-                Produto
-                <select id="simulation-product" class="select-input">
-                  <option>Emprestimo consignado</option>
-                  <option>Cartao consignado</option>
-                  <option>Cartao beneficio</option>
-                </select>
-              </label>
-              <label>
-                Valor desejado
-                <input id="simulation-amount" class="text-input" type="number" min="0" step="100" value="5000" />
-              </label>
-              <label>
-                Prazo
-                <input id="simulation-installments" class="text-input" type="number" min="1" max="120" value="48" />
-              </label>
-              <button class="primary-button wide" type="submit">Simular</button>
-            </form>
-
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Ranking de taxas</h3>
-              </div>
-              <div id="ranking-list" class="ranking-list"></div>
-            </section>
-          </div>
-        </section>
-
-        <section class="view" id="authorizations-view" aria-labelledby="authorizations-title">
-          <div class="section-heading row-heading">
-            <div>
-              <h2 id="authorizations-title">Autorizacoes</h2>
-              <p>Gere codigos temporarios para consulta, reserva e confirmacao.</p>
-            </div>
-            <button class="primary-button" id="new-authorization-open" type="button">Gerar codigo</button>
-          </div>
-
-          <div class="content-grid">
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Politica do convenio</h3>
-              </div>
-              <div class="policy-grid">
-                <label class="toggle-row">
-                  <input id="policy-require-margin-consult-code" type="checkbox" />
-                  <span>Exigir autorizacao para consulta de margem</span>
-                </label>
-                <label class="toggle-row">
-                  <input id="policy-require-reservation-code" type="checkbox" />
-                  <span>Exigir codigo para reserva</span>
-                </label>
-                <label>
-                  Validade do codigo
-                  <select id="policy-code-validity" class="select-input">
-                    <option value="2">2 horas</option>
-                    <option value="12">12 horas</option>
-                    <option value="24">24 horas</option>
-                    <option value="48">48 horas</option>
-                  </select>
-                </label>
-              </div>
-              <p class="muted" id="policy-summary"></p>
-            </section>
-
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Codigos ativos</h3>
-              </div>
-              <div class="authorization-list" id="authorization-list"></div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>Como entra no fluxo</h3>
-              </div>
-              <div class="flow-list">
-                <div><strong>1. Servidor gera o codigo</strong><span>Escolhe a finalidade e a matricula.</span></div>
-                <div><strong>2. Consignataria usa o codigo</strong><span>Consulta margem ou cria reserva autorizada.</span></div>
-                <div><strong>3. Sistema audita tudo</strong><span>Uso unico, validade curta e historico da operacao.</span></div>
-              </div>
-            </section>
-          </div>
-        </section>
-
-        <section class="view" id="tickets-view" aria-labelledby="tickets-title">
-          <div class="section-heading row-heading">
-            <div>
-              <h2 id="tickets-title">Suporte e contestacao</h2>
-              <p>Registre contestacoes de margem e duvidas de contrato.</p>
-            </div>
-            <button class="primary-button" id="new-ticket-open" type="button">Novo ticket</button>
-          </div>
-          <div class="ticket-list" id="ticket-list"></div>
-        </section>
-
-        <section class="view" id="audit-view" aria-labelledby="audit-title">
-          <div class="section-heading">
-            <h2 id="audit-title">Auditoria</h2>
-            <p>Trilha operacional das acoes que afetam margem, contratos, autorizacoes e suporte.</p>
-          </div>
-          <div class="table-panel">
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Evento</th>
-                  <th>Perfil</th>
-                  <th>Origem</th>
-                </tr>
-              </thead>
-              <tbody id="audit-table"></tbody>
-            </table>
-          </div>
-        </section>
-      </main>
-    </div>
-
-    <dialog class="modal" id="employee-modal">
-      <form method="dialog" class="modal-content" id="employee-form">
-        <div class="modal-heading">
-          <h2>Novo servidor</h2>
-          <button class="icon-button" data-close-modal value="cancel" type="button" title="Fechar">x</button>
-        </div>
-        <label>Nome <input class="text-input" id="employee-name" required /></label>
-        <label>CPF <input class="text-input" id="employee-cpf" required /></label>
-        <label>Matricula <input class="text-input" id="employee-enrollment" required /></label>
-        <label>Renda base <input class="text-input" id="employee-income" type="number" step="0.01" required /></label>
-        <label>Descontos obrigatorios <input class="text-input" id="employee-deductions" type="number" step="0.01" value="0" /></label>
-        <button class="primary-button wide" value="default" type="submit">Salvar servidor</button>
-      </form>
-    </dialog>
-
-    <dialog class="modal" id="contract-modal">
-      <form method="dialog" class="modal-content" id="contract-form">
-        <div class="modal-heading">
-          <h2>Nova reserva</h2>
-          <button class="icon-button" data-close-modal value="cancel" type="button" title="Fechar">x</button>
-        </div>
-        <label>Servidor <select id="contract-employee" class="select-input"></select></label>
-        <label>Consignataria <select id="contract-lender" class="select-input"></select></label>
-        <label>
-          Produto
-          <select id="contract-product" class="select-input">
-            <option>Emprestimo consignado</option>
-            <option>Cartao consignado</option>
-            <option>Cartao beneficio</option>
-          </select>
-        </label>
-        <label>
-          Tipo de contrato
-          <select id="contract-type" class="select-input">
-            <option>Novo</option>
-            <option>Refinanciamento</option>
-            <option>Portabilidade</option>
-            <option>Compra de divida</option>
-          </select>
-        </label>
-        <label>Valor da parcela <input id="contract-installment" class="text-input" type="number" step="0.01" required /></label>
-        <label>Prazo <input id="contract-installments" class="text-input" type="number" min="1" value="48" required /></label>
-        <button class="primary-button wide" value="default" type="submit">Criar reserva</button>
-      </form>
-    </dialog>
-
-    <dialog class="modal" id="ticket-modal">
-      <form method="dialog" class="modal-content" id="ticket-form">
-        <div class="modal-heading">
-          <h2>Novo ticket</h2>
-          <button class="icon-button" data-close-modal value="cancel" type="button" title="Fechar">x</button>
-        </div>
-        <label>Servidor <select id="ticket-employee" class="select-input"></select></label>
-        <label>Tipo
-          <select id="ticket-type" class="select-input">
-            <option value="Contestacao de margem">Contestacao de margem</option>
-            <option value="Duvida sobre contrato">Duvida sobre contrato</option>
-            <option value="Contrato desconhecido">Contrato desconhecido</option>
-            <option value="Erro de desconto">Erro de desconto</option>
-          </select>
-        </label>
-        <label>Descricao <textarea id="ticket-description" class="textarea-input" required></textarea></label>
-        <button class="primary-button wide" value="default" type="submit">Abrir ticket</button>
-      </form>
-    </dialog>
-
-    <dialog class="modal" id="authorization-modal">
-      <form method="dialog" class="modal-content" id="authorization-form">
-        <div class="modal-heading">
-          <h2>Gerar autorizacao</h2>
-          <button class="icon-button" data-close-modal value="cancel" type="button" title="Fechar">x</button>
-        </div>
-        <label>Servidor <select id="authorization-employee" class="select-input"></select></label>
-        <label>Finalidade
-          <select id="authorization-purpose" class="select-input">
-            <option value="Consulta de margem">Consulta de margem</option>
-            <option value="Reserva de margem">Reserva de margem</option>
-            <option value="Confirmacao de contrato">Confirmacao de contrato</option>
-          </select>
-        </label>
-        <button class="primary-button wide" value="default" type="submit">Gerar codigo</button>
-      </form>
-    </dialog>
-
-    <script src="app.js"></script>
-    <script src="audit-addon.js?v=20260724-01"></script>
-  </body>
-</html>
-
+const connectedStyle = document.createElement("style");
+connectedStyle.textContent = `
+  .connected-api-status {
+    align-items: center;
+    background: #eef7f3;
+    border: 1px solid #b8d8ca;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 12px;
+  }
+  .connected-api-status > div,
+  .connected-api-status label,
+  .connected-login-form label {
+    display: grid;
+    gap: 4px;
+  }
+  .connected-api-status span,
+  .connected-api-status label span {
+    color: #52645c;
+    font-size: 12px;
+  }
+  .connected-api-status label {
+    margin-left: auto;
+    min-width: 220px;
+  }
+  .connected-api-error {
+    color: #9c2f26;
+    width: 100%;
+  }
+  @media (max-width: 720px) {
+    .connected-api-status {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    .connected-api-status label {
+      margin-left: 0;
+      min-width: 0;
+    }
+  }
+`;
+document.head.appendChild(connectedStyle);

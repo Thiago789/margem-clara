@@ -19,7 +19,6 @@ function renderAudit() {
     ? rows.join("")
     : `<tr><td colspan="4">Nenhum evento registrado ainda.</td></tr>`;
 }
-
 if (!pageTitles.audit) {
   pageTitles.audit = "Auditoria";
 }
